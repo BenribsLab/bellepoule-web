@@ -1,0 +1,1548 @@
+# French translation for bellepoule
+# Copyright (c) 2010 Rosetta Contributors and Canonical Ltd 2010
+# This file is distributed under the same license as the BellePoule package.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: bellepoule\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2019-10-13 18:29+0200\n"
+"PO-Revision-Date: 2020-05-10 13:30+0000\n"
+"Last-Translator: Jean-Marc <Unknown>\n"
+"Language-Team: LANGUAGE <LL@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Launchpad-Export-Date: 2020-05-11 05:45+0000\n"
+"X-Generator: Launchpad (build fbdff7602bd10fb883bf7e2ddcc7fd5a16f60398)\n"
+"X-Poedit-Language: French\n"
+"X-Poedit-SourceCharset: utf-8\n"
+
+msgid "Long text"
+msgstr "Texte long"
+
+msgid "Short text"
+msgstr "Texte court"
+
+msgid "Graphic"
+msgstr "Graphique"
+
+msgid "Data to display"
+msgstr "Données à afficher"
+
+msgid "Visibility"
+msgstr "Visibilité"
+
+msgid "Data"
+msgstr "Données"
+
+msgid "Look"
+msgstr "Apparence"
+
+msgid "Follow the instructions given by "
+msgstr "Suivez les instructions données par "
+
+msgid "Access denied!"
+msgstr "Accès refusé !"
+
+msgid "<b>Smartpoule</b> configuration code"
+msgstr "Code de configuration de <b>SmartPoule</b>"
+
+msgid ""
+"Uncheck this box to quicken the data input. The corresponding field will be "
+"ignored on TAB key pressed."
+msgstr ""
+"Décochez cette case pour accélerer la navigation. Le champ correspondant "
+"sera ignoré lors des appuis sur la touche TAB."
+
+msgid "Choose a fencer file to import..."
+msgstr "Choisissez un fichier de tireurs à importer..."
+
+msgid "Fencer files"
+msgstr "Fichiers de tireurs"
+
+msgid "Referee files"
+msgstr "Fichiers d'arbitres"
+
+msgid "All files"
+msgstr "Tous les fichiers"
+
+msgid "The imported FFF file has encoding errors."
+msgstr "Le fichier FFF importé contient des erreurs d'encodage."
+
+msgid "List of registered"
+msgstr "Liste des inscrits"
+
+msgid "List of presents"
+msgstr "Liste des présents"
+
+msgid "List of absents"
+msgstr "Liste des absents"
+
+msgid "Fencer list"
+msgstr "Liste des tireurs"
+
+msgid "Copy"
+msgstr "Copier"
+
+msgid "Paste"
+msgstr "Coller"
+
+msgid "Paste (link)"
+msgstr "Copier (lien)"
+
+msgid "Remove"
+msgstr "Supprimer"
+
+msgid "Page"
+msgstr "Page"
+
+msgid "U5"
+msgstr "M5"
+
+msgid "U7"
+msgstr "M7"
+
+msgid "U9"
+msgstr "M9"
+
+msgid "U11"
+msgstr "M11"
+
+msgid "U13"
+msgstr "M13"
+
+msgid "U15"
+msgstr "M15"
+
+msgid "U17"
+msgstr "M17"
+
+msgid "U20"
+msgstr "M20"
+
+msgid "U23"
+msgstr "M23"
+
+msgid "Senior"
+msgstr "Senior"
+
+msgid "Veteran"
+msgstr "Vétéran"
+
+msgid "Veteran 1"
+msgstr "Vétéran 1"
+
+msgid "Veteran 2"
+msgstr "Vétéran 2"
+
+msgid "Veteran 3"
+msgstr "Vétéran 3"
+
+msgid "Veteran 4"
+msgstr "Vétéran 4"
+
+msgid "Veteran 5"
+msgstr "Vétéran 5"
+
+msgid "Veteran 3+4"
+msgstr "Vétéran 3 + 4"
+
+msgid "Veteran 4+5"
+msgstr "Vétéran 4 + 5"
+
+msgid "Choose a competion file to open... "
+msgstr "Choisissez un fichier de compétition à ouvrir... "
+
+msgid "Example files"
+msgstr "Fichiers d'exemples"
+
+msgid "Competition files"
+msgstr "Fichiers de compétition"
+
+msgid "BellePoule files"
+msgstr "Fichiers BellePoule"
+
+msgid "Recently opened files"
+msgstr "Fichiers récemment ouverts"
+
+msgid "Choose a backup files location..."
+msgstr "Choisissez un dossier pour les sauvegardes..."
+
+msgid "Men"
+msgstr "Hommes"
+
+msgid "Women"
+msgstr "Dames"
+
+msgid "Mixed"
+msgstr "Mixte"
+
+msgid "League"
+msgstr "CID"
+
+msgid "Regional"
+msgstr "Zone"
+
+msgid "Open"
+msgstr "Circuit national"
+
+msgid "World cup"
+msgstr "Coupe du monde"
+
+msgid "National championships"
+msgstr "Championnats de France"
+
+msgid "World championships"
+msgstr "Championnats du monde"
+
+msgid "Other"
+msgstr "Autre"
+
+msgid "Choose a file..."
+msgstr "Choisir un fichier..."
+
+msgid "GREG alert"
+msgstr "Alerte GREG"
+
+msgid ""
+"It's recommended to give a label when publication on GREG (www.escrime-info."
+"com) is intended.\n"
+"\n"
+"Re-open the form to fill it in?"
+msgstr ""
+"Il est recommandé de renseigner un label en cas de publication sur GREG (www."
+"escrime-info.com).\n"
+"\n"
+"Réafficher la fiche pour le renseigner ?"
+
+msgid "BellePoule files (.cotcot)"
+msgstr "Les fichiers BellePoule (.cotcot)"
+
+msgid "Close without saving"
+msgstr "Fermer sans enregistrer"
+
+#, c-format
+msgid "Match %s"
+msgstr "Match %s"
+
+msgid "No winner!"
+msgstr "Pas de vainqueur !"
+
+#, c-format
+msgid "Round #%d"
+msgstr "Tour n° %d"
+
+msgid "Formula"
+msgstr "Formule"
+
+msgid "<b><big>Do you really want to cancel the current round?</big></b>"
+msgstr "<b><big>Voulez-vous vraiment annuler la phase actuelle ?</big></b>"
+
+msgid "Go back to the previous round?"
+msgstr "Revenir à la phase précédente ?"
+
+msgid "All the inputs of this round will be cancelled."
+msgstr "Toutes les saisies de cette phase seront annulées."
+
+msgid ""
+"<b><big>Because of ties, the quota is exceeded.\n"
+"Do you wish to add a barrage round?</big></b>"
+msgstr ""
+"<b><big>Le quota n'est pas respecté à cause d'égalités.\n"
+"Voulez-vous ajouter un tour de barrage ?</big></b>"
+
+msgid "Barrage"
+msgstr "Barrage"
+
+msgid "<b><big>Do you really want to quit BellePoule</big></b>"
+msgstr "<b><big>Voulez-vous vraiment quitter BellePoule ?</big></b>"
+
+msgid "Quit BellePoule?"
+msgstr "Quitter BellePoule ?"
+
+msgid "All the unsaved competions will be lost."
+msgstr "Toutes les compétitions non enregistrées seront perdues."
+
+#, c-format
+msgid "Piste %d"
+msgstr "Piste %d"
+
+msgid "No time!"
+msgstr "Pas d'heure !"
+
+msgid "No piste!"
+msgstr "Pas de piste !"
+
+msgid "Display jobs"
+msgstr "Afficher les tâches"
+
+msgid "Not available"
+msgstr "Non disponible"
+
+msgid "Available"
+msgstr "Disponible"
+
+msgid "Pool"
+msgstr "Poule"
+
+msgid "Meal"
+msgstr "Repas"
+
+msgid "Drink"
+msgstr "Boisson"
+
+msgid "Dessert"
+msgstr "Dessert"
+
+msgid "Coffee"
+msgstr "Café"
+
+msgid "Payment book"
+msgstr "Registre des paiements"
+
+msgid "Signature"
+msgstr "Signature"
+
+msgid "Meal tickets"
+msgstr "Tickets repas"
+
+#, c-format
+msgid ""
+"<b>%s</b> is delayed.\n"
+"Do you want to postpone the next bouts?\n"
+msgstr ""
+"<b>%s</b> est en retard.\n"
+"Voulez-vous décaler les matchs suivants ?\n"
+
+msgid "Restart BellePoule for this change to take effect"
+msgstr "Redémarrez BellePoule pour appliquer les changements"
+
+msgid "Educ"
+msgstr "Éduc"
+
+msgid "Foil"
+msgstr "Fleuret"
+
+msgid "Epée"
+msgstr "Épée"
+
+msgid "Sabre"
+msgstr "Sabre"
+
+msgid "place"
+msgstr "place"
+
+msgid "team"
+msgstr "équipe"
+
+msgid "last name"
+msgstr "nom"
+
+msgid "first name"
+msgstr "prénom"
+
+msgid "date of birth"
+msgstr "date de naissance"
+
+msgid "gender"
+msgstr "sexe"
+
+msgid "Male"
+msgstr "Masculin"
+
+msgid "Female"
+msgstr "Féminin"
+
+msgid "weapon"
+msgstr "arme"
+
+msgid "country"
+msgstr "nation"
+
+msgid "region"
+msgstr "région"
+
+msgid "league"
+msgstr "CID"
+
+msgid "club"
+msgstr "club"
+
+msgid "licence"
+msgstr "licence"
+
+msgid "rate"
+msgstr "taux"
+
+msgid "level"
+msgstr "niveau"
+
+msgid "ranking"
+msgstr "classement"
+
+msgid "rating"
+msgstr "cote"
+
+msgid "presence"
+msgstr "présence"
+
+msgid "exported"
+msgstr "exporté"
+
+msgid "incident"
+msgstr "incident"
+
+msgid "Absent"
+msgstr "Absent"
+
+msgid "Latecomer"
+msgstr "Retardataire"
+
+msgid "global status"
+msgstr "statut global"
+
+msgid "Qualified"
+msgstr "Qualifiés"
+
+msgid "Not qualified"
+msgstr "Éliminé"
+
+msgid "Withdrawal"
+msgstr "Abandon"
+
+msgid "Excluded"
+msgstr "Exclu"
+
+msgid "Forfeit"
+msgstr "Forfait"
+
+msgid "status"
+msgstr "statut"
+
+msgid "cyphered password"
+msgstr "mot de passe chiffré"
+
+msgid "IP address"
+msgstr "Adresse IP"
+
+msgid "Password"
+msgstr "Mot de passe"
+
+msgid "pool #"
+msgstr "poule n°"
+
+msgid "Victories"
+msgstr "Victoires"
+
+msgid "Bouts"
+msgstr "Matchs"
+
+msgid "Vict./Bouts (‰)"
+msgstr "Vict./Matchs (‰)"
+
+msgid "index"
+msgstr "indice"
+
+msgid "Hits scored"
+msgstr "Touches données"
+
+msgid "strip"
+msgstr "piste"
+
+msgid "time"
+msgstr "heure"
+
+msgid "Round start rank"
+msgstr "rang d'entrée"
+
+msgid "promoted"
+msgstr "promu"
+
+msgid "connection"
+msgstr "connexion"
+
+msgid "Broken"
+msgstr "Cassée"
+
+msgid "Waiting"
+msgstr "En attente"
+
+msgid "OK"
+msgstr "OK"
+
+msgid "Manual"
+msgstr "Manuelle"
+
+msgid "Classification"
+msgstr "Classement"
+
+msgid "Piste"
+msgstr "Piste"
+
+msgid "Place #"
+msgstr "Place n°"
+
+msgid "Referee"
+msgstr "Arbitre"
+
+msgid "Table"
+msgstr "Tableau"
+
+#, c-format
+msgid "%s: score sheets printing"
+msgstr "%s : impression des matchs"
+
+msgid "Winner"
+msgstr "Vainqueur"
+
+msgid "Final"
+msgstr "Finale"
+
+msgid "Semi-final"
+msgstr "Demi-finale"
+
+#, c-format
+msgid "Table of %d"
+msgstr "Tableau de %d"
+
+msgid "OVER"
+msgstr "FIN"
+
+msgid ""
+"Referees allocation \n"
+" ongoing"
+msgstr ""
+"Allocation des\n"
+"arbitres en cours"
+
+msgid "Table classification"
+msgstr "Classement des tableaux"
+
+msgid "All places fenced"
+msgstr "Toutes les places tirées"
+
+msgid "Fence off for third place"
+msgstr "3e place tirée"
+
+msgid "No fence off for third place"
+msgstr "3e place non tirée"
+
+msgid "Max score"
+msgstr "Score max"
+
+msgid "Pools arrangement"
+msgstr "Composition des poules"
+
+msgid "or"
+msgstr "ou"
+
+msgid "Wrong fencers count!"
+msgstr "Mauvais nombre de tireurs !"
+
+msgid "Allocation"
+msgstr "Répartition"
+
+msgid "Seeding"
+msgstr "Répartition"
+
+msgid "Balanced"
+msgstr "Équilibrée"
+
+msgid "Grouped by strength"
+msgstr "Par force équivalente"
+
+msgid "Impossible to apply with this configuration of pools"
+msgstr "Impossible à appliquer avec cette configuration de poules"
+
+#, c-format
+msgid "Pool #%02d"
+msgstr "Poule n° %02d"
+
+msgid "Status"
+msgstr "Statut"
+
+msgid "Vict./Matchs"
+msgstr "Vict./Matchs"
+
+msgid "H. scored"
+msgstr "T. données"
+
+msgid "H. received"
+msgstr "T. reçues"
+
+msgid "Index"
+msgstr "Indice"
+
+msgid "Place"
+msgstr "Place"
+
+msgid "Pools"
+msgstr "Poules"
+
+msgid "Bout without winner!"
+msgstr "Match sans vainqueur !"
+
+msgid "General classification"
+msgstr "Classement général"
+
+msgid "All FFF files (.FFF)"
+msgstr "Tous les fichiers FFF (.FFF)"
+
+msgid "All PDF files (.PDF)"
+msgstr "Tous les fichiers PDF (.pdf)"
+
+msgid "All HTML files (.HTML)"
+msgstr "Tous les fichiers HTML (.HTML)"
+
+msgid "All AskFred files (.FRD)"
+msgstr "Tous les fichiers AskFred (.FRD)"
+
+msgid "Split"
+msgstr "Scission"
+
+msgid "List of fencers to extract"
+msgstr "Liste des tireurs à extraire"
+
+msgid "Choose a rank file to apply..."
+msgstr "Choisir un fichier de classement à appliquer"
+
+msgid "Rank files: cotcot, xml, txt (France)"
+msgstr "Fichier de classement : cotcot, xml, txt (France)"
+
+msgid "Check-in"
+msgstr "Appel"
+
+msgid "** Without team **"
+msgstr "** Sans équipe **"
+
+msgid "Present fencers"
+msgstr "Tireurs présents"
+
+msgid "Expected fencers"
+msgstr "Tireurs attendus"
+
+msgid "Expected teams"
+msgstr "Équipes attendues"
+
+msgid "Team size"
+msgstr "Taille des équipes"
+
+#, c-format
+msgid "You have configured the minimum team size to <b>%d</b> fencers."
+msgstr ""
+"Vous avez configuré la taille minimale des équipes à <b>%d</b> tireurs."
+
+msgid "Tick the present players of the team."
+msgstr "Cochez les tireurs présents de l'équipe."
+
+msgid "Untick the absent players of the team."
+msgstr "Décochez les tireurs absents de l'équipe."
+
+msgid "Fencer list printing"
+msgstr "Impression de la liste des tireurs"
+
+msgid "<b><big>What do you want to print?</big></b>"
+msgstr "<b><big>Que voulez-vous imprimer ?</big></b>"
+
+msgid "All the presents"
+msgstr "Tous les présents"
+
+msgid "All the absents"
+msgstr "Tous les absents"
+
+msgid "Presents"
+msgstr "Présents"
+
+msgid "Absents"
+msgstr "Absents"
+
+msgid "all"
+msgstr "tous"
+
+msgid "Import fencers"
+msgstr "Importer des tireurs"
+
+msgid "Import ranking"
+msgstr "Importer des classements"
+
+msgid "Minimum team size"
+msgstr "Taille minimale des équipes"
+
+msgid "Team classification"
+msgstr "Classement des équipes"
+
+msgid "Manually assigned"
+msgstr "Assigné manuellement"
+
+msgid "Derived from fencer classification"
+msgstr "Dérivé des classements individuels"
+
+msgid "Extension"
+msgstr "Extension"
+
+msgid "No"
+msgstr "Non"
+
+msgid "Assign"
+msgstr "Assigner"
+
+msgid "Cancel"
+msgstr "Annuler"
+
+msgid "Undo"
+msgstr "Annuler"
+
+msgid "Match"
+msgstr "Match"
+
+msgid "<b>Match</b>"
+msgstr "<b>Match</b>"
+
+msgid "<b>Score</b>"
+msgstr "<b>Score</b>"
+
+msgid "Table printing"
+msgstr "Impression du tableau"
+
+msgid "<b><big>How to print?</big></b>"
+msgstr "<b><big>Comment imprimer ?</big></b>"
+
+msgid "Bouts/sheet"
+msgstr "Matchs/feuille"
+
+msgid ""
+"<b><big>Which score sheets of the selected table do you want to print?</"
+"big></b>"
+msgstr ""
+"<b><big>Quels matchs du tableau sélectionné voulez-vous imprimer ?</big></b>"
+
+msgid "All the score sheets"
+msgstr "Toutes les feuilles de match"
+
+msgid "The pending score sheets"
+msgstr "Les feuilles de match en attente"
+
+msgid "Add"
+msgstr "Ajouter"
+
+msgid "<b>Schedule</b>"
+msgstr "<b>Déroulement</b>"
+
+msgid "<b>Parameters</b>"
+msgstr "<b>Paramètres</b>"
+
+msgid "Previous round"
+msgstr "Tour précédent"
+
+msgid "Next round"
+msgstr "Tour suivant"
+
+msgid "Choose a target file..."
+msgstr "Choisissez un fichier de destination..."
+
+msgid "Export to <b>HTML</b>"
+msgstr "Exporter en <b>HTML</b>"
+
+msgid "Export to <b>FFF</b>"
+msgstr "Exporter en <b>FFF</b>"
+
+msgid "Export to <b>PDF</b>"
+msgstr "Exporter en <b>PDF</b>"
+
+msgid "Export to <b>FRD</b>"
+msgstr "Exporter en <b>FRD</b>"
+
+msgid "Place shifting"
+msgstr "Décalage du classement"
+
+msgid "Winner's place"
+msgstr "Place du vainqueur"
+
+msgid "Name"
+msgstr "Nom"
+
+msgid "Number"
+msgstr "Nombre"
+
+msgid "Pool sheets printing"
+msgstr "Impression des feuilles de poule"
+
+msgid "<b><big>Print...</big></b>"
+msgstr "<b><big>Imprimer...</big></b>"
+
+msgid "All the pools"
+msgstr "Toutes les poules"
+
+msgid "Only the selected pool"
+msgstr "Uniquement la poule sélectionnée"
+
+msgid "<b>What?</b>"
+msgstr "<b>Quoi ?</b>"
+
+msgid "For arbitration"
+msgstr "Pour arbitrage"
+
+msgid "Matches watermarked"
+msgstr "Matchs en filigrane"
+
+msgid "For the bulletin board"
+msgstr "Pour affichage"
+
+msgid "<b>For what?</b>"
+msgstr "<b>Pour quoi ?</b>"
+
+msgid "Automatic stuffing"
+msgstr "Remplissage automatique"
+
+msgid "Combined classification"
+msgstr "Classement combiné"
+
+msgid "Single classification"
+msgstr "Classement simple"
+
+msgid "All"
+msgstr "Toutes"
+
+msgid "Selected"
+msgstr "Sélectionné"
+
+msgid "Now"
+msgstr "Maintenant"
+
+msgid "<b>From?</b>"
+msgstr "<b>À partir de ?</b>"
+
+msgid "label"
+msgstr "label"
+
+msgid "Import referee file"
+msgstr "Importer le fichier d'arbitres"
+
+msgid "Content designed for the referees."
+msgstr "Contenu spécialement conçu pour les arbitres."
+
+msgid "Promoted"
+msgstr "Promus"
+
+msgid "Eliminated"
+msgstr "Éliminés"
+
+msgid "BellePoule - Fencing tournament"
+msgstr "BellePoule - Tournoi d'escrime"
+
+msgid "File"
+msgstr "Fichier"
+
+msgid "Referees"
+msgstr "Arbitres"
+
+msgid "WIFI"
+msgstr "WIFI"
+
+msgid "Score sheet scanner"
+msgstr "Scanner de feuilles de match"
+
+msgid "Print meal tickets"
+msgstr "Imprimer les tickets repas"
+
+msgid "Print payment book"
+msgstr "Imprimer le registre des paiements"
+
+msgid "New version!"
+msgstr "Nouvelle version !"
+
+msgid "Release notes"
+msgstr "Notes de version"
+
+msgid "Acces code"
+msgstr "Code d'accès"
+
+msgid "User manual"
+msgstr "Manuel de l'utilisateur"
+
+msgid "Return"
+msgstr "Retour"
+
+msgid "Matches"
+msgstr "Matchs"
+
+msgid ""
+"Fencing tournament management software.\n"
+"\n"
+"\n"
+msgstr ""
+"Logiciel de gestion de tournois d'escrime.\n"
+"\n"
+"\n"
+
+msgid "Security"
+msgstr "Sécurité"
+
+msgid "Passphrase"
+msgstr "Mot de passe"
+
+msgid ""
+"Enter your WIFI network settings here.\n"
+"They will be used to automatically configure\n"
+"the smarthphones running <b>SmartPoule</b>"
+msgstr ""
+"Copiez ici les paramètres du réseau WIFI.\n"
+"Ils seront automatiquement utilisés pour configurer\n"
+"les smartphones avec <b>SmartPoule</b>."
+
+msgid ""
+"Scan this code with <b>SmartPoule</b>\n"
+"to make your smarphone\n"
+"a score sheet scanner."
+msgstr ""
+"Scannez ce code avec <b>SmartPoule</b>\n"
+"pour transformer votre smartphone en\n"
+"scanner de feuilles de match."
+
+msgid "<b>Score sheet scanner</b>"
+msgstr "<b>Scanner de feuilles de match</b>"
+
+msgid "Connection rejected"
+msgstr "Connection rejetée"
+
+msgid "BellePoule2D is already operating on the network."
+msgstr "BellePoule2D est déjà présent sur le réseau"
+
+msgid "Connection to <b>BellePoule</b>"
+msgstr "Connexion à <b>BellePoule</b>"
+
+msgid "Plug an USB stick."
+msgstr "Insérez une clé USB."
+
+msgid "Unplug it."
+msgstr "Retirez-la."
+
+msgid ""
+"Plug it now in a computer where\n"
+"<b>BellePoule</b> is running."
+msgstr ""
+"Insérez-la maintenant dans l'ordinateur où\n"
+"tourne <b>BellePoule</b>."
+
+msgid "Scan this QRCode:"
+msgstr "Scannez ce QRCode :"
+
+msgid ""
+"Scan the other QRCode on the partner application\n"
+" (menu <b>BellePoule2D</b>)."
+msgstr ""
+"Scannez l'autre QRCode sur l'application partenaire\n"
+" (menu <b>BellePoule2D</b>)."
+
+msgid "Fenced places"
+msgstr "Places tirées"
+
+msgid "Fill in a match"
+msgstr "Saisir un match..."
+
+msgid "Score sheets"
+msgstr "Les feuilles de match"
+
+msgid ""
+"Fill in all the scores randomly.\n"
+"To activate/deactivate this button, go to the properties of the competition."
+msgstr ""
+"Remplir tous les matchs du tableau par des scores aléatoires.\n"
+"Pour activer/désactiver ce bouton, allez dans les propriétés de la "
+"compétition."
+
+msgid "match"
+msgstr "match"
+
+msgid "<b>Search</b>"
+msgstr "<b>Chercher</b>"
+
+msgid "Zoom"
+msgstr "Zoom :"
+
+msgid "From:"
+msgstr "À partir de :"
+
+msgctxt "jobs"
+msgid "All"
+msgstr "Tous"
+
+msgctxt "jobs"
+msgid "Only the selected"
+msgstr "Seulement les sélectionnés"
+
+msgid "Pistes"
+msgstr "Pistes"
+
+msgctxt "pistes"
+msgid "All"
+msgstr "Toutes"
+
+msgctxt "pistes"
+msgid "Only the selected"
+msgstr "Seulement les sélectionnées"
+
+msgctxt "referees"
+msgid "All"
+msgstr "Tous"
+
+msgctxt "referees"
+msgid "Only the selected"
+msgstr "Seulement les sélectionnés"
+
+msgid "None"
+msgstr "Aucun"
+
+msgid "<b>No referee available!</b>"
+msgstr "<b>Pas d'arbitre disponible !</b>"
+
+msgid "Didn't you forget to check them in?"
+msgstr "N'avez-vous pas oublié de les pointer ?"
+
+msgid "Overlap of time slots"
+msgstr "Chevauchement de créneaux horaires"
+
+msgid "Rotate"
+msgstr "Tourner"
+
+msgid "Block"
+msgstr "Bloquer"
+
+msgid "Print"
+msgstr "Imprimer"
+
+msgid "<span size=\"x-small\">club</span>"
+msgstr "<span size=\"x-small\">club</span>"
+
+msgid "<span size=\"x-small\">league</span>"
+msgstr "<span size=\"x-small\">ligue</span>"
+
+msgid "<span size=\"x-small\">country</span>"
+msgstr "<span size=\"x-small\">pays</span>"
+
+msgid "Warnings"
+msgstr "Alertes"
+
+msgid "Check the fencers you wish to include"
+msgstr "Cochez les tireurs que vous souhaitez inclure"
+
+msgid "New fencer..."
+msgstr "Nouveau tireur..."
+
+msgid "Uncheck the fencers you wish to withdraw"
+msgstr "Décochez les tireurs que vous souhaitez retirer"
+
+msgid "Mask or unmask some data type as well as define their display order."
+msgstr ""
+"Permet d'afficher et de masquer certaines données ainsi que de redéfinir "
+"leur ordre d'affichage."
+
+msgid "Number of pools"
+msgstr "Nombre de poules"
+
+msgid "Fencers / pools"
+msgstr "Tireurs / poules"
+
+msgid "Swapping"
+msgstr "Décalage"
+
+msgid "Label "
+msgstr "Label "
+
+msgid ""
+"Used by GREG to distinguish\n"
+"the competions created from splitting."
+msgstr ""
+"Utilisé par GREG pour distinguer\n"
+"les compétitions issues de scission."
+
+msgid ""
+"BellePoule needs your agreement\n"
+"to tweet on your behalf"
+msgstr ""
+"BellePoule a besoin de votre accord\n"
+"pour tweeter pour votre compte"
+
+msgid "Click on the link to open a web browser:"
+msgstr "Cliquer sur le lien pour ouvir un navigateur web :"
+
+msgid "Obtain an authorization code"
+msgstr "Demander un code d'autorisation"
+
+msgid "on this web site"
+msgstr "sur ce site web"
+
+msgid "Paste the authorization code here:"
+msgstr "Coller le code d'autorisation ici :"
+
+msgid "BellePoule needs your agreement to post announces on your behalf"
+msgstr ""
+"BellePoule a besoin de votre accord pour poster des annonces pour votre "
+"compte"
+
+msgid "New competition"
+msgstr "Nouvelle compétition"
+
+msgid "Choose a creation method:"
+msgstr "Choisissez une méthode de création :"
+
+msgid "From a XML file"
+msgstr "À partir d'un fichier XML"
+
+msgid "Empty competition"
+msgstr "Compétition vide"
+
+msgid "From a FFE zip file (extranet)"
+msgstr "À partir d'un fichier zip de la FFE (extranet)"
+
+msgid "From AskFred (.frd)"
+msgstr "À partir d'AskFred (.frd)"
+
+msgid "Connection to <b>BellePoule2D</b>"
+msgstr "Connexion à <b>BellePoule2D</b>"
+
+msgid ""
+"Plug it now in a computer where\n"
+"<b>BellePoule2D</b> is running."
+msgstr ""
+"Insérez-la maintenant dans l'ordinateur où\n"
+"tourne <b>BellePoule2D</b>."
+
+msgid "Recently opened"
+msgstr "Récemment ouvert"
+
+msgid "Reload imports..."
+msgstr "Recharger les importations..."
+
+msgid "Backup"
+msgstr "Sauvegarde de secours"
+
+msgid "Backup files location..."
+msgstr "Dossier des sauvegardes de secours..."
+
+msgid "Activate"
+msgstr "Activer"
+
+msgid "Deactivate"
+msgstr "Désactiver"
+
+msgid "Publication"
+msgstr "Publication"
+
+msgid "Setup"
+msgstr "Réglages"
+
+msgid "Access code"
+msgstr "Code d'accès"
+
+msgid "Open an example..."
+msgstr "Ouvrir un exemple..."
+
+msgid "Fencer file template (.csv)"
+msgstr "Modèle de fichier de tireurs (.csv)"
+
+msgid "User"
+msgstr "Utilisateur"
+
+msgid "FTP server"
+msgstr "Serveur FTP"
+
+msgid "<b>Web site</b>"
+msgstr "<b>Site web</b>"
+
+msgid "<b>Announce</b>"
+msgstr "<b>Annonce</b>"
+
+msgid "<b>Video server</b>"
+msgstr "<b>Serveur vidéo</b>"
+
+msgid ""
+"Scan the other QRCode on the partner application\n"
+" (menu <b>BellePoule</b>)."
+msgstr ""
+"Scanner l'autre QRCode sur l'application partenaire\n"
+" (menu <b>BellePoule</b>)."
+
+msgid "Reload the imported fencers?"
+msgstr "Recharger les tireurs importés ?"
+
+msgid ""
+"Applicable only on <b>non-started</b> competitions created by importing "
+"fencers."
+msgstr ""
+"Applicable uniquement aux compétitions créées par l'import de tireurs et "
+"<b>non démarrées</b>."
+
+msgid "Form"
+msgstr "Formulaire"
+
+msgid "Job"
+msgstr "Tâche"
+
+msgid "Take off"
+msgstr "Retirer"
+
+msgid "Move"
+msgstr "Déplacer"
+
+msgid "<b>Referee</b>"
+msgstr "<b>Arbitre</b>"
+
+msgid "<b>Fencers</b>"
+msgstr "<b>Tireurs</b>"
+
+msgid "Date of competition"
+msgstr "Date de la compétition"
+
+msgid "Competition properties"
+msgstr "Propriétés de la compétition"
+
+msgid "Weapon"
+msgstr "Arme"
+
+msgid "Gender"
+msgstr "Sexe"
+
+msgid "Category"
+msgstr "Catégorie"
+
+msgid "Level"
+msgstr "Niveau"
+
+msgid "Individual"
+msgstr "Individuelle"
+
+msgid "Team"
+msgstr "Par équipe"
+
+msgid "<b>Type</b>"
+msgstr "<b>Type</b>"
+
+msgid "Title"
+msgstr "Titre"
+
+msgid "Organizer"
+msgstr "Organisateur"
+
+msgid "Web site"
+msgstr "Site web"
+
+msgid "Location"
+msgstr "Lieu"
+
+msgid "<b>Overviews</b>"
+msgstr "<b>Généralités</b>"
+
+msgid "Date"
+msgstr "Date"
+
+msgid "Scratch"
+msgstr "Scratch"
+
+msgid "Start"
+msgstr "Début"
+
+msgid "<b>Date / Time</b>"
+msgstr "<b>Date/horaires</b>"
+
+msgid "Allow"
+msgstr "Autoriser"
+
+msgid "Forbid"
+msgstr "Interdire"
+
+msgid ""
+"Automatic\n"
+"score\n"
+"stuffing"
+msgstr ""
+"Remplissage\n"
+"automatique\n"
+"des scores"
+
+msgid "<b>Scores</b>"
+msgstr "<b>Scores</b>"
+
+msgid "Event"
+msgstr "Événement"
+
+msgid "Save the current state of the competition."
+msgstr "Sauvegarde l'état actuel de la compétition."
+
+msgid "To specify the features of the competition."
+msgstr "Permet de renseigner les caractéristiques de la compétition."
+
+#~ msgid "Décallage"
+#~ msgstr "Décalage"
+
+#~ msgid ""
+#~ "Décochez cette case pour accélerer la navigation. Le champs correspondant "
+#~ "sera ignoré lors des appuis sur la touche TAB."
+#~ msgstr ""
+#~ "Décochez cette case pour accélerer la navigation. Le champ correspondant "
+#~ "sera ignoré lors des appuis sur la touche TAB."
+
+#~ msgid "9999"
+#~ msgstr "9999"
+
+#~ msgid "31/03/2009"
+#~ msgstr "31/03/2009"
+
+#~ msgid ":"
+#~ msgstr ":"
+
+#~ msgid "points"
+#~ msgstr "points"
+
+#~ msgid "Liste des présents"
+#~ msgstr "Liste des présents"
+
+#~ msgid "présence"
+#~ msgstr "présence"
+
+#~ msgid "Toutes les compétitions non sauvegardées seront perdues."
+#~ msgstr "Toutes les compétitions non sauvegardées seront perdues."
+
+#~ msgid ""
+#~ "Permet de configurer la formule en définissant l'enchaînement des poules, "
+#~ "tableaux et autres phases."
+#~ msgstr ""
+#~ "To configure the schedule of the competition in terms of pools, tables "
+#~ "and other rounds."
+
+#~ msgid "ref"
+#~ msgstr "réf"
+
+# Chaînes propres au portage Rust
+msgid "Complete results"
+msgstr "Résultats complets"
+
+msgid "Final classification"
+msgstr "Classement final"
+
+msgid "The table"
+msgstr "Le tableau"
+
+msgid "The score sheets"
+msgstr "Les feuilles de match"
+
+msgid "Matches per page"
+msgstr "Matchs par page"
+
+msgid "Ranking"
+msgstr "Classement"
+
+msgid "_Print"
+msgstr "_Imprimer"
+
+msgid "_Close"
+msgstr "_Fermer"
+
+msgid "_OK"
+msgstr "_OK"
+
+msgid "_Cancel"
+msgstr "_Annuler"
+
+msgid "Not available yet in this version."
+msgstr "Pas encore disponible dans cette version."
+
+msgid "Printing is not available yet in this version."
+msgstr "L'impression n'est pas encore disponible dans cette version."
+
+msgid "error(s)"
+msgstr "erreur(s)"
+
+msgid "Page layout"
+msgstr "Mise en page"
+
+msgid "Page layout…"
+msgstr "Mise en page…"
+
+msgid "Header"
+msgstr "En-tête"
+
+msgid "Name of the competition"
+msgstr "Nom de la compétition"
+
+msgid "Color of the competition"
+msgstr "Couleur de la compétition"
+
+msgid "Header color"
+msgstr "Couleur du bandeau"
+
+msgid "Header text color"
+msgstr "Couleur du texte du bandeau"
+
+msgid "Weapon / category color"
+msgstr "Couleur arme / catégorie"
+
+msgid "Header font size (%)"
+msgstr "Taille du texte du bandeau (%)"
+
+msgid "Sheet font size (%)"
+msgstr "Taille du texte des feuilles (%)"
+
+msgid "Fencer names color"
+msgstr "Couleur des noms des tireurs"
+
+msgid "Greyed cells color"
+msgstr "Couleur des cases grisées"
+
+msgid "Footer"
+msgstr "Pied de page"
+
+msgid "Footer text"
+msgstr "Texte du pied de page"
+
+msgid "Page numbers"
+msgstr "Numéros de page"
+
+msgid "Default"
+msgstr "Par défaut"
+
+msgid "Youth training"
+msgstr "Entraînement des jeunes"
+
+msgid "New youth training"
+msgstr "Nouvel entraînement des jeunes"
+
+msgid "Group"
+msgstr "Groupe"
+
+msgid "Groups"
+msgstr "Groupes"
+
+msgid "groups"
+msgstr "groupes"
+
+msgid "groups of"
+msgstr "groupes de"
+
+msgid "to"
+msgstr "à"
+
+msgid "pools of"
+msgstr "poules de"
+
+msgid "pool of"
+msgstr "poule de"
+
+msgid "bouts per fencer"
+msgstr "matchs par tireur"
+
+msgid "fencers"
+msgstr "tireurs"
+
+msgid "Fencers per group"
+msgstr "Tireurs par groupe"
+
+msgid "Pools per group"
+msgstr "Poules par groupe"
+
+msgid "By division (the best fencers in group 1)"
+msgstr "Par division (les meilleurs dans le groupe 1)"
+
+msgid "By ranking (groups of equal level, serpentine)"
+msgstr "Au classement (groupes de même niveau, serpentin)"
+
+msgid "Serpentine (1-4-5-8 / 2-3-6-7)"
+msgstr "Serpentin (1-4-5-8 / 2-3-6-7)"
+
+msgid "By level (the best fencers of the group in pool 1)"
+msgstr "Par niveau (les meilleurs du groupe dans la poule 1)"
+
+msgid "Table: 1st of pool 1 against last of pool 2, 2nd against second to last… All places are fenced."
+msgstr "Tableau : le 1er de la poule 1 rencontre le dernier de la poule 2, le 2e l'avant-dernier… Toutes les places sont tirées."
+
+msgid "Settings"
+msgstr "Réglages"
+
+msgid "Suggested arrangements"
+msgstr "Répartitions proposées"
+
+msgid "recommended"
+msgstr "recommandé"
+
+msgid "Some pools have fewer than 3 or more than 6 fencers: choose another arrangement."
+msgstr "Certaines poules ont moins de 3 ou plus de 6 tireurs : choisissez une autre répartition."
+
+msgid "Each group becomes its own competition: pools, then a table where every place is fenced (one winner per group). Click \"Next round\" to create the groups."
+msgstr "Chaque groupe devient une compétition à part : des poules, puis un tableau où toutes les places sont tirées (un vainqueur par groupe). Cliquez sur « Tour suivant » pour créer les groupes."
+
+msgid "Preferences: the number of fencers per group is adjusted to the number of entries."
+msgstr "Préférences : le nombre de tireurs par groupe est ajusté au nombre d'inscrits."
+
+msgid "By division (level groups: the best fencers in group 1)"
+msgstr "Par division (groupes de niveau : les meilleurs dans le groupe 1)"
+
+msgid "By ranking (serpentine, groups of equal level)"
+msgstr "Au classement (serpentin, groupes de même niveau)"
+
+msgid "At random"
+msgstr "Au hasard"
+
+msgid "Pools of a group"
+msgstr "Poules d'un groupe"
+
+msgid "1st of pool 1 against last of pool 2, 2nd against second to last…"
+msgstr "Le 1er de la poule 1 rencontre le dernier de la poule 2, le 2e l'avant-dernier…"
+
+msgid "Groups creation. Each group becomes its own competition (pools, then table). Settings are in the preferences of this round. Click \"Next round\" to create the groups."
+msgstr "Création des groupes. Chaque groupe devient une compétition à part (poules, puis tableau). Les réglages sont dans les préférences de cette phase. Cliquez sur « Tour suivant » pour créer les groupes."
+
+msgid "Number of groups"
+msgstr "Nombre de groupes"
+
+msgid "Default arrangement"
+msgstr "Répartition par défaut"
+
+msgid "Fencers"
+msgstr "Tireurs"
+
+msgid "and"
+msgstr "et"
+
+msgid "bouts minimum per fencer"
+msgstr "matchs minimum par tireur"
+
+msgid "modified"
+msgstr "modifiée"
+
+msgid "<b><big>Remove the pools and tables rounds that follow?</big></b>"
+msgstr "<b><big>Retirer les tours de poules et de tableaux qui suivent ?</big></b>"
+
+msgid "With a youth training, pools and tables are fenced inside each group."
+msgstr "Avec un entraînement des jeunes, les poules et les tableaux se tirent dans chaque groupe."
+
+msgid "Groups creation. Drag a fencer onto another group to move him. Each group becomes its own competition: its pools (fencers can be moved from one pool to another in its \"Pools arrangement\") then its table. Settings are in the preferences of this round. Click \"Next round\" to create the groups."
+msgstr "Création des groupes. Glissez un tireur sur un autre groupe pour le déplacer. Chaque groupe devient une compétition à part : ses poules (on peut y déplacer les tireurs d'une poule à l'autre dans sa « Composition des poules »), puis son tableau. Les réglages sont dans les préférences de cette phase. Cliquez sur « Tour suivant » pour créer les groupes."
+
+msgid "Points"
+msgstr "Points"
+
+msgid "The same points for everybody"
+msgstr "Le même nombre de points pour tous"
+
+msgid "Points per victory (pools and table)"
+msgstr "Des points par victoire (poules et tableau)"
+
+msgid "Points according to the place in the group"
+msgstr "Des points selon la place dans le groupe"
+
+msgid "1st, 2nd, 3rd… separated by commas; beyond the list, the last value."
+msgstr "1er, 2e, 3e… séparés par des virgules ; au-delà de la liste, la dernière valeur."
+
+msgid "Groups creation. Drag a fencer onto another group to move him. Each group then has its own pools (fencers can be moved from one pool to another in the pools arrangement) and its own table, in this competition. Settings are in the preferences of this round. \"Previous round\" undoes everything."
+msgstr "Création des groupes. Glissez un tireur sur un autre groupe pour le déplacer. Chaque groupe a ensuite ses poules (on peut déplacer les tireurs d'une poule à l'autre dans la composition des poules) et son tableau, dans cette même compétition. Les réglages sont dans les préférences de cette phase. « Tour précédent » défait tout."
+
+msgid "Place in the group"
+msgstr "Place dans le groupe"
+
+msgid "Youth training — ranking of each group"
+msgstr "Entraînement des jeunes — classement de chaque groupe"
+
+msgid "General classification (all groups)"
+msgstr "Classement général (tous les groupes)"

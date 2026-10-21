@@ -1,0 +1,26 @@
+# BellePoule Web : l'API et le client, chacun dans son conteneur.
+# Lancement : docker compose up -d --build   puis   http://localhost:8090 (port : BP_PORT)
+services:
+  api:
+    build: ./bellepoule-web-api
+    restart: unless-stopped
+    environment:
+      BP_LANGUAGE: fr
+      # Clé d'administration (création des clés des clubs) : fichier .env
+      BP_ADMIN_KEY: ${BP_ADMIN_KEY:-}
+    volumes:
+      - bellepoule-data:/data
+    # L'API n'est pas exposée : le client la relaie sous /api.
+
+  client:
+    build: ./bellepoule-client
+    restart: unless-stopped
+    environment:
+      BP_API_URL: http://api:8080
+    depends_on:
+      - api
+    ports:
+      - "${BP_PORT:-8090}:80"
+
+volumes:
+  bellepoule-data:

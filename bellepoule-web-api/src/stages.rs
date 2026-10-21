@@ -1,0 +1,1227 @@
+//! Écrans des phases : une vue par type de phase
+//! (`GET /api/contests/{id}/stages/{index}`) et ses actions
+//! (`POST /api/contests/{id}/stages/{index}` avec `{ "action": …, … }`).
+
+use axum::extract::{Path, State};
+use axum::Json;
+use bp_core::contest::Contest;
+use bp_core::i18n::tr;
+use bp_core::player::{Owner, PlayerRef, PlayerStore};
+use bp_core::rounds::barrage::Barrage;
+use bp_core::rounds::classification::GeneralClassificationStage;
+use bp_core::rounds::pool::round::{extra_swapping_criteria, regular_swapping_criteria, PoolRound};
+use bp_core::rounds::pool::{PoolAllocatorStage, PoolSupervisorStage};
+use bp_core::rounds::splitting::Splitting;
+use bp_core::rounds::table::layout::LayoutMetrics;
+use bp_core::rounds::table::supervisor::{FencedPlaces, TableSupervisor};
+use bp_core::rounds::youth::{self, GroupMode, PointsMode, PoolMode, YouthSettings, YouthTraining};
+use bp_core::stage::{RankEntry, Stage, StageContext};
+use serde::Serialize;
+use serde_json::{json, Value};
+
+use crate::api::{bad_request, internal, not_found, ApiError, Shared};
+use crate::auth::Client;
+use crate::schedule::kind_code;
+use crate::view::{self, Column};
+
+// ------------------------------------------------------------------ listes
+
+/// Liste générique (classements, barrage, scission…).
+#[derive(Serialize)]
+pub struct ListView {
+    columns: Vec<Column>,
+    rows: Vec<ListRow>,
+}
+
+#[derive(Serialize)]
+pub struct ListRow {
+    reference: PlayerRef,
+    cells: Vec<String>,
+    /// Éliminé, absent… (ligne grisée).
+    dimmed: bool,
+    /// Case à cocher de la ligne (promu, exporté…), si la liste en a une.
+    checked: Option<bool>,
+}
+
+fn list(players: &PlayerStore, codes: &[String], refs: &[(PlayerRef, bool)], owner: Owner) -> ListView {
+    ListView {
+        columns: view::columns(codes),
+        rows: refs
+            .iter()
+            .filter_map(|(r, dimmed)| {
+                let p = players.get(*r)?;
+                Some(ListRow { reference: *r, cells: codes.iter().map(|c| view::cell(p, c, owner)).collect(), dimmed: *dimmed, checked: None })
+            })
+            .collect(),
+    }
+}
+
+/// Classement d'une phase : rang et statut écrits sur une copie des joueurs.
+fn ranked_list(players: &PlayerStore, codes: &[String], entries: &[RankEntry], owner: Owner) -> ListView {
+    let mut copy = players.clone();
+    for e in entries {
+        if let Some(p) = copy.get_mut(e.player) {
+            p.set_uint(&bp_core::player::AttrId::local("rank", owner), e.rank);
+            p.set_str(&bp_core::player::AttrId::local("status", owner), &e.status.to_string());
+        }
+    }
+    let refs: Vec<(PlayerRef, bool)> = entries.iter().map(|e| (e.player, e.status != 'Q')).collect();
+    list(&copy, codes, &refs, owner)
+}
+
+fn identity(players: &PlayerStore, r: PlayerRef) -> String {
+    players
+        .get(r)
+        .map(|p| {
+            let first = p.str_attr("first_name").unwrap_or_default();
+            if first.is_empty() {
+                p.name()
+            } else {
+                format!("{} {first}", p.name())
+            }
+        })
+        .unwrap_or_default()
+}
+
+fn club(players: &PlayerStore, r: PlayerRef) -> String {
+    players.get(r).and_then(|p| p.str_attr("club")).unwrap_or_default().to_string()
+}
+
+// ----------------------------------------------------------------- lecture
+
+pub async fn get_stage(State(store): State<Shared>, client: Client, Path((id, index)): Path<(String, usize)>) -> Result<Json<Value>, ApiError> {
+    let mut store = store.lock().await;
+    let c = store.get_mut(&client, &id).ok_or_else(not_found)?;
+    Ok(Json(stage_view(c, index)?))
+}
+
+fn stage_view(c: &mut Contest, index: usize) -> Result<Value, ApiError> {
+    let kind = c.schedule.stage(index).map(|s| s.kind()).ok_or_else(not_found)?;
+    let code = kind_code(kind);
+    let body = match code {
+        "youth" => youth_view(c, index),
+        "pool_allocator" => allocator_view(c, index),
+        "pool_supervisor" => pools_view(c, index),
+        "table" => table_view(c, index),
+        "barrage" => barrage_view(c, index),
+        "splitting" => splitting_view(c, index),
+        "classification" => classification_view(c, index),
+        _ => Some(json!({})),
+    }
+    .ok_or_else(not_found)?;
+    let locked = c.schedule.stage(index).map(|s| s.base().locked).unwrap_or(false);
+    let name = c.schedule.stage(index).map(|s| s.name()).unwrap_or_default();
+    let max_score = c.schedule.stage(index).and_then(|s| s.base().max_score);
+    Ok(json!({ "kind": code, "index": index, "name": name, "locked": locked, "max_score": max_score, "data": body }))
+}
+
+// ---------------------------------------------------------- entraînement
+
+fn mode_code(m: GroupMode) -> &'static str {
+    match m {
+        GroupMode::Division => "division",
+        GroupMode::Ranking => "ranking",
+        GroupMode::Random => "random",
+    }
+}
+
+fn settings_json(s: &YouthSettings) -> Value {
+    let (points_mode, points_value, points_list) = match &s.points {
+        PointsMode::Same(n) => ("same", *n, Vec::new()),
+        PointsMode::PerVictory(n) => ("victory", *n, Vec::new()),
+        PointsMode::ByPlace(l) => ("place", 0, l.clone()),
+    };
+    json!({
+        "group_size": s.group_size,
+        "pools_per_group": s.pools_per_group,
+        "group_mode": mode_code(s.group_mode),
+        "pool_mode": if s.pool_mode == PoolMode::Level { "level" } else { "snake" },
+        "swapping": s.swapping,
+        "fenced_places": match s.fenced_places { FencedPlaces::AllPlaces => "all", FencedPlaces::ThirdPlaces => "third", _ => "none" },
+        "points_mode": points_mode,
+        "points_value": points_value,
+        "points_list": points_list,
+    })
+}
+
+fn youth_view(c: &mut Contest, index: usize) -> Option<Value> {
+    let y = c.schedule.stage(index)?.as_any().downcast_ref::<YouthTraining>()?;
+    let groups: Vec<Value> = y
+        .groups(&c.players)
+        .iter()
+        .enumerate()
+        .map(|(g, group)| {
+            let choices: Vec<Value> = youth::pool_choices(group.layout.size)
+                .iter()
+                .map(|ch| json!({ "nb_pools": ch.nb_pools, "smallest": ch.smallest, "largest": ch.largest }))
+                .collect();
+            json!({
+                "number": g + 1,
+                "size": group.layout.size,
+                "nb_pools": group.layout.nb_pools,
+                "best_pools": youth::best_pools(group.layout.size, &y.settings),
+                "pool_choices": choices,
+                "bouts": youth::bouts_per_fencer(&group.layout, y.settings.fenced_places),
+                "fencers": group.players.iter().map(|r| json!({
+                    "reference": r,
+                    "name": identity(&c.players, *r),
+                    "club": club(&c.players, *r),
+                    "ranking": c.players.get(*r).and_then(|p| p.attr("ranking")).map(|v| v.as_uint()),
+                })).collect::<Vec<_>>(),
+            })
+        })
+        .collect();
+    let swapping: Vec<Value> = regular_swapping_criteria()
+        .into_iter()
+        .map(|code| json!({ "code": code, "label": tr(bp_core::attribute::desc(code).user_name) }))
+        .collect();
+    Some(json!({
+        "settings": settings_json(&y.settings),
+        "customized": y.is_customized(),
+        "count": y.base().attendees.len(),
+        "groups": groups,
+        "swapping_choices": swapping,
+        "results": youth_results(c),
+    }))
+}
+
+fn youth_results(c: &Contest) -> Option<Value> {
+    let results = youth::results(&c.schedule, &c.players)?;
+    Some(Value::Array(
+        results
+            .iter()
+            .map(|r| json!({
+                "reference": r.player,
+                "group": r.group,
+                "place": r.place,
+                "victories": r.victories,
+                "points": r.points,
+                "name": identity(&c.players, r.player),
+                "club": club(&c.players, r.player),
+            }))
+            .collect(),
+    ))
+}
+
+fn parse_settings(v: &Value, current: &YouthSettings) -> YouthSettings {
+    let u = |k: &str, d: u32| v.get(k).and_then(Value::as_u64).map(|n| n as u32).filter(|n| *n > 0).unwrap_or(d);
+    let s = |k: &str| v.get(k).and_then(Value::as_str).unwrap_or("");
+    YouthSettings {
+        group_size: u("group_size", current.group_size),
+        pools_per_group: u("pools_per_group", current.pools_per_group),
+        group_mode: match s("group_mode") {
+            "ranking" => GroupMode::Ranking,
+            "random" => GroupMode::Random,
+            "division" => GroupMode::Division,
+            _ => current.group_mode,
+        },
+        pool_mode: match s("pool_mode") {
+            "level" => PoolMode::Level,
+            "snake" => PoolMode::Snake,
+            _ => current.pool_mode,
+        },
+        swapping: v
+            .get("swapping")
+            .and_then(Value::as_array)
+            .map(|a| a.iter().filter_map(|x| x.as_str().map(str::to_string)).collect())
+            .unwrap_or_else(|| current.swapping.clone()),
+        fenced_places: match s("fenced_places") {
+            "all" => FencedPlaces::AllPlaces,
+            "third" => FencedPlaces::ThirdPlaces,
+            "none" => FencedPlaces::None,
+            _ => current.fenced_places,
+        },
+        points: match s("points_mode") {
+            "same" => PointsMode::Same(v.get("points_value").and_then(Value::as_u64).unwrap_or(10) as u32),
+            "victory" => PointsMode::PerVictory(v.get("points_value").and_then(Value::as_u64).unwrap_or(1) as u32),
+            "place" => {
+                let list: Vec<u32> = v
+                    .get("points_list")
+                    .and_then(Value::as_array)
+                    .map(|a| a.iter().filter_map(|x| x.as_u64().map(|n| n as u32)).collect())
+                    .unwrap_or_default();
+                PointsMode::ByPlace(if list.is_empty() { vec![10, 8, 6, 5, 4, 3, 2, 1] } else { list })
+            }
+            _ => current.points.clone(),
+        },
+    }
+}
+
+fn youth_action(c: &mut Contest, index: usize, a: &Value) -> Result<(), ApiError> {
+    let players = c.players.clone();
+    let y = c
+        .schedule
+        .stage_mut(index)
+        .and_then(|s| s.as_any_mut().downcast_mut::<YouthTraining>())
+        .ok_or_else(not_found)?;
+    if y.base().locked {
+        return Err(bad_request("les groupes sont faits : « Tour précédent » pour les modifier"));
+    }
+    let n = |k: &str| a.get(k).and_then(Value::as_u64).unwrap_or(0) as u32;
+    match a.get("action").and_then(Value::as_str).unwrap_or("") {
+        "settings" => {
+            let settings = parse_settings(a.get("settings").unwrap_or(&Value::Null), &y.settings);
+            let regroup = YouthSettings { points: settings.points.clone(), ..y.settings.clone() } != settings;
+            y.settings = settings;
+            if regroup {
+                y.reset_layout();
+            }
+        }
+        "group_count" => y.set_group_count(n("count")),
+        "group_size" => y.set_group_size(n("group") as usize, n("size")),
+        "group_pools" => y.set_group_pools(n("group") as usize, n("nb_pools")),
+        "move" => y.move_player(&players, n("player"), n("to") as usize),
+        "reset" => y.reset_layout(),
+        other => return Err(bad_request(format!("action inconnue : {other}"))),
+    }
+    Ok(())
+}
+
+// --------------------------------------------------- composition des poules
+
+fn allocator_view(c: &mut Contest, index: usize) -> Option<Value> {
+    let a = c.schedule.stage(index)?.as_any().downcast_ref::<PoolAllocatorStage>()?;
+    let locked = a.base().locked;
+    let round = a.round();
+    let owner = round.allocator_owner();
+    let codes = round.allocator_filter.clone();
+    let pools: Vec<Value> = round
+        .pools()
+        .iter()
+        .enumerate()
+        .map(|(i, pool)| {
+            json!({
+                "index": i,
+                "name": pool.name(),
+                "balanced": round.pool_is_balanced(i),
+                "piste": pool.piste_label(),
+                "time": pool.start_time_image(),
+                "fencers": pool.fencers().iter().map(|f| {
+                    let p = c.players.get(*f);
+                    let mark = if round.swapper().is_an_error(*f) { "error" } else if round.is_moved(&c.players, *f) { "moved" } else { "" };
+                    json!({
+                        "reference": f,
+                        "cells": codes.iter().map(|code| p.map(|p| view::cell(p, code, owner)).unwrap_or_default()).collect::<Vec<_>>(),
+                        "mark": mark,
+                    })
+                }).collect::<Vec<_>>(),
+            })
+        })
+        .collect();
+    let configs: Vec<Value> = round
+        .configs()
+        .iter()
+        .enumerate()
+        .map(|(i, cfg)| json!({ "index": i, "nb_pools": cfg.nb_pool, "size": cfg.size_label() }))
+        .collect();
+    let extra = extra_swapping_criteria();
+    Some(json!({
+        "columns": view::columns(&codes),
+        "configs": configs,
+        "selected": round.selected_config(),
+        "best": round.best_config(),
+        "youth": round.youth_groups.is_some(),
+        "pools": pools,
+        "swapping": round.swapping_criteria(),
+        "swapping_errors": round.swapper().moved(),
+        "regular_choices": regular_swapping_criteria().into_iter().map(|code| json!({ "code": code, "label": tr(bp_core::attribute::desc(code).user_name) })).collect::<Vec<_>>(),
+        "extra_choices": extra.into_iter().map(|code| json!({ "code": code, "label": tr(bp_core::attribute::desc(code).user_name) })).collect::<Vec<_>>(),
+        "locked": locked,
+    }))
+}
+
+fn with_round<R>(c: &mut Contest, index: usize, f: impl FnOnce(&mut PoolRound, &mut PlayerStore) -> R) -> Result<R, ApiError> {
+    let (schedule, players) = (&mut c.schedule, &mut c.players);
+    let stage = schedule.stage_mut(index).ok_or_else(not_found)?;
+    let round = if let Some(a) = stage.as_any().downcast_ref::<PoolAllocatorStage>() {
+        a.shared_round()
+    } else if let Some(s) = stage.as_any().downcast_ref::<PoolSupervisorStage>() {
+        s.shared_round()
+    } else {
+        return Err(not_found());
+    };
+    let mut round = round.lock().map_err(|_| internal("tour de poules indisponible"))?;
+    Ok(f(&mut round, players))
+}
+
+fn allocator_action(c: &mut Contest, index: usize, a: &Value) -> Result<(), ApiError> {
+    if c.schedule.stage(index).map(|s| s.base().locked).unwrap_or(true) {
+        return Err(bad_request("la composition est terminée : « Tour précédent » pour la modifier"));
+    }
+    let n = |k: &str| a.get(k).and_then(Value::as_u64).unwrap_or(0);
+    match a.get("action").and_then(Value::as_str).unwrap_or("") {
+        "config" => {
+            with_round(c, index, |r, p| r.select_config(p, n("index") as usize))?;
+        }
+        "move" => {
+            let result = with_round(c, index, |r, p| {
+                let res = r.move_fencer(p, n("player") as PlayerRef, n("pool") as usize);
+                r.check_distribution(p);
+                res
+            })?;
+            result.map_err(|e| bad_request(format!("{e:?}")))?;
+        }
+        "swapping" => {
+            let regular: Vec<String> = a
+                .get("regular")
+                .and_then(Value::as_array)
+                .map(|v| v.iter().filter_map(|x| x.as_str().map(str::to_string)).collect())
+                .unwrap_or_default();
+            let extra = a.get("extra").and_then(Value::as_str).map(str::to_string);
+            with_round(c, index, |r, p| {
+                let regular: Vec<&str> = regular.iter().map(String::as_str).collect();
+                r.set_swapping_criteria(p, &regular, extra.as_deref());
+            })?;
+        }
+        other => return Err(bad_request(format!("action inconnue : {other}"))),
+    }
+    Ok(())
+}
+
+// ------------------------------------------------------------------ poules
+
+fn pools_view(c: &mut Contest, index: usize) -> Option<Value> {
+    let s = c.schedule.stage(index)?.as_any().downcast_ref::<PoolSupervisorStage>()?;
+    let locked = s.base().locked;
+    let round = s.round();
+    let pools: Vec<Value> = round
+        .pools()
+        .iter()
+        .enumerate()
+        .map(|(i, pool)| {
+            let sheet = pool.sheet(&c.players, c.referees.store(), false);
+            json!({
+                "index": i,
+                "name": sheet.title,
+                "piste": sheet.piste,
+                "referee": sheet.referee.map(|(n, f)| format!("{n} {}", f.unwrap_or_default()).trim().to_string()),
+                "over": pool.is_over(),
+                "error": pool.has_error(),
+                "headers": sheet.headers,
+                "rows": sheet.rows.iter().map(|row| json!({
+                    "reference": row.player,
+                    "position": row.position,
+                    "name": identity(&c.players, row.player),
+                    "club": row.identity.club,
+                    "cells": row.cells.iter().map(|cell| json!({ "text": cell.text, "grey": cell.grey, "match": cell.match_index })).collect::<Vec<_>>(),
+                    "dashboard": row.dashboard.as_ref().map(|d| json!({
+                        "status": d.status.to_string(),
+                        "victories": d.victories,
+                        "ratio": d.victories_ratio,
+                        "hs": d.hits_scored,
+                        "hr": d.hits_received,
+                        "indice": d.indice,
+                        "rank": d.rank,
+                    })),
+                })).collect::<Vec<_>>(),
+                "matches": sheet.matches.iter().enumerate().map(|(m, bout)| json!({
+                    "index": m,
+                    "name": bout.name,
+                    "rest_error": bout.rest_error,
+                    "opponents": bout.opponents.iter().map(|o| o.as_ref().map(|f| json!({
+                        "reference": f.player,
+                        "position": f.position,
+                        "name": format!("{} {}", f.identity.name, f.identity.first_name).trim().to_string(),
+                        "score": f.score,
+                    }))).collect::<Vec<_>>(),
+                })).collect::<Vec<_>>(),
+            })
+        })
+        .collect();
+    let (current, combined) = round.compute_classification(&c.players);
+    let codes = round.classification_filter.clone();
+    let entries = |list: &[(PlayerRef, u32)]| -> Vec<RankEntry> {
+        list.iter()
+            .map(|(p, rank)| {
+                let status = c
+                    .players
+                    .get(*p)
+                    .and_then(|pl| pl.get(&bp_core::player::AttrId::local("status", round.supervisor_owner())))
+                    .map(|v| v.xml_image().chars().next().unwrap_or('Q'))
+                    .unwrap_or('Q');
+                RankEntry { player: *p, rank: *rank, status }
+            })
+            .collect()
+    };
+    Some(json!({
+        "pools": pools,
+        "max_score": round.max_score,
+        "nb_qualified": round.nb_qualified(),
+        "balanced": round.seeding_is_balanced(),
+        "round_name": round.name,
+        "youth": round.youth_groups.is_some(),
+        "classification": ranked_list(&c.players, &codes, &entries(&combined), round.supervisor_owner()),
+        "current_classification": ranked_list(&c.players, &codes, &entries(&current), round.current_round_owner()),
+        "locked": locked,
+    }))
+}
+
+fn pools_action(c: &mut Contest, index: usize, a: &Value) -> Result<(), ApiError> {
+    let locked = c.schedule.stage(index).map(|s| s.base().locked).unwrap_or(true);
+    let n = |k: &str| a.get(k).and_then(Value::as_u64).unwrap_or(0);
+    let s = |k: &str| a.get(k).and_then(Value::as_str).unwrap_or("").to_string();
+    let action = s("action");
+    if locked && action != "settings" {
+        return Err(bad_request("les poules sont terminées : « Tour précédent » pour les modifier"));
+    }
+    match action.as_str() {
+        "score" => {
+            let value = s("value").trim().to_ascii_uppercase();
+            let value = match value.strip_prefix('V') {
+                Some(rest) if !rest.is_empty() => format!("W{rest}"),
+                _ => value,
+            };
+            let (pool, m, fencer) = (n("pool") as usize, n("match") as usize, n("fencer") as PlayerRef);
+            with_round(c, index, |r, p| {
+                if let Some(pl) = r.pools_mut().get_mut(pool) {
+                    pl.set_score_str(p, m, fencer, &value);
+                }
+                r.refresh_classification(p);
+            })?;
+        }
+        "status" => {
+            let (pool, fencer, code) = (n("pool") as usize, n("fencer") as PlayerRef, s("code"));
+            with_round(c, index, |r, p| {
+                if let Some(pl) = r.pools_mut().get_mut(pool) {
+                    pl.set_status(p, fencer, &code);
+                }
+                r.refresh_classification(p);
+            })?;
+        }
+        "settings" => {
+            let name = s("name");
+            let max = n("max_score") as u32;
+            let qualified = a.get("nb_qualified").and_then(Value::as_u64).map(|v| v as u32);
+            let balanced = a.get("balanced").and_then(Value::as_bool);
+            with_round(c, index, |r, p| {
+                if !name.trim().is_empty() {
+                    r.name = name.trim().to_string();
+                }
+                if max > 0 {
+                    r.set_max_score(max);
+                }
+                if !locked {
+                    r.set_nb_qualified(qualified);
+                    if let Some(b) = balanced {
+                        if r.seeding_is_balanced() != b {
+                            r.set_seeding_balanced(p, b);
+                        }
+                    }
+                }
+                for pool in r.pools_mut() {
+                    pool.refresh_score_data(p);
+                }
+                r.refresh_classification(p);
+            })?;
+        }
+        "stuff" => {
+            if !c.settings.score_stuffing_allowed {
+                return Err(bad_request("les scores aléatoires ne sont pas autorisés pour cette compétition"));
+            }
+            with_round(c, index, |r, p| r.stuff(p))?;
+        }
+        other => return Err(bad_request(format!("action inconnue : {other}"))),
+    }
+    Ok(())
+}
+
+// ---------------------------------------------------------------- tableaux
+
+const METRICS: LayoutMetrics = LayoutMetrics { cell_width: 260.0, row_height: 34.0, header_height: 40.0, column_spacing: 12.0 };
+
+fn table_view(c: &mut Contest, index: usize) -> Option<Value> {
+    let referees = c.referees.store().clone();
+    let stage = c.schedule.stage(index)?.as_any().downcast_ref::<TableSupervisor>()?;
+    let locked = stage.base().locked;
+    let sets: Vec<Value> = stage
+        .table_sets()
+        .iter()
+        .enumerate()
+        .filter(|(_, s)| s.is_visible())
+        .map(|(i, s)| json!({ "index": i, "name": s.name(), "parent": s.parent(), "group": s.group() }))
+        .collect();
+    let displayed = stage.displayed_table_set();
+    let drawing = displayed.map(|d| {
+        let set = &stage.table_sets()[d];
+        let dr = set.drawing_with_referees(&c.players, &referees, &METRICS);
+        let b = |x: &bp_core::rounds::table::layout::Bounds| json!([x.x1, x.y1, x.x2 - x.x1, x.y2 - x.y1]);
+        json!({
+            "set": d,
+            "width": dr.width,
+            "height": dr.height,
+            "can_previous": set.can_display_previous(),
+            "can_next": set.can_display_next(),
+            "headers": dr.headers.iter().map(|h| json!({
+                "text": h.image,
+                "box": b(&h.bounds),
+                "status": h.status.map(|s| format!("{s:?}").to_lowercase()),
+            })).collect::<Vec<_>>(),
+            "cells": dr.cells.iter().map(|cell| json!({
+                "node": cell.node,
+                "box": b(&cell.bounds),
+                "winner": cell.winner,
+                "name": cell.winner.map(|w| identity(&c.players, w)),
+                "club": if cell.compact { None } else { cell.winner.map(|w| club(&c.players, w)) },
+                "label": cell.match_label.as_ref().map(|l| json!({
+                    "box": b(&l.bounds),
+                    "name": l.name,
+                    "roadmap": l.roadmap.as_ref().map(|r| r.text.clone()),
+                })),
+                "score": cell.score.as_ref().filter(|s| s.visible && s.fencer.is_some()).map(|s| json!({
+                    "box": b(&s.bounds),
+                    "node": s.bout_node,
+                    "fencer": s.fencer,
+                    "text": s.text,
+                    "status": s.drop_reason.map(|c| c.to_string()),
+                    "error": set.bout(s.bout_node).map(|m| m.has_error()).unwrap_or(false),
+                })),
+            })).collect::<Vec<_>>(),
+            "connectors": dr.connectors.iter().map(|k| k.points.iter().map(|(x, y)| json!([x, y])).collect::<Vec<_>>()).collect::<Vec<_>>(),
+        })
+    });
+    let entries = stage.classification(&StageContext { players: &mut c.players.clone(), settings: &c.settings });
+    let codes = stage.base().classification_filter.clone();
+    Some(json!({
+        "sets": sets,
+        "displayed": displayed,
+        "drawing": drawing,
+        "fenced_places": match stage.fenced_places_mode() { FencedPlaces::AllPlaces => "all", FencedPlaces::ThirdPlaces => "third", _ => "none" },
+        "max_score": stage.max_score(),
+        "classification": ranked_list(&c.players, &codes, &entries, stage.base().owner()),
+        "locked": locked,
+    }))
+}
+
+fn table_action(c: &mut Contest, index: usize, a: &Value) -> Result<(), ApiError> {
+    let n = |k: &str| a.get(k).and_then(Value::as_u64).unwrap_or(0);
+    let s = |k: &str| a.get(k).and_then(Value::as_str).unwrap_or("").to_string();
+    let action = s("action");
+    c.with_schedule(|schedule, ctx| -> Result<(), ApiError> {
+        let stage = schedule
+            .stage_mut(index)
+            .and_then(|st| st.as_any_mut().downcast_mut::<TableSupervisor>())
+            .ok_or_else(not_found)?;
+        let locked = stage.base().locked;
+        let edits = !matches!(action.as_str(), "select" | "previous" | "next");
+        if locked && edits && action != "settings" {
+            return Err(bad_request("les tableaux sont terminés : « Tour précédent » pour les modifier"));
+        }
+        match action.as_str() {
+            "select" => stage.select_table_set(Some(n("set") as usize)),
+            "previous" => stage.display_previous(n("set") as usize),
+            "next" => stage.display_next(n("set") as usize),
+            "score" => {
+                let value = s("value").trim().to_ascii_uppercase();
+                let value = match value.strip_prefix('V') {
+                    Some(rest) if !rest.is_empty() => format!("W{rest}"),
+                    _ => value,
+                };
+                let (set, node, fencer) = (n("set") as usize, n("node") as usize, n("fencer") as PlayerRef);
+                if stage.current_status(set, node, fencer) != 'Q' {
+                    stage.set_fencer_status(ctx, set, node, fencer, 'Q');
+                }
+                stage.set_score(ctx, set, node, fencer, &value);
+            }
+            "status" => {
+                let code = s("code").chars().next().unwrap_or('Q');
+                stage.set_fencer_status(ctx, n("set") as usize, n("node") as usize, n("fencer") as PlayerRef, code);
+            }
+            "settings" => {
+                if let Some(max) = a.get("max_score").and_then(Value::as_u64).filter(|m| *m > 0) {
+                    stage.set_max_score(max as u32);
+                }
+                if !locked {
+                    match s("fenced_places").as_str() {
+                        "all" => stage.set_fenced_places(FencedPlaces::AllPlaces),
+                        "third" => stage.set_fenced_places(FencedPlaces::ThirdPlaces),
+                        "none" => stage.set_fenced_places(FencedPlaces::None),
+                        _ => {}
+                    }
+                    if let Some(q) = a.get("nb_qualified") {
+                        stage.base_mut().nb_qualified = q.as_u64().map(|v| v as u32);
+                    }
+                }
+                let name = s("name");
+                if !name.trim().is_empty() {
+                    stage.base_mut().name = name.trim().to_string();
+                }
+            }
+            "stuff" => {
+                if !ctx.settings.score_stuffing_allowed {
+                    return Err(bad_request("les scores aléatoires ne sont pas autorisés pour cette compétition"));
+                }
+                stage.stuff(ctx, &mut rand::thread_rng());
+            }
+            other => return Err(bad_request(format!("action inconnue : {other}"))),
+        }
+        if !stage.base().locked {
+            stage.update_classification(ctx);
+        }
+        Ok(())
+    })
+}
+
+// --------------------------------------------------------- barrage, scission
+
+fn barrage_view(c: &mut Contest, index: usize) -> Option<Value> {
+    let b = c.schedule.stage(index)?.as_any().downcast_ref::<Barrage>()?;
+    let owner = b.base().owner();
+    let codes = b.base().filter.clone();
+    let promoted: Vec<(PlayerRef, bool)> = b.barrage_players().iter().map(|r| (*r, b.is_promoted(&c.players, *r))).collect();
+    let mut l = list(&c.players, &codes, &promoted.iter().map(|(r, _)| (*r, false)).collect::<Vec<_>>(), owner);
+    for (row, (_, p)) in l.rows.iter_mut().zip(promoted.iter()) {
+        row.checked = Some(*p);
+    }
+    let ranking: Vec<(PlayerRef, u32)> = b.compute_classification(&c.players);
+    let entries: Vec<RankEntry> = ranking.iter().map(|(p, r)| RankEntry { player: *p, rank: *r, status: 'Q' }).collect();
+    // Matchs de barrage (extension) : un match par paire d'ex aequo.
+    let bouts: Vec<Value> = b
+        .matches()
+        .iter()
+        .enumerate()
+        .map(|(i, m)| {
+            json!({
+                "index": i,
+                "name": m.name,
+                "over": m.is_over(),
+                "winner": m.winner().map(|w| identity(&c.players, w)),
+                "fencers": (0..2).filter_map(|k| m.opponent(k).map(|f| json!({
+                    "reference": f,
+                    "name": identity(&c.players, f),
+                    "club": club(&c.players, f),
+                    "score": m.score_at(k).image(m.max_score),
+                }))).collect::<Vec<_>>(),
+            })
+        })
+        .collect();
+    Some(json!({
+        "bouts": bouts,
+        "max_score": b.max_score(),
+        "places": b.places(),
+        "list": l,
+        "qualified": b.qualified_count(&c.players),
+        "dropped": b.dropped_count(&c.players),
+        "classification": ranked_list(&c.players, &b.base().classification_filter, &entries, owner),
+        "locked": b.base().locked,
+    }))
+}
+
+fn splitting_view(c: &mut Contest, index: usize) -> Option<Value> {
+    let s = c.schedule.stage(index)?.as_any().downcast_ref::<Splitting>()?;
+    let owner = s.base().owner();
+    let codes: Vec<String> = s.base().filter.iter().filter(|c| *c != "exported").cloned().collect();
+    let refs: Vec<(PlayerRef, bool)> = s.base().attendees.iter().map(|r| (*r, false)).collect();
+    let mut l = list(&c.players, &codes, &refs, owner);
+    for row in l.rows.iter_mut() {
+        row.checked = Some(c.players.get(row.reference).and_then(|p| p.attr("exported")).map(|v| v.as_bool()).unwrap_or(false));
+    }
+    Some(json!({ "list": l, "locked": s.base().locked }))
+}
+
+fn general_list(c: &mut Contest, index: usize) -> Option<ListView> {
+    let stage = c.schedule.stage(index)?.as_any().downcast_ref::<GeneralClassificationStage>()?;
+    let codes = stage.filter.selected_codes();
+    let refs: Vec<(PlayerRef, bool)> = stage.result().iter().map(|r| (*r, false)).collect();
+    Some(list(&c.players, &codes, &refs, stage.base().owner()))
+}
+
+fn classification_view(c: &mut Contest, index: usize) -> Option<Value> {
+    Some(json!({
+        "list": general_list(c, index)?,
+        "youth": youth_results(c),
+    }))
+}
+
+/// Score d'un match de barrage : `{ "action": "score", "bout", "fencer", "value" }`.
+fn barrage_score(c: &mut Contest, index: usize, a: &Value) -> Result<(), ApiError> {
+    let bout = a.get("bout").and_then(Value::as_u64).unwrap_or(0) as usize;
+    let fencer = a.get("fencer").and_then(Value::as_u64).unwrap_or(0) as PlayerRef;
+    let value = a.get("value").and_then(Value::as_str).unwrap_or("").to_string();
+    c.with_schedule(|schedule, ctx| {
+        let stage = schedule.stage_mut(index).ok_or_else(not_found)?;
+        if stage.base().locked {
+            return Err(bad_request("la phase est terminée : « Tour précédent » pour la modifier"));
+        }
+        let b = stage.as_any_mut().downcast_mut::<Barrage>().ok_or_else(not_found)?;
+        b.set_score(ctx, bout, fencer, &value);
+        Ok(())
+    })
+}
+
+fn toggle_action(c: &mut Contest, index: usize, a: &Value) -> Result<(), ApiError> {
+    let r = a.get("player").and_then(Value::as_u64).unwrap_or(0) as PlayerRef;
+    let value = a.get("value").and_then(Value::as_bool).unwrap_or(false);
+    c.with_schedule(|schedule, ctx| {
+        let stage = schedule.stage_mut(index).ok_or_else(not_found)?;
+        if stage.base().locked {
+            return Err(bad_request("la phase est terminée : « Tour précédent » pour la modifier"));
+        }
+        if let Some(b) = stage.as_any_mut().downcast_mut::<Barrage>() {
+            b.set_promoted(ctx, r, value);
+        } else if let Some(s) = stage.as_any_mut().downcast_mut::<Splitting>() {
+            s.set_exported(ctx, r, value);
+        } else {
+            return Err(not_found());
+        }
+        Ok(())
+    })
+}
+
+// ----------------------------------------------------------------- actions
+
+pub async fn stage_action(
+    State(store): State<Shared>,
+    client: Client,
+    Path((id, index)): Path<(String, usize)>,
+    Json(body): Json<Value>,
+) -> Result<Json<Value>, ApiError> {
+    let mut store = store.lock().await;
+    let result = store
+        .update(&client, &id, |c| -> Result<Value, ApiError> {
+            let kind = c.schedule.stage(index).map(|s| s.kind()).ok_or_else(not_found)?;
+            match kind_code(kind) {
+                "youth" => youth_action(c, index, &body)?,
+                "pool_allocator" => allocator_action(c, index, &body)?,
+                "pool_supervisor" => pools_action(c, index, &body)?,
+                "table" => table_action(c, index, &body)?,
+                "barrage" if body.get("action").and_then(Value::as_str) == Some("score") => barrage_score(c, index, &body)?,
+                "barrage" | "splitting" => toggle_action(c, index, &body)?,
+                other => return Err(bad_request(format!("pas d'action pour la phase « {other} »"))),
+            }
+            stage_view(c, index)
+        })
+        .ok_or_else(not_found)?
+        .map_err(internal)?;
+    Ok(Json(result?))
+}
+
+/// Classement de chaque groupe puis de tous les groupes, en HTML (export).
+pub fn youth_html(c: &Contest) -> Option<String> {
+    let results = youth::results(&c.schedule, &c.players)?;
+    let esc = |s: &str| s.replace('&', "&amp;").replace('<', "&lt;").replace('>', "&gt;");
+    let row = |r: &youth::YouthResult, place: Option<u32>| {
+        format!(
+            "<tr><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td><td>{}</td></tr>\n",
+            r.group,
+            place.map(|p| p.to_string()).unwrap_or_default(),
+            esc(&identity(&c.players, r.player)),
+            esc(&club(&c.players, r.player)),
+            r.victories,
+            r.points.map(|p| p.to_string()).unwrap_or_default()
+        )
+    };
+    let head = format!(
+        "<tr><th>{}</th><th>{}</th><th>{}</th><th>{}</th><th>{}</th><th>{}</th></tr>\n",
+        tr("Group"),
+        tr("Place in the group"),
+        tr("last name"),
+        tr("club"),
+        tr("Victories"),
+        tr("Points")
+    );
+    let mut html = String::new();
+    let mut groups: Vec<u32> = results.iter().map(|r| r.group).collect();
+    groups.dedup();
+    for g in groups {
+        html.push_str(&format!("<h3>{} {g}</h3>\n<table class=\"list\">\n{head}", tr("Group")));
+        for r in results.iter().filter(|r| r.group == g) {
+            html.push_str(&row(r, r.place));
+        }
+        html.push_str("</table>\n");
+    }
+    let mut all: Vec<&youth::YouthResult> = results.iter().collect();
+    all.sort_by_key(|r| (std::cmp::Reverse(r.points.unwrap_or(0)), std::cmp::Reverse(r.victories)));
+    html.push_str(&format!("<h3>{}</h3>\n<table class=\"list\">\n{head}", tr("General classification (all groups)")));
+    let (mut place, mut previous) = (0u32, None);
+    for (i, r) in all.iter().enumerate() {
+        let k = (r.points.unwrap_or(0), r.victories);
+        if previous != Some(k) {
+            place = i as u32 + 1;
+            previous = Some(k);
+        }
+        html.push_str(&row(r, Some(place)));
+    }
+    html.push_str("</table>\n");
+    Some(html)
+}
+
+// ------------------------------------------------- feuilles des groupes
+
+/// « 1er », « 2e »…
+fn ordinal(n: usize) -> String {
+    if n == 1 {
+        "1er".into()
+    } else {
+        format!("{n}e")
+    }
+}
+
+/// Feuille de tableau d'un groupe, dans les deux sens : le premier tour au
+/// centre, les vainqueurs vers la droite jusqu'à la finale, les perdants du
+/// premier tour vers la gauche (matchs de classement alignés sur les matchs
+/// dont ils viennent), les autres matchs de classement en dessous.
+struct BracketSheet {
+    items: Vec<Value>,
+    lines: Vec<Vec<(f64, f64)>>,
+}
+
+const SLOT: f64 = 128.0;
+const SCORE: f64 = 22.0;
+const COLW: f64 = SLOT + SCORE + 10.0;
+const ROW: f64 = 30.0;
+
+/// Profondeur d'un nœud (nombre de tours jusqu'aux entrées).
+fn node_depth(set: &bp_core::rounds::table::TableSet, id: usize) -> usize {
+    set.nodes()[id].children.iter().map(|c| 1 + node_depth(set, *c)).max().unwrap_or(0)
+}
+
+struct TreeCtx<'a> {
+    set: &'a bp_core::rounds::table::TableSet,
+    x0: f64,
+    dir: f64,
+    next_leaf: f64,
+    leaf_y: &'a dyn Fn(usize) -> Option<f64>,
+    leaf_label: &'a dyn Fn(usize) -> String,
+    ys: std::collections::HashMap<usize, f64>,
+}
+
+impl BracketSheet {
+    fn slot(&mut self, x: f64, y: f64, text: &str) {
+        self.items.push(json!({ "t": "slot", "x": x, "y": y - 20.0, "w": SLOT, "h": 20.0, "text": text }));
+    }
+    fn score(&mut self, x: f64, y: f64) {
+        self.items.push(json!({ "t": "score", "x": x, "y": y - 20.0, "w": SCORE, "h": 20.0 }));
+    }
+    fn text(&mut self, kind: &str, x: f64, y: f64, text: &str) {
+        self.items.push(json!({ "t": kind, "x": x, "y": y, "text": text }));
+    }
+
+    /// Place le nœud `id` en colonne `col` et renvoie sa hauteur.
+    fn place(&mut self, t: &mut TreeCtx, id: usize, col: usize, is_root: bool) -> f64 {
+        let node = &t.set.nodes()[id];
+        let start = t.x0 + t.dir * col as f64 * COLW;
+        let (slot_x, score_x) = if t.dir > 0.0 { (start, start + SLOT + 2.0) } else { (start - SLOT, start - SLOT - SCORE - 2.0) };
+        let y = if node.children.is_empty() || col == 0 {
+            let y = (t.leaf_y)(id).unwrap_or_else(|| {
+                let y = t.next_leaf;
+                t.next_leaf += ROW;
+                y
+            });
+            let label = (t.leaf_label)(id);
+            self.slot(slot_x, y, &label);
+            y
+        } else {
+            let children = node.children.clone();
+            let kids: Vec<f64> = children.iter().map(|c| self.place(t, *c, col - 1, false)).collect();
+            let y = kids.iter().sum::<f64>() / kids.len().max(1) as f64;
+            let join = start - t.dir * 5.0;
+            let child_end = t.x0 + t.dir * ((col - 1) as f64 * COLW + SLOT + SCORE + 2.0);
+            for ky in &kids {
+                self.lines.push(vec![(child_end, *ky), (join, *ky)]);
+            }
+            if kids.len() == 2 {
+                self.lines.push(vec![(join, kids[0]), (join, kids[1])]);
+            }
+            self.lines.push(vec![(join, y), (start, y)]);
+            if let Some(m) = t.set.nodes()[id].bout.as_ref().filter(|m| m.number != 0) {
+                let label_x = if t.dir > 0.0 { join + 4.0 } else { join - 64.0 };
+                self.text("match", label_x, y - 38.0, &m.name);
+            }
+            self.slot(slot_x, y, "");
+            y
+        };
+        if !is_root {
+            self.score(score_x, y);
+        }
+        t.ys.insert(id, y);
+        y
+    }
+
+    /// Dessine la suite `set` : `dir` = 1 vers la droite, -1 vers la gauche ;
+    /// `x0` est le bord intérieur de la colonne des entrées ; `leaf_y` donne la
+    /// hauteur d'une entrée (sinon : à la suite, à partir de `top`). Renvoie la
+    /// hauteur de chaque nœud (pour aligner d'autres suites).
+    fn tree(
+        &mut self,
+        set: &bp_core::rounds::table::TableSet,
+        x0: f64,
+        dir: f64,
+        top: f64,
+        leaf_y: &dyn Fn(usize) -> Option<f64>,
+        leaf_label: &dyn Fn(usize) -> String,
+    ) -> std::collections::HashMap<usize, f64> {
+        let Some(root) = set.root() else { return std::collections::HashMap::new() };
+        let height = node_depth(set, root);
+        let mut t = TreeCtx { set, x0, dir, next_leaf: top, leaf_y, leaf_label, ys: std::collections::HashMap::new() };
+        self.place(&mut t, root, height, true);
+        t.ys
+    }
+}
+
+fn blank_brackets(c: &Contest, pool_sizes: &[usize], fenced: FencedPlaces) -> Option<Value> {
+    use bp_core::contest::players::new_player;
+    use bp_core::player::{AttrId, PlayerClass};
+    let largest = pool_sizes.iter().copied().max().unwrap_or(0);
+    let mut labels = Vec::new();
+    for rank in 1..=largest {
+        for (k, size) in pool_sizes.iter().enumerate() {
+            if rank <= *size {
+                labels.push(format!("{} P{}", ordinal(rank), k + 1));
+            }
+        }
+    }
+    if labels.len() < 2 {
+        return None;
+    }
+    let mut store = PlayerStore::new();
+    let refs: Vec<PlayerRef> = labels
+        .iter()
+        .map(|l| {
+            let mut p = new_player(PlayerClass::Fencer);
+            p.set_str(&AttrId::global("name"), l);
+            store.add(p)
+        })
+        .collect();
+    let mut table = TableSupervisor::new(90);
+    table.fenced_places = fenced.value();
+    let settings = c.settings.clone();
+    {
+        let mut ctx = StageContext { players: &mut store, settings: &settings };
+        table.set_attendees(&mut ctx, refs);
+        table.garnish(&mut ctx);
+    }
+    // Entrées du tableau principal (avant résultats) : places de poule.
+    let entrants: std::collections::HashMap<usize, String> = table
+        .table_sets()
+        .first()?
+        .nodes()
+        .iter()
+        .enumerate()
+        .filter(|(_, n)| n.children.is_empty())
+        .filter_map(|(i, n)| n.bout.as_ref().and_then(|m| m.winner().or_else(|| m.opponent(0))).map(|w| (i, identity(&store, w))))
+        .collect();
+    // Résultats fictifs : chaque match est gagné par son premier tireur, pour
+    // que le cœur crée les tableaux de classement et leurs entrées.
+    for _ in 0..64 {
+        let todo: Vec<(usize, usize, PlayerRef, PlayerRef)> = table
+            .table_sets()
+            .iter()
+            .enumerate()
+            .flat_map(|(si, set)| {
+                set.nodes().iter().enumerate().filter_map(move |(ni, n)| {
+                    let m = n.bout.as_ref()?;
+                    if m.winner().is_some() {
+                        return None;
+                    }
+                    Some((si, ni, m.opponent(0)?, m.opponent(1)?))
+                })
+            })
+            .collect();
+        if todo.is_empty() {
+            break;
+        }
+        let mut ctx = StageContext { players: &mut store, settings: &settings };
+        for (si, ni, a, b) in todo {
+            table.set_score(&mut ctx, si, ni, a, "V");
+            table.set_score(&mut ctx, si, ni, b, "0");
+        }
+    }
+    let sets = table.table_sets();
+    let main = sets.first()?;
+    // Entrée d'une suite de classement : « Perdant <match de la suite parente> ».
+    let lost_in = |parent: &bp_core::rounds::table::TableSet, set: &bp_core::rounds::table::TableSet, leaf: usize| -> (String, Option<usize>) {
+        let bout = set.nodes()[leaf].bout.as_ref();
+        let Some(p) = bout.and_then(|m| m.winner().or_else(|| m.opponent(0))) else { return (String::new(), None) };
+        for (i, n) in parent.nodes().iter().enumerate() {
+            if let Some(m) = n.bout.as_ref() {
+                if m.looser() == Some(p) && m.number != 0 {
+                    return (format!("Perdant {}", m.name), Some(i));
+                }
+            }
+        }
+        (String::new(), None)
+    };
+
+    let mut sheet = BracketSheet { items: Vec::new(), lines: Vec::new() };
+    let top = 50.0;
+    sheet.text("title", 0.0, 4.0, "Tableau");
+    let main_ys = sheet.tree(main, 0.0, 1.0, top, &|_| None, &|leaf| entrants.get(&leaf).cloned().unwrap_or_default());
+    let mut bottom = main_ys.values().copied().fold(top, f64::max);
+
+    // Perdants du premier tour : vers la gauche, alignés sur leurs matchs.
+    let first_round = main.root().map(|r| node_depth(main, r)).unwrap_or(0);
+    let first_losers = sets.iter().enumerate().skip(1).find(|(_, s)| {
+        s.parent() == Some(0)
+            && s.is_visible()
+            && s.root().map(|r| node_depth(s, r) + 1 == first_round).unwrap_or(false)
+    });
+    if let Some((_, set)) = first_losers {
+        let entries = set.attendees().iter().flatten().count() as u32;
+        let first = set.first_place();
+        sheet.text("title", -30.0 - SLOT, 4.0, &format!("Places {first} à {}", first + entries.max(1) - 1));
+        let ys = sheet.tree(
+            set,
+            -30.0,
+            -1.0,
+            top,
+            &|leaf| lost_in(main, set, leaf).1.and_then(|n| main_ys.get(&n).copied()),
+            &|leaf| lost_in(main, set, leaf).0,
+        );
+        bottom = bottom.max(ys.values().copied().fold(top, f64::max));
+    }
+    // Autres matchs de classement : en dessous, vers la droite.
+    let mut y = bottom + 80.0;
+    for (i, set) in sets.iter().enumerate().skip(1).filter(|(_, s)| s.is_visible()) {
+        if first_losers.map(|(f, _)| f == i).unwrap_or(false) {
+            continue;
+        }
+        let Some(parent) = set.parent().map(|p| &sets[p]) else { continue };
+        let entries = set.attendees().iter().flatten().count() as u32;
+        let first = set.first_place();
+        let title = if entries <= 2 {
+            if first == 3 { "3e place".to_string() } else { format!("Places {first} et {}", first + 1) }
+        } else {
+            format!("Places {first} à {}", first + entries - 1)
+        };
+        sheet.text("title", 0.0, y - 30.0, &title);
+        let ys = sheet.tree(set, 0.0, 1.0, y + 10.0, &|_| None, &|leaf| lost_in(parent, set, leaf).0);
+        y = ys.values().copied().fold(y, f64::max) + 80.0;
+    }
+
+    // Recadrage : coordonnées positives.
+    let (mut min_x, mut max_x, mut max_y) = (f64::MAX, f64::MIN, 0.0_f64);
+    for it in &sheet.items {
+        let x = it["x"].as_f64().unwrap_or(0.0);
+        let w = it.get("w").and_then(Value::as_f64).unwrap_or(70.0);
+        min_x = min_x.min(x);
+        max_x = max_x.max(x + w);
+        max_y = max_y.max(it["y"].as_f64().unwrap_or(0.0) + 24.0);
+    }
+    let dx = -min_x + 4.0;
+    let items: Vec<Value> = sheet
+        .items
+        .into_iter()
+        .map(|mut it| {
+            let x = it["x"].as_f64().unwrap_or(0.0) + dx;
+            it["x"] = json!(x);
+            it
+        })
+        .collect();
+    let lines: Vec<Value> = sheet.lines.iter().map(|l| Value::Array(l.iter().map(|(x, y)| json!([x + dx, y])).collect())).collect();
+    Some(json!({ "width": max_x - min_x + 8.0, "height": max_y + 8.0, "items": items, "lines": lines }))
+}
+
+/// Une feuille par groupe (entraînement des jeunes) : feuilles d'arbitre de
+/// ses poules et tableau vierge, pour que l'arbitre ait tout le groupe en main.
+pub async fn group_sheets(State(store): State<Shared>, client: Client, Path((id, index)): Path<(String, usize)>) -> Result<Json<Value>, ApiError> {
+    let mut store = store.lock().await;
+    let c = store.get_mut(&client, &id).ok_or_else(not_found)?;
+    let stage = c.schedule.stage(index).ok_or_else(not_found)?;
+    let round = if let Some(a) = stage.as_any().downcast_ref::<PoolAllocatorStage>() {
+        a.shared_round()
+    } else if let Some(s) = stage.as_any().downcast_ref::<PoolSupervisorStage>() {
+        s.shared_round()
+    } else {
+        return Err(bad_request("feuilles des groupes : phase de poules attendue"));
+    };
+    let fenced = (0..c.schedule.len())
+        .filter_map(|i| c.schedule.stage(i))
+        .find_map(|s| s.as_any().downcast_ref::<YouthTraining>().map(|y| y.settings.fenced_places))
+        .unwrap_or(FencedPlaces::AllPlaces);
+    let round = round.lock().map_err(|_| internal("tour de poules indisponible"))?;
+    let mut groups: Vec<(u32, Vec<usize>)> = Vec::new();
+    for (i, pool) in round.pools().iter().enumerate() {
+        let g = pool.group().unwrap_or(1);
+        match groups.iter_mut().find(|(n, _)| *n == g) {
+            Some((_, list)) => list.push(i),
+            None => groups.push((g, vec![i])),
+        }
+    }
+    let sheets: Vec<Value> = groups
+        .iter()
+        .map(|(g, pools)| {
+            let sizes: Vec<usize> = pools.iter().map(|i| round.pools()[*i].nb_players()).collect();
+            json!({
+                "group": g,
+                "pools": pools.iter().map(|i| {
+                    let pool = &round.pools()[*i];
+                    let sheet = pool.sheet(&c.players, c.referees.store(), true);
+                    json!({
+                        "name": sheet.title,
+                        "piste": sheet.piste,
+                        "rows": sheet.rows.iter().map(|r| json!({
+                            "position": r.position,
+                            "name": identity(&c.players, r.player),
+                            "club": r.identity.club,
+                            "grey": r.cells.iter().map(|cell| cell.grey).collect::<Vec<_>>(),
+                        })).collect::<Vec<_>>(),
+                        "matches": sheet.matches.iter().map(|m| json!({
+                            "name": m.name,
+                            "boxes": m.score_boxes,
+                            "opponents": m.opponents.iter().flatten().map(|f| json!({
+                                "position": f.position,
+                                "name": format!("{} {}", f.identity.name, f.identity.first_name).trim().to_string(),
+                            })).collect::<Vec<_>>(),
+                        })).collect::<Vec<_>>(),
+                    })
+                }).collect::<Vec<_>>(),
+                "bracket": blank_brackets(c, &sizes, fenced),
+            })
+        })
+        .collect();
+    Ok(Json(json!({ "contest": c.name, "header": format!("{} - {} - {}", c.weapon.label(), c.gender_label(), c.category.display_image()), "date": c.date_image(), "groups": sheets })))
+}
+
+// ------------------------------------------------------- feuilles de match
+
+/// Feuille de match imprimable : comme celle des tableaux du logiciel
+/// (cases de touches à cocher, score, signature).
+fn sheet_json(name: String, referee: Option<String>, piste: Option<String>, fencers: Vec<(String, String)>, max_score: u32) -> Value {
+    json!({
+        "name": name,
+        "referee": referee,
+        "piste": piste,
+        "boxes": if max_score <= 60 { max_score } else { 0 },
+        "fencers": fencers.into_iter().map(|(n, d)| json!({ "name": n, "details": d })).collect::<Vec<_>>(),
+    })
+}
+
+/// `GET …/stages/{index}/match_sheets` : feuilles des matchs du barrage, ou
+/// des matchs prêts des tableaux.
+pub async fn match_sheets(State(store): State<Shared>, client: Client, Path((id, index)): Path<(String, usize)>) -> Result<Json<Value>, ApiError> {
+    let mut store = store.lock().await;
+    let c = store.get_mut(&client, &id).ok_or_else(not_found)?;
+    let stage = c.schedule.stage(index).ok_or_else(not_found)?;
+    let details = |players: &PlayerStore, r: PlayerRef| {
+        players
+            .get(r)
+            .map(|p| ["club", "league", "country"].iter().filter_map(|k| p.str_attr(k)).filter(|v| !v.is_empty()).collect::<Vec<_>>().join(" · "))
+            .unwrap_or_default()
+    };
+    let mut sheets = Vec::new();
+    if let Some(b) = stage.as_any().downcast_ref::<Barrage>() {
+        for m in b.matches() {
+            let fencers = (0..2).filter_map(|k| m.opponent(k)).map(|f| (identity(&c.players, f), details(&c.players, f))).collect();
+            sheets.push(sheet_json(m.name.clone(), None, None, fencers, b.max_score()));
+        }
+    } else if let Some(sup) = stage.as_any().downcast_ref::<TableSupervisor>() {
+        let stage_net = sup.base().net_id;
+        for set in sup.table_sets().iter().filter(|s| s.is_visible()) {
+            for node in set.matches_to_print(None, true) {
+                let Some(sheet) = set.score_sheet_with_referees(node, &c.players, c.referees.store(), c.net_id, stage_net) else { continue };
+                let max = set.bout(node).map(|m| m.max_score).unwrap_or(0);
+                let fencers = sheet.fencers.iter().flatten().map(|f| (identity(&c.players, *f), details(&c.players, *f))).collect();
+                let referee = sheet.referee.map(|(n, f)| format!("{n} {f}").trim().to_string());
+                sheets.push(sheet_json(format!("{} — {}", set.name(), sheet.name), referee, sheet.piste.clone(), fencers, max));
+            }
+        }
+    } else {
+        return Err(bad_request("feuilles de match : barrage ou tableau attendu"));
+    }
+    Ok(Json(json!({
+        "contest": c.name,
+        "header": format!("{} - {} - {}", c.weapon.label(), c.gender_label(), c.category.display_image()),
+        "date": c.date_image(),
+        "sheets": sheets,
+    })))
+}

@@ -1,0 +1,26 @@
+[package]
+name = "marshaller"
+description = "Organisation (pistes, arbitres, planning) : logique du Marshaller, sans interface"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[features]
+# L'interface GTK n'existe pas dans cette copie.
+gui = []
+
+[dependencies]
+bp-core = { path = "../bp-core" }
+bp-net = { path = "../bp-net" }
+chrono = { workspace = true }
+roxmltree = { workspace = true }
+serde_json = { workspace = true }
+sha1 = { workspace = true }
+sha2 = "0.10"
+aes = "0.8"
+cbc = { version = "0.1", features = ["alloc"] }
+base64 = "0.22"
+rand = { workspace = true }
+qrcode = { version = "0.14", default-features = false }
+encoding_rs = { workspace = true }
+log = { workspace = true }

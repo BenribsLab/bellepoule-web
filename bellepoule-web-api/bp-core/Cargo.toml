@@ -1,0 +1,21 @@
+[package]
+name = "bp-core"
+description = "Cœur métier de BellePoule : modèle, phases, algorithmes, formats de fichiers (sans interface graphique)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+roxmltree = { workspace = true }
+encoding_rs = { workspace = true }
+chrono = { workspace = true }
+rand = { workspace = true }
+rand_chacha = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+thiserror = { workspace = true }
+log = { workspace = true }
+zip = { workspace = true }
+csv = { workspace = true }
+md-5 = { workspace = true }
+sha1 = { workspace = true }

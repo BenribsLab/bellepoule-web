@@ -1,0 +1,9 @@
+[package]
+name = "bp-net"
+description = "Type Message de BellePoule (copie autonome)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+rand = { workspace = true }

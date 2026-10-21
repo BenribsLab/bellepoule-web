@@ -1,0 +1,226 @@
+    <style type="text/css">
+      body
+      {
+        background:  #cccccc;
+        color:       #117827;
+        font-family: Geneva, Arial, Helvetica, sans-serif;
+      }
+      .Title h1
+      {
+        margin:       5;
+      }
+      .Round
+      {
+        display:     none;
+      }
+      .List
+      {
+        border-collapse:  collapse;
+        white-space:      nowrap;
+      }
+      .List th
+      {
+        padding:    5px;
+        text-align: left;
+      }
+      .List td
+      {
+        padding:    5px;
+      }
+      .ListHeader
+      {
+        background:  #117827;
+        color:       #dddddd;
+        font-weight: bold;
+      }
+      .EvenRow
+      {
+        background:  #f3f3f3;
+        color:       Black;
+      }
+      .OddRow
+      {
+        background:  #dddddd;
+        color:       Black;
+      }
+      .Separator
+      {
+        outline: 1px solid #117827;
+      }
+      .name
+      {
+        color:       Black;
+        padding:     5px;
+      }
+      .first_name
+      {
+        color:       Black;
+        font-weight: normal;
+        font-style:  italic;
+      }
+      .country
+      {
+        color:       Black;
+        font-weight: normal;
+        padding:     5px;
+      }
+      .PoolName
+      {
+        background:  #117827;
+        color:       #dddddd;
+        font-weight: bold;
+        padding:    5px;
+      }
+      .NoScoreCell
+      {
+        background: #117827;
+        width:      25px;
+        padding:    5px;
+      }
+      .PoolCell
+      {
+        text-align: center;
+        width:      25px;
+        border:     1px solid #117827;
+        padding:    5px;
+      }
+      .DashBoardCell
+      {
+        text-align:     right;
+        width:          25px;
+        padding-left:   5px;
+        padding-right:  5px;
+        padding:    5px;
+      }
+      .GridSeparator
+      {
+        width:      20px;
+        background: #cccccc;
+        color:      #117827;
+        text-align: right;
+        padding:    5px;
+        font-weight: bold;
+      }
+      .PoolSeparator
+      {
+        height:     35px;
+      }
+      .TableTable
+      {
+        border-collapse:  collapse;
+      }
+      .TableName
+      {
+        background:  #117827;
+        color:       White;
+        font-weight: bold;
+      }
+      .TableCell
+      {
+        background:   #dddddd;
+        color:        Black;
+        font-weight:  bold;
+        white-space:  nowrap;
+        border-left:  2px solid #117827;
+        border-right: 2px solid #117827;
+        padding:      5px;
+      }
+      .TableCellFirstCol
+      {
+        background:   #dddddd;
+        color:        Black;
+        font-weight:  bold;
+        white-space:  nowrap;
+        border-right: 2px solid #117827;
+        padding:      5px;
+      }
+      .TableCellLastCol
+      {
+        background:   #dddddd;
+        color:        Black;
+        font-weight:  bold;
+        border-left:  2px solid #117827;
+        padding:      5px;
+      }
+      .TableConnector
+      {
+        background:  #cccccc;
+        color:       #cccccc;
+        white-space: nowrap;
+        border-left: 2px solid #117827;
+      }
+      .EmptyTableCell
+      {
+        background:  #cccccc;
+      }
+      .TableScore
+      {
+        color:        #117827;
+        margin-right: 5px;
+      }
+      .Footer
+      {
+        color:       White;
+      }
+      #menu_bar {
+        list-style-type: none;
+        padding-bottom:  28px;
+        border-bottom:   1px solid #9EA0A1;
+        margin-left:     0;
+      }
+      #menu_bar li {
+        float:       left;
+        height:      25px;
+        margin:      2px 2px 0 4px;
+        background:  #cccccc;
+        border:      1px solid #9EA0A1;
+      }
+      #menu_bar li.active {
+      }
+      #menu_bar a {
+        display:         block;
+        text-decoration: none;
+        padding:         4px;
+      }
+      #menu_bar a:hover {
+        background:  #117827;
+        color:       #dddddd;
+      }
+      A:link    {text-decoration: underline; color: #117827}
+      A:visited {text-decoration: underline; color: #117827}
+    </style>
+
+    <script language="JavaScript">
+      var current_selection;
+
+      // ----------------------------------------------
+      function OnTabClicked (tab_id)
+      {
+        var element = document.getElementById (tab_id);
+
+        if (current_selection == null)
+        {
+          current_selection = document.getElementById ('round_0');
+        }
+        current_selection.style.display = "none";
+
+        current_selection = element;
+        current_selection.style.display = "inline";
+
+        document.cookie = 'current_tab=' + tab_id;
+      }
+
+      // ----------------------------------------------
+      function OnLoad ()
+      {
+        window.OnTabClicked (ReadCookie ('current_tab'));
+
+        setInterval (function(){location.reload ();}, 60*1000);
+      }
+
+      // ----------------------------------------------
+      function ReadCookie (name)
+      {
+        return (document.cookie.match ('(^|; )' + name + '=([^;]*)')||0)[2];
+      }
+    </script>

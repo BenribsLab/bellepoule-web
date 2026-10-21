@@ -1,0 +1,11 @@
+# Secrets locaux (jamais poussés)
+.env
+cles-locales.txt
+
+# Compilation
+target/
+dist/
+
+# Données locales
+data/
+*.log

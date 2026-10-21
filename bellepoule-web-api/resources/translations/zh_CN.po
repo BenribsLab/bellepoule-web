@@ -1,0 +1,1258 @@
+# Chinese (Simplified) translation for bellepoule
+# Copyright (c) 2019 Rosetta Contributors and Canonical Ltd 2019
+# This file is distributed under the same license as the bellepoule package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, 2019.
+#
+msgid ""
+msgstr ""
+"Project-Id-Version: bellepoule\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2019-10-13 18:29+0200\n"
+"PO-Revision-Date: 2019-10-20 18:04+0000\n"
+"Last-Translator: hong <Unknown>\n"
+"Language-Team: Chinese (Simplified) <zh_CN@li.org>\n"
+"Language: \n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"X-Launchpad-Export-Date: 2019-10-21 05:58+0000\n"
+"X-Generator: Launchpad (build 186023fa645d8be19d403a76064f0643f510db2f)\n"
+
+msgid "Long text"
+msgstr "长文字"
+
+msgid "Short text"
+msgstr "短文字"
+
+msgid "Graphic"
+msgstr "图表"
+
+msgid "Data to display"
+msgstr "显示数据"
+
+msgid "Visibility"
+msgstr "显示"
+
+msgid "Data"
+msgstr "数据(D)"
+
+msgid "Look"
+msgstr "查看"
+
+msgid "Follow the instructions given by "
+msgstr "按照这个指示去做 "
+
+msgid "Access denied!"
+msgstr "拒绝访问"
+
+msgid "<b>Smartpoule</b> configuration code"
+msgstr "配置代码"
+
+msgid ""
+"Uncheck this box to quicken the data input. The corresponding field will be "
+"ignored on TAB key pressed."
+msgstr "取消此复选框以加快数据输入。按TAB键时，相应的字段将被忽略。"
+
+msgid "Choose a fencer file to import..."
+msgstr "选择一个击剑者文件导入"
+
+msgid "Fencer files"
+msgstr "击剑选手文件"
+
+msgid "Referee files"
+msgstr "裁判的文件"
+
+msgid "All files"
+msgstr "所有文件(*.*)"
+
+msgid "The imported FFF file has encoding errors."
+msgstr "导入的FFF文件有编码错误。"
+
+msgid "List of registered"
+msgstr "注册列表"
+
+msgid "List of presents"
+msgstr "排名列表"
+
+msgid "List of absents"
+msgstr "在场的列表"
+
+msgid "Fencer list"
+msgstr "选手列表"
+
+msgid "Copy"
+msgstr "复制"
+
+msgid "Paste"
+msgstr "粘贴"
+
+msgid "Paste (link)"
+msgstr "粘贴（link）"
+
+msgid "Remove"
+msgstr "移除"
+
+msgid "Page"
+msgstr "页"
+
+msgid "U5"
+msgstr "U5"
+
+msgid "U7"
+msgstr "U7"
+
+msgid "U9"
+msgstr "U9"
+
+msgid "U11"
+msgstr "U11"
+
+msgid "U13"
+msgstr "U13"
+
+msgid "U15"
+msgstr "U15"
+
+msgid "U17"
+msgstr "U17"
+
+msgid "U20"
+msgstr "U20"
+
+msgid "U23"
+msgstr "U23"
+
+msgid "Senior"
+msgstr "老年人"
+
+msgid "Veteran"
+msgstr "老鸟"
+
+msgid "Veteran 1"
+msgstr "老鸟1"
+
+msgid "Veteran 2"
+msgstr "老鸟2"
+
+msgid "Veteran 3"
+msgstr "老鸟3"
+
+msgid "Veteran 4"
+msgstr "老鸟4"
+
+msgid "Veteran 5"
+msgstr "Veteran 5"
+
+msgid "Veteran 3+4"
+msgstr "Veteran 3+4"
+
+msgid "Veteran 4+5"
+msgstr "Veteran 4+5"
+
+msgid "Choose a competion file to open... "
+msgstr "选择要打开的比赛文件 "
+
+msgid "Example files"
+msgstr "示例文件"
+
+msgid "Competition files"
+msgstr "比赛文件"
+
+msgid "BellePoule files"
+msgstr "BellePoule 文件"
+
+msgid "Recently opened files"
+msgstr "最近打开的文件"
+
+msgid "Choose a backup files location..."
+msgstr "选择备份文件位置"
+
+msgid "Men"
+msgstr "男性"
+
+msgid "Women"
+msgstr "女性"
+
+msgid "Mixed"
+msgstr "混合的"
+
+msgid "League"
+msgstr "联盟"
+
+msgid "Regional"
+msgstr "区域"
+
+msgid "Open"
+msgstr "打开"
+
+msgid "World cup"
+msgstr "世界杯"
+
+msgid "National championships"
+msgstr "全国锦标赛"
+
+msgid "World championships"
+msgstr "世界锦标赛"
+
+msgid "Other"
+msgstr "其他"
+
+msgid "Choose a file..."
+msgstr "选择文件..."
+
+msgid "GREG alert"
+msgstr "GREG警告"
+
+msgid ""
+"It's recommended to give a label when publication on GREG (www.escrime-info."
+"com) is intended.\n"
+"\n"
+"Re-open the form to fill it in?"
+msgstr ""
+"建议在GREG (www.escri-info.com)上发表时，给出一个标签。重新打开表格填写?"
+
+msgid "BellePoule files (.cotcot)"
+msgstr "BellePoule files (.昵称)"
+
+msgid "Close without saving"
+msgstr "不保存关闭"
+
+#, c-format
+msgid "Match %s"
+msgstr "竞赛 %s"
+
+msgid "No winner!"
+msgstr "没有冠军"
+
+#, c-format
+msgid "Round #%d"
+msgstr "轮次 #%d"
+
+msgid "Formula"
+msgstr "规则"
+
+msgid "<b><big>Do you really want to cancel the current round?</big></b>"
+msgstr "<b><big>你真的想取消这一轮吗?</big></b>"
+
+msgid "Go back to the previous round?"
+msgstr "回到上一轮"
+
+msgid "All the inputs of this round will be cancelled."
+msgstr "这一轮的所有输入将被取消"
+
+msgid ""
+"<b><big>Because of ties, the quota is exceeded.\n"
+"Do you wish to add a barrage round?</big></b>"
+msgstr "<b><big>由于系领带，超出了限额。你想增加一个弹幕回合吗?</big></b>"
+
+msgid "Barrage"
+msgstr "拦截"
+
+msgid "<b><big>Do you really want to quit BellePoule</big></b>"
+msgstr "<b><big>你真的想退出 BellePoule吗</big></b>"
+
+msgid "Quit BellePoule?"
+msgstr "退出BellePoule？"
+
+msgid "All the unsaved competions will be lost."
+msgstr "所有未保存的比赛都将丢失"
+
+#, c-format
+msgid "Piste %d"
+msgstr "剑道号 %d"
+
+msgid "No time!"
+msgstr "时间结束"
+
+msgid "No piste!"
+msgstr "没有剑道"
+
+msgid "Display jobs"
+msgstr "显示工作"
+
+msgid "Not available"
+msgstr "不可用"
+
+msgid "Available"
+msgstr "可用"
+
+msgid "Pool"
+msgstr "存储池"
+
+msgid "Meal"
+msgstr "用餐"
+
+msgid "Drink"
+msgstr "饮料"
+
+msgid "Dessert"
+msgstr "甜点心"
+
+msgid "Coffee"
+msgstr "咖啡"
+
+msgid "Payment book"
+msgstr "付款登记簿"
+
+msgid "Signature"
+msgstr "个性签名"
+
+msgid "Meal tickets"
+msgstr "饭票"
+
+#, c-format
+msgid ""
+"<b>%s</b> is delayed.\n"
+"Do you want to postpone the next bouts?\n"
+msgstr ""
+"<b>%s</b>被延迟.\n"
+"你想推迟下一次比赛吗？\n"
+
+msgid "Restart BellePoule for this change to take effect"
+msgstr "重新启动BellePoule以使此更改生效"
+
+msgid "Educ"
+msgstr "受教育程度"
+
+msgid "Foil"
+msgstr "花剑"
+
+msgid "Epée"
+msgstr "重剑"
+
+msgid "Sabre"
+msgstr "佩剑"
+
+msgid "place"
+msgstr "place"
+
+msgid "team"
+msgstr "队伍"
+
+msgid "last name"
+msgstr "姓"
+
+msgid "first name"
+msgstr "名"
+
+msgid "date of birth"
+msgstr "出生年月日"
+
+msgid "gender"
+msgstr "性别"
+
+msgid "Male"
+msgstr "男性"
+
+msgid "Female"
+msgstr "女性"
+
+msgid "weapon"
+msgstr "装备"
+
+msgid "country"
+msgstr "国家"
+
+msgid "region"
+msgstr "地区"
+
+msgid "league"
+msgstr "联盟"
+
+msgid "club"
+msgstr "俱乐部"
+
+msgid "licence"
+msgstr "证件"
+
+msgid "rate"
+msgstr "比率"
+
+msgid "level"
+msgstr "级别"
+
+msgid "ranking"
+msgstr "排名"
+
+msgid "rating"
+msgstr "评级"
+
+msgid "presence"
+msgstr "出场"
+
+msgid "exported"
+msgstr "已导出"
+
+msgid "incident"
+msgstr "事件"
+
+msgid "Absent"
+msgstr "缺席"
+
+msgid "Latecomer"
+msgstr "迟到者"
+
+msgid "global status"
+msgstr "全球地位"
+
+msgid "Qualified"
+msgstr "有资格的"
+
+msgid "Not qualified"
+msgstr "没资格的"
+
+msgid "Withdrawal"
+msgstr "撤销"
+
+msgid "Excluded"
+msgstr "排除的"
+
+msgid "Forfeit"
+msgstr "处罚"
+
+msgid "status"
+msgstr "状态"
+
+msgid "cyphered password"
+msgstr "数字密码"
+
+msgid "IP address"
+msgstr "IP 地址"
+
+msgid "Password"
+msgstr "密码"
+
+msgid "pool #"
+msgstr "池 #"
+
+msgid "Victories"
+msgstr "胜利次数"
+
+msgid "Bouts"
+msgstr "回合"
+
+msgid "Vict./Bouts (‰)"
+msgstr "胜利次数./回合 (‰)"
+
+msgid "index"
+msgstr "索引"
+
+msgid "Hits scored"
+msgstr "命中得分"
+
+msgid "strip"
+msgstr "除去"
+
+msgid "time"
+msgstr "时间"
+
+msgid "Round start rank"
+msgstr "开赛排轮次"
+
+msgid "promoted"
+msgstr "已推荐"
+
+msgid "connection"
+msgstr "连接"
+
+msgid "Broken"
+msgstr "已损坏"
+
+msgid "Waiting"
+msgstr "等待中"
+
+msgid "OK"
+msgstr "OK"
+
+msgid "Manual"
+msgstr "手册"
+
+msgid "Classification"
+msgstr "分类"
+
+msgid "Piste"
+msgstr "剑道"
+
+msgid "Place #"
+msgstr "空间 #"
+
+msgid "Referee"
+msgstr "裁判"
+
+msgid "Table"
+msgstr "表"
+
+#, c-format
+msgid "%s: score sheets printing"
+msgstr "%s: 得分表打印"
+
+msgid "Winner"
+msgstr "胜利者"
+
+msgid "Final"
+msgstr "最终"
+
+msgid "Semi-final"
+msgstr "半决赛"
+
+#, c-format
+msgid "Table of %d"
+msgstr "表 of %d"
+
+msgid "OVER"
+msgstr "结束"
+
+msgid ""
+"Referees allocation \n"
+" ongoing"
+msgstr ""
+"裁判分配\n"
+" 进行中的"
+
+msgid "Table classification"
+msgstr "表分类"
+
+msgid "All places fenced"
+msgstr "所有地方击剑"
+
+msgid "Fence off for third place"
+msgstr "争取第三名"
+
+msgid "No fence off for third place"
+msgstr "不必决出第三名"
+
+msgid "Max score"
+msgstr "最高得分"
+
+msgid "Pools arrangement"
+msgstr "池的安排"
+
+msgid "or"
+msgstr "要么"
+
+msgid "Wrong fencers count!"
+msgstr "击剑计数错误!"
+
+msgid "Allocation"
+msgstr "存储分配"
+
+msgid "Seeding"
+msgstr "做种"
+
+msgid "Balanced"
+msgstr "已平衡"
+
+msgid "Grouped by strength"
+msgstr "按强度分组"
+
+msgid "Impossible to apply with this configuration of pools"
+msgstr "不可能应用这种池配置"
+
+#, c-format
+msgid "Pool #%02d"
+msgstr "池 #%02d"
+
+msgid "Status"
+msgstr "状态"
+
+msgid "Vict./Matchs"
+msgstr "胜利./比赛"
+
+msgid "H. scored"
+msgstr "h .得分"
+
+msgid "H. received"
+msgstr "H. 收到"
+
+msgid "Index"
+msgstr "目录"
+
+msgid "Place"
+msgstr "位置"
+
+msgid "Pools"
+msgstr "存储池（Pool）"
+
+msgid "Bout without winner!"
+msgstr "回合中赢家！"
+
+msgid "General classification"
+msgstr "总成绩"
+
+msgid "All FFF files (.FFF)"
+msgstr "All FFF files (.FFF)"
+
+msgid "All PDF files (.PDF)"
+msgstr "All PDF files (.PDF)"
+
+msgid "All HTML files (.HTML)"
+msgstr "All HTML files (.HTML)"
+
+msgid "All AskFred files (.FRD)"
+msgstr "All AskFred files (.FRD)"
+
+msgid "Split"
+msgstr "拆分"
+
+msgid "List of fencers to extract"
+msgstr "要提取的击剑运动员列表"
+
+msgid "Choose a rank file to apply..."
+msgstr "选择一个成绩文件载入…"
+
+msgid "Rank files: cotcot, xml, txt (France)"
+msgstr "成绩文件: cotcot, xml, txt (France)"
+
+msgid "Check-in"
+msgstr "添加"
+
+msgid "** Without team **"
+msgstr "** 没有团队 **"
+
+msgid "Present fencers"
+msgstr "现在的击剑运动员"
+
+msgid "Expected fencers"
+msgstr "预期的击剑运动员"
+
+msgid "Expected teams"
+msgstr "预期的团队"
+
+msgid "Team size"
+msgstr "团队规模"
+
+#, c-format
+msgid "You have configured the minimum team size to <b>%d</b> fencers."
+msgstr "您已经将最小团队规模配置为<b>%d</b>击剑运动员."
+
+msgid "Tick the present players of the team."
+msgstr "勾选该队现在的队员."
+
+msgid "Untick the absent players of the team."
+msgstr "勾选该队缺席的队员."
+
+msgid "Fencer list printing"
+msgstr "击剑选手名单打印"
+
+msgid "<b><big>What do you want to print?</big></b>"
+msgstr "<b><big>你想打印什么?</big></b>"
+
+msgid "All the presents"
+msgstr "所有的奖励"
+
+msgid "All the absents"
+msgstr "所有在场的"
+
+msgid "Presents"
+msgstr "奖品"
+
+msgid "Absents"
+msgstr "缺席的"
+
+msgid "all"
+msgstr "全部"
+
+msgid "Import fencers"
+msgstr "导入击剑运动员"
+
+msgid "Import ranking"
+msgstr "导入成绩"
+
+msgid "Minimum team size"
+msgstr "最低团队规模"
+
+msgid "Team classification"
+msgstr "团体名次"
+
+msgid "Manually assigned"
+msgstr "手动分配"
+
+msgid "Derived from fencer classification"
+msgstr "源自击剑运动员分类"
+
+msgid "Extension"
+msgstr "分机"
+
+msgid "No"
+msgstr "否"
+
+msgid "Assign"
+msgstr "指派"
+
+msgid "Cancel"
+msgstr "取消"
+
+msgid "Undo"
+msgstr "撤销"
+
+msgid "Match"
+msgstr "匹配"
+
+msgid "<b>Match</b>"
+msgstr "<b>匹配</b>"
+
+msgid "<b>Score</b>"
+msgstr "<b>比分</b>"
+
+msgid "Table printing"
+msgstr "页面打印"
+
+msgid "<b><big>How to print?</big></b>"
+msgstr "<b><big>如何打印?</big></b>"
+
+msgid "Bouts/sheet"
+msgstr "回合/覆盖"
+
+msgid ""
+"<b><big>Which score sheets of the selected table do you want to print?</"
+"big></b>"
+msgstr "<b><big>您要打印所选表的哪些分数表?</big></b>"
+
+msgid "All the score sheets"
+msgstr "所有的分数表"
+
+msgid "The pending score sheets"
+msgstr "悬而未决的分数表"
+
+msgid "Add"
+msgstr "添加"
+
+msgid "<b>Schedule</b>"
+msgstr "<b>时间表</b>"
+
+msgid "<b>Parameters</b>"
+msgstr "<b>参数</b>"
+
+msgid "Previous round"
+msgstr "上一轮"
+
+msgid "Next round"
+msgstr "下一回合"
+
+msgid "Choose a target file..."
+msgstr "选择一个目标文件…"
+
+msgid "Export to <b>HTML</b>"
+msgstr "导出到 <b>HTML</b>"
+
+msgid "Export to <b>FFF</b>"
+msgstr "导出到<b>FFF</b>"
+
+msgid "Export to <b>PDF</b>"
+msgstr "导出到 <b>PDF</b>"
+
+msgid "Export to <b>FRD</b>"
+msgstr "导出到 <b>FRD</b>"
+
+msgid "Place shifting"
+msgstr "空间转移"
+
+msgid "Winner's place"
+msgstr "冠军的位置"
+
+msgid "Name"
+msgstr "名字"
+
+msgid "Number"
+msgstr "数字"
+
+msgid "Pool sheets printing"
+msgstr "池表打印"
+
+msgid "<b><big>Print...</big></b>"
+msgstr "<b><big>Print...</big></b>"
+
+msgid "All the pools"
+msgstr "所有的池"
+
+msgid "Only the selected pool"
+msgstr "仅选择池"
+
+msgid "<b>What?</b>"
+msgstr "<b>What?</b>"
+
+msgid "For arbitration"
+msgstr "仲裁"
+
+msgid "Matches watermarked"
+msgstr "比赛有水印的"
+
+msgid "For the bulletin board"
+msgstr "在公告板上"
+
+msgid "<b>For what?</b>"
+msgstr "<b>For what?</b>"
+
+msgid "Automatic stuffing"
+msgstr "自动填充"
+
+msgid "Combined classification"
+msgstr "组合分类"
+
+msgid "Single classification"
+msgstr "单一分类"
+
+msgid "All"
+msgstr "全部"
+
+msgid "Selected"
+msgstr "选中"
+
+msgid "Now"
+msgstr "现在"
+
+msgid "<b>From?</b>"
+msgstr "<b>From?</b>"
+
+msgid "label"
+msgstr "标签"
+
+msgid "Import referee file"
+msgstr "导入裁判文件"
+
+msgid "Content designed for the referees."
+msgstr "为裁判设计的内容。"
+
+msgid "Promoted"
+msgstr "升为"
+
+msgid "Eliminated"
+msgstr "被淘汰"
+
+msgid "BellePoule - Fencing tournament"
+msgstr "BellePoule - 击剑比赛"
+
+msgid "File"
+msgstr "文件"
+
+msgid "Referees"
+msgstr "裁判"
+
+msgid "WIFI"
+msgstr "WIFI"
+
+msgid "Score sheet scanner"
+msgstr "记分表扫描仪"
+
+msgid "Print meal tickets"
+msgstr "打印餐票"
+
+msgid "Print payment book"
+msgstr "打印付款单"
+
+msgid "New version!"
+msgstr "新版本!"
+
+msgid "Release notes"
+msgstr "发行说明"
+
+msgid "Acces code"
+msgstr "数据库代码"
+
+msgid "User manual"
+msgstr "用户手册"
+
+msgid "Return"
+msgstr "返回"
+
+msgid "Matches"
+msgstr "比赛"
+
+msgid ""
+"Fencing tournament management software.\n"
+"\n"
+"\n"
+msgstr ""
+"击剑比赛管理软件\n"
+"\n"
+"\n"
+
+msgid "Security"
+msgstr "安全性"
+
+msgid "Passphrase"
+msgstr "密码"
+
+msgid ""
+"Enter your WIFI network settings here.\n"
+"They will be used to automatically configure\n"
+"the smarthphones running <b>SmartPoule</b>"
+msgstr ""
+"在这里输入您的WIFI网络设置\n"
+"它们将用于自动配置\n"
+"运行SmartPoule的智能手机"
+
+msgid ""
+"Scan this code with <b>SmartPoule</b>\n"
+"to make your smarphone\n"
+"a score sheet scanner."
+msgstr ""
+"使用 <b>SmartPoule</b>扫描此代码\n"
+"做你的智能手机\n"
+"一个分数表扫描仪"
+
+msgid "<b>Score sheet scanner</b>"
+msgstr "<b>记分表扫描仪</b>"
+
+msgid "Connection rejected"
+msgstr "连接被拒绝"
+
+msgid "BellePoule2D is already operating on the network."
+msgstr "BellePoule2D 已经在网络上运行了"
+
+msgid "Connection to <b>BellePoule</b>"
+msgstr "连接到<b>BellePoule</b>"
+
+msgid "Plug an USB stick."
+msgstr "插入usb设备"
+
+msgid "Unplug it."
+msgstr "拔出插头"
+
+msgid ""
+"Plug it now in a computer where\n"
+"<b>BellePoule</b> is running."
+msgstr ""
+"现在把它插到电脑上\n"
+"<b>BellePoule</b>正在运行"
+
+msgid "Scan this QRCode:"
+msgstr "扫描二维码"
+
+msgid ""
+"Scan the other QRCode on the partner application\n"
+" (menu <b>BellePoule2D</b>)."
+msgstr ""
+"扫描合作伙伴应用程序上的其他QRCode\n"
+" (菜单<b>BellePoule2D</b>)."
+
+msgid "Fenced places"
+msgstr "击剑空间"
+
+msgid "Fill in a match"
+msgstr "填入一个比赛"
+
+msgid "Score sheets"
+msgstr "记分表"
+
+msgid ""
+"Fill in all the scores randomly.\n"
+"To activate/deactivate this button, go to the properties of the competition."
+msgstr ""
+"随机填写所有分数\n"
+"要激活/停用此按钮，请进入比赛属性。"
+
+msgid "match"
+msgstr "比赛"
+
+msgid "<b>Search</b>"
+msgstr "<b>搜索</b>"
+
+msgid "Zoom"
+msgstr "Zoom"
+
+msgid "From:"
+msgstr "来源:"
+
+msgctxt "jobs"
+msgid "All"
+msgstr "所有"
+
+msgctxt "jobs"
+msgid "Only the selected"
+msgstr "只有选择的"
+
+msgid "Pistes"
+msgstr "剑道"
+
+msgctxt "pistes"
+msgid "All"
+msgstr "所有"
+
+msgctxt "pistes"
+msgid "Only the selected"
+msgstr "只有选择的"
+
+msgctxt "referees"
+msgid "All"
+msgstr "所有"
+
+msgctxt "referees"
+msgid "Only the selected"
+msgstr "只有选择的"
+
+msgid "None"
+msgstr "无"
+
+msgid "<b>No referee available!</b>"
+msgstr "<b>没有裁判!</b>"
+
+msgid "Didn't you forget to check them in?"
+msgstr "你是否忘了添加？"
+
+msgid "Overlap of time slots"
+msgstr "时段重叠"
+
+msgid "Rotate"
+msgstr "旋转"
+
+msgid "Block"
+msgstr "阻止"
+
+msgid "Print"
+msgstr "打印"
+
+msgid "<span size=\"x-small\">club</span>"
+msgstr "<span size=\"x-small\">俱乐部</span>"
+
+msgid "<span size=\"x-small\">league</span>"
+msgstr "<span size=\"x-small\">联盟</span>"
+
+msgid "<span size=\"x-small\">country</span>"
+msgstr "<span size=\"x-small\">国家</span>"
+
+msgid "Warnings"
+msgstr "警告"
+
+msgid "Check the fencers you wish to include"
+msgstr "检查你想包括的击剑运动员"
+
+msgid "New fencer..."
+msgstr "新击剑运动员..."
+
+msgid "Uncheck the fencers you wish to withdraw"
+msgstr "取消勾选你想退出的击剑运动员"
+
+msgid "Mask or unmask some data type as well as define their display order."
+msgstr "屏蔽或反屏蔽某些数据类型，并定义它们的显示顺序。"
+
+msgid "Number of pools"
+msgstr "池号码"
+
+msgid "Fencers / pools"
+msgstr "击剑运动员/池"
+
+msgid "Swapping"
+msgstr "交换"
+
+msgid "Label "
+msgstr "标签 "
+
+msgid ""
+"Used by GREG to distinguish\n"
+"the competions created from splitting."
+msgstr ""
+"用GREG来区分\n"
+"由分裂产生的竞争."
+
+msgid ""
+"BellePoule needs your agreement\n"
+"to tweet on your behalf"
+msgstr ""
+"BellePoule需要你的同意\n"
+"代表你发微博"
+
+msgid "Click on the link to open a web browser:"
+msgstr "点击链接打开网页浏览器:"
+
+msgid "Obtain an authorization code"
+msgstr "获取授权码"
+
+msgid "on this web site"
+msgstr "在本网站"
+
+msgid "Paste the authorization code here:"
+msgstr "粘贴授权代码到这里:"
+
+msgid "BellePoule needs your agreement to post announces on your behalf"
+msgstr "BellePoule 需要你的同意才能代表你发布公告"
+
+msgid "New competition"
+msgstr "新竞争"
+
+msgid "Choose a creation method:"
+msgstr "选择一个创建方法:"
+
+msgid "From a XML file"
+msgstr "From a XML file"
+
+msgid "Empty competition"
+msgstr "空的竞争"
+
+msgid "From a FFE zip file (extranet)"
+msgstr "来自FFE zip文件(外扩网)"
+
+msgid "From AskFred (.frd)"
+msgstr "From AskFred (.frd)"
+
+msgid "Connection to <b>BellePoule2D</b>"
+msgstr "连接到 <b>BellePoule2D</b>"
+
+msgid ""
+"Plug it now in a computer where\n"
+"<b>BellePoule2D</b> is running."
+msgstr ""
+"现在把它插到电脑上\n"
+"<b>BellePoule2D</b> 正在运行."
+
+msgid "Recently opened"
+msgstr "最近打开的"
+
+msgid "Reload imports..."
+msgstr "重新载入入口..."
+
+msgid "Backup"
+msgstr "备份"
+
+msgid "Backup files location..."
+msgstr "备份文件的位置..."
+
+msgid "Activate"
+msgstr "激活"
+
+msgid "Deactivate"
+msgstr "停用"
+
+msgid "Publication"
+msgstr "直播"
+
+msgid "Setup"
+msgstr "设置"
+
+msgid "Access code"
+msgstr "访问代码"
+
+msgid "Open an example..."
+msgstr "打开一个列子"
+
+msgid "Fencer file template (.csv)"
+msgstr "击剑者文件模板(.csv)"
+
+msgid "User"
+msgstr "用户"
+
+msgid "FTP server"
+msgstr "FTP server"
+
+msgid "<b>Web site</b>"
+msgstr "<b>网页</b>"
+
+msgid "<b>Announce</b>"
+msgstr "<b>通告</b>"
+
+msgid "<b>Video server</b>"
+msgstr "<b>视频服务</b>"
+
+msgid ""
+"Scan the other QRCode on the partner application\n"
+" (menu <b>BellePoule</b>)."
+msgstr ""
+"扫描合作伙伴应用程序上的其他QRCode\n"
+" (菜单<b>BellePoule</b>)."
+
+msgid "Reload the imported fencers?"
+msgstr "重新载入加入的击剑运动员"
+
+msgid ""
+"Applicable only on <b>non-started</b> competitions created by importing "
+"fencers."
+msgstr "只适用于非开始的比赛由进口击剑选手创建。"
+
+msgid "Form"
+msgstr "格式"
+
+msgid "Job"
+msgstr "工作"
+
+msgid "Take off"
+msgstr "拿走"
+
+msgid "Move"
+msgstr "走开"
+
+msgid "<b>Referee</b>"
+msgstr "<b>裁判</b>"
+
+msgid "<b>Fencers</b>"
+msgstr "<b>击剑运动员</b>"
+
+msgid "Date of competition"
+msgstr "比赛日期"
+
+msgid "Competition properties"
+msgstr "竞争的性质"
+
+msgid "Weapon"
+msgstr "装备"
+
+msgid "Gender"
+msgstr "性别"
+
+msgid "Category"
+msgstr "分类"
+
+msgid "Level"
+msgstr "级别"
+
+msgid "Individual"
+msgstr "个人"
+
+msgid "Team"
+msgstr "队伍"
+
+msgid "<b>Type</b>"
+msgstr "<b>类型</b>"
+
+msgid "Title"
+msgstr "标题"
+
+msgid "Organizer"
+msgstr "组织"
+
+msgid "Web site"
+msgstr "网站"
+
+msgid "Location"
+msgstr "地点"
+
+msgid "<b>Overviews</b>"
+msgstr "<b>概述</b>"
+
+msgid "Date"
+msgstr "日期"
+
+msgid "Scratch"
+msgstr "Scratch"
+
+msgid "Start"
+msgstr "开始"
+
+msgid "<b>Date / Time</b>"
+msgstr "<b>日期 / 时间</b>"
+
+msgid "Allow"
+msgstr "允许"
+
+msgid "Forbid"
+msgstr "禁止"
+
+msgid ""
+"Automatic\n"
+"score\n"
+"stuffing"
+msgstr ""
+"自动的\n"
+"得分\n"
+"填充"
+
+msgid "<b>Scores</b>"
+msgstr "<b>得分</b>"
+
+msgid "Event"
+msgstr "活动"
+
+msgid "Save the current state of the competition."
+msgstr "保存当前的竞争状态。"
+
+msgid "To specify the features of the competition."
+msgstr "明确比赛的特点"
