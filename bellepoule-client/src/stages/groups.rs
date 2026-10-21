@@ -141,6 +141,7 @@ fn PrintPool(pool: Value) -> impl IntoView {
                         view! {
                             <div class="pp-bout">
                                 <strong>{s(&m, "name")}</strong>
+                                <div style="white-space:pre-line;font-size:10px">{s(&m, "officiating")}</div>
                                 <div>
                                     {arr(&m, "opponents")
                                         .into_iter()

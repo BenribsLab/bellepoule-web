@@ -19,26 +19,28 @@ use std::collections::HashMap;
 use axum::extract::{Query, State};
 use axum::http::StatusCode;
 use axum::Json;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 
 use crate::api::{bad_request, ApiError, Shared};
 use crate::auth::Client;
 
 /// Score saisi sur un téléphone, en attente de BellePoule.
-#[derive(Clone)]
+#[derive(Clone, Serialize, Deserialize)]
 struct Submission {
     id: u64,
     token: String,
     bout: u64,
-    values: [String; 2],
+    values: Option<[String; 2]>,
+    officiating: Option<bp_core::officiating::Officiating>,
     referee: u32,
     /// `None` : en attente ; `Some(Ok)` / `Some(Err(message))` : traité.
     result: Option<Result<(), String>>,
 }
 
 /// État du relais d'un club.
-#[derive(Default)]
+#[derive(Default, Serialize, Deserialize)]
+#[serde(default)]
 pub struct Relay {
     /// Dernier instantané déposé par BellePoule.
     state: Value,
@@ -55,19 +57,22 @@ fn forbidden() -> ApiError {
 /// `PUT /api/smartpoule/state`.
 pub async fn put_state(State(store): State<Shared>, client: Client, Json(state): Json<Value>) -> Result<Json<Value>, ApiError> {
     let mut store = store.lock().await;
+    store.ensure_relay(&client.id);
     store.relays.entry(client.id.clone()).or_default().state = state;
+    store.save_relay(&client.id)?;
     Ok(Json(json!({ "club": client.id })))
 }
 
 /// `GET /api/smartpoule/pending` : scores à appliquer.
 pub async fn pending(State(store): State<Shared>, client: Client) -> Result<Json<Value>, ApiError> {
     let mut store = store.lock().await;
+    store.ensure_relay(&client.id);
     let relay = store.relays.entry(client.id.clone()).or_default();
     let list: Vec<Value> = relay
         .submissions
         .iter()
         .filter(|s| s.result.is_none())
-        .map(|s| json!({ "id": s.id, "token": s.token, "bout": s.bout, "values": s.values, "referee": s.referee }))
+        .map(|s| json!({ "id": s.id, "token": s.token, "bout": s.bout, "values": s.values, "officiating": s.officiating, "referee": s.referee }))
         .collect();
     Ok(Json(json!(list)))
 }
@@ -88,17 +93,19 @@ pub struct ResultEntry {
 /// `POST /api/smartpoule/results` : scores appliqués (ou refusés).
 pub async fn results(State(store): State<Shared>, client: Client, Json(r): Json<Results>) -> Result<Json<Value>, ApiError> {
     let mut store = store.lock().await;
+    store.ensure_relay(&client.id);
     let relay = store.relays.entry(client.id.clone()).or_default();
     for e in r.results {
         if let Some(s) = relay.submissions.iter_mut().find(|s| s.id == e.id) {
             s.result = Some(if e.ok { Ok(()) } else { Err(e.error.unwrap_or_else(|| "score refusé".into())) });
         }
     }
-    // On garde les 500 dernières saisies.
-    let n = relay.submissions.len();
-    if n > 500 {
-        relay.submissions.drain(0..n - 500);
-    }
+    // Ne jamais supprimer une saisie encore en attente.
+    let mut complete = relay.submissions.iter().filter(|s| s.result.is_some()).count();
+    relay.submissions.retain(|s| {
+        if s.result.is_some() && complete > 500 { complete -= 1; false } else { true }
+    });
+    store.save_relay(&client.id)?;
     Ok(Json(json!({ "ok": true })))
 }
 
@@ -133,6 +140,24 @@ enum Who {
 }
 
 impl crate::store::Store {
+    fn ensure_relay(&mut self, club: &str) {
+        if self.relays.contains_key(club) { return; }
+        let path = self.dir.join("clients").join(club).join("smartpoule-relay.json");
+        let relay = std::fs::read(path).ok().and_then(|b| serde_json::from_slice(&b).ok()).unwrap_or_default();
+        self.relays.insert(club.to_string(), relay);
+    }
+    fn save_relay(&self, club: &str) -> Result<(), ApiError> {
+        let Some(relay) = self.relays.get(club) else { return Ok(()) };
+        let path = self.dir.join("clients").join(club).join("smartpoule-relay.json");
+        let data = serde_json::to_vec(relay).map_err(crate::api::internal)?;
+        if std::fs::read(&path).ok().as_deref() == Some(data.as_slice()) { return Ok(()); }
+        if let Some(parent) = path.parent() { std::fs::create_dir_all(parent).map_err(crate::api::internal)?; }
+        let temporary = path.with_extension("json.tmp");
+        std::fs::write(&temporary, data).map_err(crate::api::internal)?;
+        std::fs::rename(&temporary, path).map_err(crate::api::internal)?;
+        Ok(())
+    }
+
     fn club(&self, id: &str) -> Option<Client> {
         self.clients().iter().find(|c| c.id == id).map(|c| Client { id: c.id.clone(), name: c.name.clone() })
     }
@@ -142,6 +167,7 @@ impl crate::store::Store {
     /// compétition de la version web.
     fn authenticate(&mut self, q: &PhoneQuery) -> Result<(Client, Who), ApiError> {
         let club = self.club(&q.c).ok_or_else(forbidden)?;
+        self.ensure_relay(&club.id);
         if q.k.len() < 16 {
             return Err(forbidden());
         }
@@ -246,7 +272,8 @@ pub struct PhoneScore {
     k: String,
     token: String,
     bout: u64,
-    values: [String; 2],
+    values: Option<[String; 2]>,
+    officiating: Option<bp_core::officiating::Officiating>,
 }
 
 /// `POST /api/smartpoule/phone/score` : score d'un match.
@@ -258,11 +285,26 @@ pub async fn phone_score(State(store): State<Shared>, Json(s): Json<PhoneScore>)
         Who::Admin => 0,
         Who::Referee(r, _) => r,
     };
+    if s.values.is_none() && s.officiating.is_none() { return Err(bad_request("score ou arbitrage attendu")); }
+    // L'authentification seule ne donne pas accès aux matchs d'un autre arbitre.
+    let raw = store.list(&club).find_map(|(_, c)| c.smartpoule_sheet(&s.token, None))
+        .or_else(|| store.relays.get(&club.id).and_then(|r| r.state.get("sheets")).and_then(|v| v.get(&s.token)).cloned())
+        .ok_or_else(|| bad_request("match introuvable"))?;
+    let assigned = referee == 0 || store.list(&club).flat_map(|(_, c)| c.smartpoule_jobs(None))
+        .chain(store.relays.get(&club.id).and_then(|r| r.state.get("jobs")).and_then(Value::as_array).into_iter().flatten().cloned())
+        .any(|job| job.get("token").and_then(Value::as_str) == Some(s.token.as_str()) && mine(&job, &Who::Referee(referee, String::new())));
+    if !assigned { return Err(forbidden()); }
+    let allowed = filter_bouts(raw, if referee == 0 { None } else { Some(referee) });
+    if !allowed.get("bouts").and_then(Value::as_array).is_some_and(|bouts| bouts.iter().any(|b| b.get("index").and_then(Value::as_u64) == Some(s.bout))) { return Err(forbidden()); }
     // Compétition de la version web : appliqué tout de suite.
     let web: Option<String> = store.list(&club).find(|(_, c)| c.smartpoule_sheet(&s.token, None).is_some()).map(|(id, _)| id.clone());
     if let Some(id) = web {
         let result = store
-            .update(&club, &id, |c| c.smartpoule_apply_score(&s.token, s.bout as usize, s.values.clone()))
+            .update(&club, &id, |c| {
+                if let Some(state) = s.officiating.clone() { c.smartpoule_apply_officiating(&s.token, s.bout as usize, state)?; }
+                if let Some(values) = s.values.clone() { c.smartpoule_apply_score(&s.token, s.bout as usize, values)?; }
+                Ok::<(), String>(())
+            })
             .ok_or_else(|| bad_request("compétition introuvable"))?
             .map_err(crate::api::internal)?;
         return match result {
@@ -272,19 +314,26 @@ pub async fn phone_score(State(store): State<Shared>, Json(s): Json<PhoneScore>)
     }
     // Compétition de BellePoule : mis en attente.
     let relay = store.relays.entry(club.id.clone()).or_default();
+    if let Some(previous) = relay.submissions.iter().find(|previous| previous.token == s.token && previous.bout == s.bout
+        && previous.referee == referee && previous.values == s.values && previous.officiating == s.officiating
+        && !matches!(&previous.result, Some(Err(_)))) {
+        return Ok(Json(match &previous.result { Some(Ok(())) => json!({"status":"ok"}), _ => json!({"status":"pending","id":previous.id}) }));
+    }
     relay.next_id += 1;
     let id = relay.next_id;
-    relay.submissions.push(Submission { id, token: s.token, bout: s.bout, values: s.values, referee, result: None });
+    relay.submissions.push(Submission { id, token: s.token, bout: s.bout, values: s.values, officiating: s.officiating, referee, result: None });
+    store.save_relay(&club.id)?;
     Ok(Json(json!({ "status": "pending", "id": id })))
 }
 
 /// `GET /api/smartpoule/phone/result?id=…` : sort d'un score en attente.
 pub async fn phone_result(State(store): State<Shared>, Query(q): Query<PhoneQuery>) -> Result<Json<Value>, ApiError> {
     let mut store = store.lock().await;
-    let (club, _) = store.authenticate(&q)?;
+    let (club, who) = store.authenticate(&q)?;
     let id = q.id.ok_or_else(|| bad_request("identifiant attendu"))?;
     let relay = store.relays.entry(club.id.clone()).or_default();
     let s = relay.submissions.iter().find(|s| s.id == id).ok_or_else(|| bad_request("saisie inconnue"))?;
+    if let Who::Referee(reference, _) = who { if s.referee != reference { return Err(forbidden()); } }
     Ok(Json(match &s.result {
         None => json!({ "status": "pending" }),
         Some(Ok(())) => json!({ "status": "ok" }),

@@ -111,6 +111,7 @@ pub fn StageView(id: String, index: usize, kind: String, on_change: Callback<()>
     let ctx = StageCtx { data, act, focus, path };
     let contest = StoredValue::new(id);
     view! {
+        <BoutTimingSettings ctx=ctx />
         {move || match kind.as_str() {
             "youth" => view! { <youth::Youth ctx=ctx /> }.into_any(),
             "pool_allocator" => view! { <allocator::Allocator ctx=ctx /> }.into_any(),
@@ -183,4 +184,27 @@ pub fn ListTable(list: Value, #[prop(optional)] on_toggle: Option<Callback<(u64,
             </tbody>
         </table>
     }
+}
+
+
+#[component]
+fn BoutTimingSettings(ctx: StageCtx) -> impl IntoView {
+    view! { {move || ctx.data.get().and_then(|view| {
+        let kind = s(&view, "kind");
+        if !["pool_supervisor", "pool_allocator", "table", "barrage"].contains(&kind.as_str()) { return None; }
+        let timing = &view["data"]["timing"];
+        let seconds = RwSignal::new(timing.get("period_seconds").and_then(Value::as_u64).unwrap_or(180).to_string());
+        let periods = RwSignal::new(timing.get("periods").and_then(Value::as_u64).unwrap_or(1).to_string());
+        let locked = b(&view, "locked");
+        Some(view! {
+            <details class="settings">
+                <summary>"Chronomètre — formule des matchs"</summary>
+                <div class="settings-row">
+                    <label class="inline">"Durée d'une manche (secondes) "<input type="number" min="1" max="3600" disabled=locked prop:value=move || seconds.get() on:input=move |ev| seconds.set(event_target_value(&ev)) /></label>
+                    <label class="inline">"Nombre de manches "<input type="number" min="1" max="20" disabled=locked prop:value=move || periods.get() on:input=move |ev| periods.set(event_target_value(&ev)) /></label>
+                    <button disabled=locked on:click=move |_| ctx.act.run(serde_json::json!({"action":"timing", "timing":{"period_seconds":seconds.get().parse::<u32>().unwrap_or(0),"periods":periods.get().parse::<u32>().unwrap_or(0)}}))>"Appliquer"</button>
+                </div>
+            </details>
+        })
+    })} }
 }

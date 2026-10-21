@@ -298,6 +298,8 @@ impl TableSet {
         self.root
     }
 
+    pub fn bout_mut(&mut self, id: NodeId) -> Option<&mut Match> { self.nodes.get_mut(id).and_then(|n| n.bout.as_mut()) }
+
     pub fn bout(&self, id: NodeId) -> Option<&Match> {
         self.nodes.get(id).and_then(|n| n.bout.as_ref())
     }
@@ -1017,6 +1019,7 @@ impl TableSet {
 
 /// `Table::LoadMatch` : horaires, arbitres et scores d'un `<Match>`.
 pub(crate) fn load_match(m: &mut Match, node: roxmltree::Node, env: &Env) {
+    if let Some(value) = node.attribute("Arbitrage") { m.officiating = serde_json::from_str(value).ok(); }
     use crate::xml::attr_u32;
     if let Some(v) = node.attribute("Piste") {
         m.piste = crate::attribute::parse_leading_int(v) as u32;

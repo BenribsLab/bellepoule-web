@@ -5,6 +5,7 @@
 
 pub mod attribute;
 pub mod bout;
+pub mod officiating;
 pub mod i18n;
 pub mod sort;
 pub mod player;

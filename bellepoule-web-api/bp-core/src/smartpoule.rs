@@ -33,6 +33,7 @@ fn identity(players: &PlayerStore, r: PlayerRef) -> (String, String) {
 /// `<Match><Tireur REF Score Statut/>…</Match>` à partir des saisies
 /// (`V`, `W3`/`V3`, `4`, vide), comme le message `SmartPoule::Score`.
 fn match_xml(m: &Match, values: &[String; 2]) -> Option<String> {
+    let mut candidate = m.clone();
     let mut xml = String::from("<Match>");
     for (k, value) in values.iter().enumerate() {
         let fencer = m.opponent(k)?;
@@ -46,11 +47,13 @@ fn match_xml(m: &Match, values: &[String; 2]) -> Option<String> {
         } else {
             (v.parse::<u32>().ok()?, false)
         };
+        candidate.set_score(fencer, score, victory);
         xml.push_str(&format!(
             "<Tireur REF=\"{fencer}\" Score=\"{score}\" Statut=\"{}\"/>",
             if victory { "V" } else { "D" }
         ));
     }
+    if candidate.has_error() { return None; }
     xml.push_str("</Match>");
     Some(xml)
 }
@@ -72,6 +75,10 @@ impl Contest {
                     continue;
                 }
                 let round = a.round();
+                // Les matchs n'existent qu'une fois la composition des poules validée.
+                if !round.allocator_locked {
+                    continue;
+                }
                 for pool in round.pools() {
                     let mine = match referee {
                         None => true,
@@ -172,6 +179,7 @@ impl Contest {
                                     "score": f.score,
                                 })).collect::<Vec<_>>(),
                                 "over": pool.matches().get(m.match_index).map(|x| x.bout.is_over()).unwrap_or(false),
+                                "officiating": pool.matches().get(m.match_index).and_then(|x| x.bout.officiating.as_ref()),
                             })
                         })
                         .collect();
@@ -182,6 +190,7 @@ impl Contest {
                         "name": pool.name(),
                         "piste": pool.piste_label().unwrap_or_default(),
                         "max_score": pool.max_score(),
+                        "timing": stage.bout_timing(),
                         "fencers": sheet.rows.iter().map(|r| json!({
                             "position": r.position,
                             "name": format!("{} {}", r.identity.name, r.identity.first_name).trim().to_string(),
@@ -221,7 +230,8 @@ impl Contest {
                         "name": format!("{} — {}", set.name(), m.name),
                         "piste": if m.piste != 0 { format!("{:02}", m.piste) } else { String::new() },
                         "max_score": m.max_score,
-                        "bouts": [{ "index": 0, "name": m.name, "fencers": fencers, "over": m.is_over() }],
+                        "timing": stage.bout_timing(),
+                        "bouts": [{ "index": 0, "name": m.name, "fencers": fencers, "over": m.is_over(), "officiating": m.officiating }],
                         "over": m.is_over(),
                     }));
                 }
@@ -234,6 +244,7 @@ impl Contest {
     /// Score d'un match saisi sur le téléphone (`values` : tireur du haut,
     /// tireur du bas). Renvoie une erreur lisible si la saisie est refusée.
     pub fn smartpoule_apply_score(&mut self, token: &str, bout: usize, values: [String; 2]) -> Result<(), String> {
+        if token.split('~').nth(1).and_then(|s| s.parse::<u32>().ok()) != Some(self.net_id) { return Err("compétition invalide".into()); }
         let parts: Vec<&str> = token.split('~').collect();
         let stage_id: u32 = parts.get(2).and_then(|s| s.parse().ok()).ok_or("jeton invalide")?;
         match parts.first().copied() {
@@ -297,4 +308,61 @@ impl Contest {
             _ => Err("jeton invalide".into()),
         }
     }
+}
+
+
+impl Contest {
+    /// Enregistre le chronomètre arrêté et le journal des cartons sans valider le score.
+    pub fn smartpoule_apply_officiating(&mut self, token: &str, bout: usize, state: crate::officiating::Officiating) -> Result<(), String> {
+        let parts: Vec<_> = token.split('~').collect();
+        if parts.get(1).and_then(|s| s.parse::<u32>().ok()) != Some(self.net_id) { return Err("compétition invalide".into()); }
+        let stage_id = parts.get(2).and_then(|s| s.parse::<u32>().ok()).ok_or("jeton invalide")?;
+        for i in 0..self.schedule.len() {
+            let stage = self.schedule.stage(i).ok_or("phase introuvable")?;
+            let timing = stage.bout_timing();
+            if parts.first() == Some(&"p") {
+                let Some(a) = stage.as_any().downcast_ref::<PoolAllocatorStage>() else { continue };
+                let shared = a.shared_round();
+                if a.round().net_id() != stage_id { continue; }
+                if self.schedule.stage(i+1).is_none_or(|s| s.base().locked) { return Err("tour verrouillé".into()); }
+                let number = parts.get(3).and_then(|s| s.parse::<u32>().ok()).ok_or("poule invalide")?;
+                let mut round = shared.lock().unwrap_or_else(|e| e.into_inner());
+                let pool = round.pools_mut().iter_mut().find(|p| p.number() == number).ok_or("poule introuvable")?;
+                let m = pool.bout_mut(bout).ok_or("match introuvable")?;
+                apply_officiating(m, timing, state)?;
+                drop(round);
+                self.dirty = true;
+                return Ok(());
+            } else if parts.first() == Some(&"t") {
+                if stage.base().net_id != stage_id || !stage.as_any().is::<TableSupervisor>() { continue; }
+                if stage.base().locked { return Err("tableau verrouillé".into()); }
+                if bout != 0 { return Err("index de match invalide".into()); }
+                let set_id = *parts.get(3).ok_or("tableau invalide")?;
+                let path = *parts.get(4).ok_or("match invalide")?;
+                let sup = self.schedule.stage_mut(i).and_then(|s| s.as_any_mut().downcast_mut::<TableSupervisor>()).ok_or("tableau introuvable")?;
+                let set = sup.table_set_by_id(set_id).ok_or("tableau introuvable")?;
+                let node = sup.table_set(set).node_from_path(path).ok_or("match introuvable")?;
+                let m = sup.table_set_mut(set).bout_mut(node).ok_or("match introuvable")?;
+                apply_officiating(m, timing, state)?;
+                self.dirty = true;
+                return Ok(());
+            }
+        }
+        Err("match introuvable".into())
+    }
+}
+
+fn apply_officiating(m: &mut Match, timing: crate::officiating::BoutTiming, state: crate::officiating::Officiating) -> Result<(), String> {
+    state.validate(timing, m.max_score)?;
+    if let Some(old) = &m.officiating {
+        if old == &state { return Ok(()); }
+        if state.revision <= old.revision { return Err("une version plus récente du match existe : recharger sa feuille".into()); }
+        for previous in &old.cards {
+            let Some(next) = state.cards.iter().find(|card| card.id == previous.id) else { return Err("un carton ne peut être effacé ; l'annuler dans le journal".into()); };
+            let mut expected = previous.clone(); expected.cancelled = next.cancelled;
+            if expected != *next { return Err("le détail d'un carton déjà enregistré ne peut être remplacé".into()); }
+        }
+    }
+    m.officiating = Some(state);
+    Ok(())
 }

@@ -91,6 +91,7 @@ pub struct PoolRound {
 
     pub name: String,
     pub max_score: u32,
+    pub bout_timing: crate::officiating::BoutTiming,
     pub(crate) nb_qualified: u32,
     pub(crate) nb_qualified_valid: bool,
     seeding_balanced: bool,
@@ -258,6 +259,7 @@ impl PoolRound {
             supervisor_linked: false,
             name: String::new(),
             max_score: 5,
+            bout_timing: crate::officiating::BoutTiming::default(),
             nb_qualified: 0,
             nb_qualified_valid: false,
             seeding_balanced: true,
@@ -1259,6 +1261,7 @@ impl PoolRound {
 
     /// `Allocator::SaveConfiguration` (attributs du `<TourDePoules>`).
     pub fn save_configuration(&self, w: &mut XmlWriter) {
+        self.bout_timing.save(w);
         w.attr_fmt("PhaseID", self.sup_id_value());
         w.attr("ID", &self.name);
         w.attr("NetID", &format!("{:x}", self.net_id()));
@@ -1320,6 +1323,7 @@ impl PoolRound {
 
     /// `LoadConfiguration` (allocateur et superviseur).
     pub(crate) fn load_configuration(&mut self, node: roxmltree::Node) {
+        self.bout_timing.load(node);
         if let Some(name) = node.attribute("ID") {
             self.name = name.to_string();
         }

@@ -98,7 +98,7 @@ pub async fn get_stage(State(store): State<Shared>, client: Client, Path((id, in
 fn stage_view(c: &mut Contest, index: usize) -> Result<Value, ApiError> {
     let kind = c.schedule.stage(index).map(|s| s.kind()).ok_or_else(not_found)?;
     let code = kind_code(kind);
-    let body = match code {
+    let mut body = match code {
         "youth" => youth_view(c, index),
         "pool_allocator" => allocator_view(c, index),
         "pool_supervisor" => pools_view(c, index),
@@ -109,6 +109,7 @@ fn stage_view(c: &mut Contest, index: usize) -> Result<Value, ApiError> {
         _ => Some(json!({})),
     }
     .ok_or_else(not_found)?;
+    if let Some(stage) = c.schedule.stage(index) { body["timing"] = json!(stage.bout_timing()); }
     let locked = c.schedule.stage(index).map(|s| s.base().locked).unwrap_or(false);
     let name = c.schedule.stage(index).map(|s| s.name()).unwrap_or_default();
     let max_score = c.schedule.stage(index).and_then(|s| s.base().max_score);
@@ -415,7 +416,8 @@ fn pools_view(c: &mut Contest, index: usize) -> Option<Value> {
                     })),
                 })).collect::<Vec<_>>(),
                 "matches": sheet.matches.iter().enumerate().map(|(m, bout)| json!({
-                    "index": m,
+                    "index": bout.match_index,
+                    "officiating": bout.officiating,
                     "name": bout.name,
                     "rest_error": bout.rest_error,
                     "opponents": bout.opponents.iter().map(|o| o.as_ref().map(|f| json!({
@@ -779,6 +781,15 @@ pub async fn stage_action(
     let result = store
         .update(&client, &id, |c| -> Result<Value, ApiError> {
             let kind = c.schedule.stage(index).map(|s| s.kind()).ok_or_else(not_found)?;
+            if body.get("action").and_then(Value::as_str) == Some("timing") {
+                let timing: bp_core::officiating::BoutTiming = serde_json::from_value(body.get("timing").cloned().ok_or_else(|| bad_request("durée attendue"))?).map_err(|_| bad_request("durée invalide"))?;
+                timing.validate().map_err(bad_request)?;
+                let stage = c.schedule.stage_mut(index).ok_or_else(not_found)?;
+                if stage.base().locked { return Err(bad_request("phase verrouillée")); }
+                stage.set_bout_timing(timing);
+                return stage_view(c, index);
+            }
+
             match kind_code(kind) {
                 "youth" => youth_action(c, index, &body)?,
                 "pool_allocator" => allocator_action(c, index, &body)?,
@@ -1156,6 +1167,7 @@ pub async fn group_sheets(State(store): State<Shared>, client: Client, Path((id,
                             "grey": r.cells.iter().map(|cell| cell.grey).collect::<Vec<_>>(),
                         })).collect::<Vec<_>>(),
                         "matches": sheet.matches.iter().map(|m| json!({
+                            "officiating": m.officiating,
                             "name": m.name,
                             "boxes": m.score_boxes,
                             "opponents": m.opponents.iter().flatten().map(|f| json!({
@@ -1212,7 +1224,9 @@ pub async fn match_sheets(State(store): State<Shared>, client: Client, Path((id,
                 let max = set.bout(node).map(|m| m.max_score).unwrap_or(0);
                 let fencers = sheet.fencers.iter().flatten().map(|f| (identity(&c.players, *f), details(&c.players, *f))).collect();
                 let referee = sheet.referee.map(|(n, f)| format!("{n} {f}").trim().to_string());
-                sheets.push(sheet_json(format!("{} — {}", set.name(), sheet.name), referee, sheet.piste.clone(), fencers, max));
+                let mut result = sheet_json(format!("{} — {}", set.name(), sheet.name), referee, sheet.piste.clone(), fencers, max);
+                result["officiating"] = json!(set.bout(node).and_then(|m| m.officiating.as_ref()).map(|s| s.summary()).unwrap_or_default());
+                sheets.push(result);
             }
         }
     } else {

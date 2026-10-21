@@ -1,5 +1,24 @@
 # BellePoule Web
 
+## Évolution SmartPoule : chrono et cartons (22/10/2026)
+
+Les sources de l'API et du client incluent désormais les paramètres de formule du chronomètre :
+poules 5 touches / 1 × 3 minutes, nouveaux tableaux 15 touches / 3 × 3 minutes. Durée et manches
+restent modifiables dans les réglages de phase, puis sont transmises à Android dans `timing`.
+Les valeurs explicitement présentes dans les fichiers existants sont conservées.
+
+`POST /api/smartpoule/phone/score` accepte maintenant un champ `officiating`, avec ou sans résultat
+`values`, pour enregistrer chrono et cartons pendant le match. Les anciens clients à scores seuls
+restent acceptés. Le relais conserve les saisies dans le dossier privé du club et vérifie les
+affectations par arbitre/match. Les feuilles imprimables affichent les cartons du match concerné.
+Le premier nom de la feuille est vert par défaut ; l'inversion sur Android ne change pas l'ordre API.
+
+La copie `bp-core` a été synchronisée depuis le bureau. Détails et état :
+`../Bellepoule Rust/CHRONO_CARTONS.md` et `../Bellepoule Rust/smartpoule-android/README.md`.
+**Cette évolution n'a pas été compilée/testée ni déployée par l'agent**, sur demande de l'utilisateur.
+L'API, le bureau et l'APK doivent être reconstruits ensemble par l'utilisateur ; aucun conteneur
+n'a été redémarré pendant ces modifications.
+
 BellePoule (gestion de compétitions d'escrime) en version web : une **API** et un **client** dans le
 navigateur, chacun dans son propre conteneur Docker. Les deux projets sont autonomes : le client ne
 parle à l'API qu'en HTTP/JSON.

@@ -76,7 +76,7 @@ pub struct TableSupervisor {
 impl TableSupervisor {
     pub fn new(id: u32) -> Self {
         let mut base = StageBase::new(StageKind::TableSupervisor, id);
-        base.max_score = Some(10);
+        base.max_score = Some(15);
         base.net_id = common::new_net_id();
         base.filter = codes(&["stage_start_rank", "name", "first_name", "club"]);
         base.classification_filter = codes(&["rank", "status", "name", "first_name", "club"]);
@@ -98,7 +98,7 @@ impl TableSupervisor {
     }
 
     pub fn max_score(&self) -> u32 {
-        self.base.max_score.unwrap_or(10)
+        self.base.max_score.unwrap_or(15)
     }
 
     /// Toutes les suites, en ordre préfixe.

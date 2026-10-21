@@ -330,6 +330,8 @@ impl Pool {
         self.sorted_fencer_list.len()
     }
 
+    pub fn bout_mut(&mut self, index: usize) -> Option<&mut Match> { self.matches.get_mut(index).map(|m| &mut m.bout) }
+
     pub fn matches(&self) -> &[PoolMatch] {
         &self.matches
     }
@@ -1128,6 +1130,14 @@ impl Pool {
                 std::mem::swap(&mut na, &mut nb);
             }
             let bout = &mut self.matches[i].bout;
+            bout.officiating = m.attribute("Arbitrage").and_then(|value| serde_json::from_str::<crate::officiating::Officiating>(value).ok()).map(|mut state| {
+                if bout.opponent(0) != Some(ra) {
+                    state.scores.swap(0, 1);
+                    state.green_side = 1 - state.green_side.min(1);
+                    for card in &mut state.cards { card.side = 1 - card.side.min(1); }
+                }
+                state
+            });
             bout.load_fencer(na, pa);
             bout.load_fencer(nb, pb);
             bout.after_load();
@@ -1204,7 +1214,7 @@ impl Pool {
                             tr("Piste %d").replace("%d", &a.piste.to_string()), tr("Referee"), referee)
                     })
                 } else { None };
-                MatchSheet { match_index, resource, assignment: assignment.cloned(), name: m.name(), rest_error: m.rest_error, opponents: [opp(0), opp(1)], score_boxes: if self.max_score <= 15 { self.max_score } else { 0 } }
+                MatchSheet { match_index, resource, officiating: m.bout.officiating.as_ref().map(|s| s.summary()).unwrap_or_default(), assignment: assignment.cloned(), name: m.name(), rest_error: m.rest_error, opponents: [opp(0), opp(1)], score_boxes: if self.max_score <= 15 { self.max_score } else { 0 } }
             })
             .collect();
         if self.strips().len() > 1 {
@@ -1364,6 +1374,7 @@ pub struct MatchSheet {
     /// Indice réel du match, indépendant de son ordre d'affichage par vague.
     pub match_index: usize,
     pub resource: Option<String>,
+    pub officiating: String,
     pub assignment: Option<MatchAssignment>,
     pub name: String,
     /// Icône horloge : assauts consécutifs.

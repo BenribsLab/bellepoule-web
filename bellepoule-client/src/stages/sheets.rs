@@ -102,6 +102,7 @@ fn MatchSheet(sheet: Value) -> impl IntoView {
                 <span class="ms-box"><span class="ms-label">"Arbitre"</span>{referee}</span>
                 <span class="ms-box"><span class="ms-label">"Piste"</span>{piste}</span>
             </div>
+            <div style="white-space:pre-line;font-size:10px">{s(&sheet, "officiating")}</div>
             {arr(&sheet, "fencers")
                 .into_iter()
                 .map(|f| {

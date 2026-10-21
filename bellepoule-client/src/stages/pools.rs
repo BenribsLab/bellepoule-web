@@ -237,6 +237,7 @@ fn Sheet(ctx: StageCtx, pool: Value, max: u64, locked: bool) -> impl IntoView {
                     view! {
                         <div class="bout">
                             <strong>{s(&m, "name")}{b(&m, "rest_error").then_some(" ⏱")}</strong>
+                            <span style="white-space:pre-line">{s(&m, "officiating")}</span>
                             {arr(&m, "opponents")
                                 .into_iter()
                                 .filter(|o| !o.is_null())

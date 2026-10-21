@@ -59,6 +59,10 @@ impl Stage for PoolAllocatorStage {
         &mut self.base
     }
 
+    fn bout_timing(&self) -> crate::officiating::BoutTiming { lock(&self.round).bout_timing }
+
+    fn set_bout_timing(&mut self, timing: crate::officiating::BoutTiming) { lock(&self.round).bout_timing = timing; }
+
     fn is_input_provider(&self) -> bool {
         true
     }
@@ -205,6 +209,10 @@ impl Stage for PoolSupervisorStage {
     fn base_mut(&mut self) -> &mut StageBase {
         &mut self.base
     }
+
+    fn bout_timing(&self) -> crate::officiating::BoutTiming { lock(&self.round).bout_timing }
+
+    fn set_bout_timing(&mut self, timing: crate::officiating::BoutTiming) { lock(&self.round).bout_timing = timing; }
 
     fn input_provider(&self) -> Option<StageKind> {
         Some(StageKind::PoolAllocator)
