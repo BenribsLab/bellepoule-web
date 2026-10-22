@@ -60,8 +60,8 @@ pub fn Table(ctx: StageCtx) -> impl IntoView {
                             <span class="spacer"></span>
                             <button class="light" class:active=move || !show_ranking.get() on:click=move |_| show_ranking.set(false)>"Tableau"</button>
                             <button class="light" class:active=move || show_ranking.get() on:click=move |_| show_ranking.set(true)>"Classement"</button>
-                            <super::sheets::MatchSheetsButton ctx=ctx />
-                            <PrintButton />
+                            {if b(&d, "team") { view! { <super::relay_sheets::RelaySheetsButton ctx=ctx /> }.into_any() } else { view! { <super::sheets::MatchSheetsButton ctx=ctx /> }.into_any() }}
+                            {if b(&d, "youth") { view! { <super::groups::GroupSheetsButton ctx=ctx /> }.into_any() } else { view! { <PrintButton /> }.into_any() }}
                         </div>
                         {move || {
                             if show_ranking.get() {

@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <rect width="64" height="64" rx="14" fill="#ffffff"/>
+  <rect x="4" y="4" width="56" height="56" rx="11" fill="#1f5ae0"/>
+  <!-- Deux lames croisées -->
+  <path d="M16 48 L46 18" stroke="#ffffff" stroke-width="4" stroke-linecap="round"/>
+  <path d="M48 48 L18 18" stroke="#ffffff" stroke-width="4" stroke-linecap="round"/>
+  <path d="M12 44 l8 8 M44 52 l8 -8" stroke="#ffd447" stroke-width="5" stroke-linecap="round"/>
+</svg>

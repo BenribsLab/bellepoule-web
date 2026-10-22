@@ -9,6 +9,7 @@ mod pools;
 mod sheets;
 mod table;
 mod youth;
+mod relay_sheets;
 
 use leptos::prelude::*;
 use leptos::task::spawn_local;
@@ -196,15 +197,55 @@ fn BoutTimingSettings(ctx: StageCtx) -> impl IntoView {
         let seconds = RwSignal::new(timing.get("period_seconds").and_then(Value::as_u64).unwrap_or(180).to_string());
         let periods = RwSignal::new(timing.get("periods").and_then(Value::as_u64).unwrap_or(1).to_string());
         let locked = b(&view, "locked");
+        let team = b(&view["data"], "team");
+        let relay = &timing["relay"];
+        let relay_kind = RwSignal::new(relay.get("kind").and_then(Value::as_str).unwrap_or("each_vs_each").to_string());
+        let team_size = relay.get("team_size").and_then(Value::as_u64).unwrap_or(3);
+        let substitutes = relay.get("substitutes").and_then(Value::as_u64).unwrap_or(1);
+        let points = RwSignal::new(relay.get("points").and_then(Value::as_u64).unwrap_or(5).to_string());
+        let order = view["data"]["relay"]["bouts"].as_array().map(|l| l.iter().filter_map(|p| Some(format!("{}-{}", p.get(0)?, p.get(1)?))).collect::<Vec<_>>().join(" / ")).unwrap_or_default();
+        let total = view["data"]["relay"]["total"].as_u64().unwrap_or(0);
+        let numbers = |k: usize| view["data"]["relay"]["numbers"][k].as_array().map(|l| l.iter().map(|x| x.to_string()).collect::<Vec<_>>().join("-")).unwrap_or_default();
+        let (top, bottom) = (numbers(0), numbers(1));
+        let apply = move |_| {
+            ctx.act.run(serde_json::json!({"action":"timing", "timing":{
+                "period_seconds": seconds.get().parse::<u32>().unwrap_or(0),
+                "periods": periods.get().parse::<u32>().unwrap_or(1),
+                "relay": {
+                    "kind": relay_kind.get(),
+                    "points": points.get().parse::<u32>().unwrap_or(5),
+                },
+            }}))
+        };
+        if team {
+            return Some(view! {
+                <details class="settings" open=true>
+                    <summary>"Rencontres par équipes — relais"</summary>
+                    <div class="settings-row">
+                        <label class="inline">"Type de rencontre "
+                            <select disabled=locked on:change=move |ev| relay_kind.set(event_target_value(&ev))>
+                                <option value="each_vs_each" selected=move || relay_kind.get() == "each_vs_each">"Chacun contre chacun"</option>
+                                <option value="single" selected=move || relay_kind.get() == "single">"Relais simple (un match par tireur)"</option>
+                            </select>
+                        </label>
+                        <label class="inline">"Points par relais "<input type="number" min="1" max="15" disabled=locked prop:value=move || points.get() on:input=move |ev| points.set(event_target_value(&ev)) /></label>
+                        <label class="inline">"Temps maximum d'un relais (secondes) "<input type="number" min="1" max="3600" disabled=locked prop:value=move || seconds.get() on:input=move |ev| seconds.set(event_target_value(&ev)) /></label>
+                        <button disabled=locked on:click=apply>"Appliquer"</button>
+                        <relay_sheets::RelaySheetsButton ctx=ctx blank_first=true />
+                    </div>
+                    <p class="muted small">{format!("Équipes de {team_size} tireurs et {substitutes} remplaçant(s) (propriétés de la compétition) · Haut : {top} · Bas : {bottom} · Ordre des relais : {order} · Score de la rencontre : {total} touches")}</p>
+                </details>
+            }.into_any());
+        }
         Some(view! {
             <details class="settings">
                 <summary>"Chronomètre — formule des matchs"</summary>
                 <div class="settings-row">
                     <label class="inline">"Durée d'une manche (secondes) "<input type="number" min="1" max="3600" disabled=locked prop:value=move || seconds.get() on:input=move |ev| seconds.set(event_target_value(&ev)) /></label>
                     <label class="inline">"Nombre de manches "<input type="number" min="1" max="20" disabled=locked prop:value=move || periods.get() on:input=move |ev| periods.set(event_target_value(&ev)) /></label>
-                    <button disabled=locked on:click=move |_| ctx.act.run(serde_json::json!({"action":"timing", "timing":{"period_seconds":seconds.get().parse::<u32>().unwrap_or(0),"periods":periods.get().parse::<u32>().unwrap_or(0)}}))>"Appliquer"</button>
+                    <button disabled=locked on:click=apply>"Appliquer"</button>
                 </div>
             </details>
-        })
+        }.into_any())
     })} }
 }

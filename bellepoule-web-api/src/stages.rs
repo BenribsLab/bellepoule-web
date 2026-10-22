@@ -109,7 +109,20 @@ fn stage_view(c: &mut Contest, index: usize) -> Result<Value, ApiError> {
         _ => Some(json!({})),
     }
     .ok_or_else(not_found)?;
-    if let Some(stage) = c.schedule.stage(index) { body["timing"] = json!(stage.bout_timing()); }
+    if let Some(stage) = c.schedule.stage(index) {
+        let mut timing = stage.bout_timing();
+        timing.relay = c.relay_format(index);
+        body["timing"] = json!(timing);
+        // Rencontres par équipes : ordre des relais et score de la rencontre.
+        if c.settings.team_event {
+            body["relay"] = json!({
+                "bouts": timing.relay.bouts(),
+                "numbers": timing.relay.numbers(),
+                "total": timing.relay.total(),
+            });
+        }
+    }
+    body["team"] = json!(c.settings.team_event);
     let locked = c.schedule.stage(index).map(|s| s.base().locked).unwrap_or(false);
     let name = c.schedule.stage(index).map(|s| s.name()).unwrap_or_default();
     let max_score = c.schedule.stage(index).and_then(|s| s.base().max_score);
@@ -415,7 +428,7 @@ fn pools_view(c: &mut Contest, index: usize) -> Option<Value> {
                         "rank": d.rank,
                     })),
                 })).collect::<Vec<_>>(),
-                "matches": sheet.matches.iter().enumerate().map(|(m, bout)| json!({
+                "matches": sheet.matches.iter().map(|bout| json!({
                     "index": bout.match_index,
                     "officiating": bout.officiating,
                     "name": bout.name,
@@ -587,6 +600,8 @@ fn table_view(c: &mut Contest, index: usize) -> Option<Value> {
         "sets": sets,
         "displayed": displayed,
         "drawing": drawing,
+        // Entraînement des jeunes : l'impression donne les pages des groupes.
+        "youth": c.youth_pool_stage().is_some(),
         "fenced_places": match stage.fenced_places_mode() { FencedPlaces::AllPlaces => "all", FencedPlaces::ThirdPlaces => "third", _ => "none" },
         "max_score": stage.max_score(),
         "classification": ranked_list(&c.players, &codes, &entries, stage.base().owner()),
@@ -783,10 +798,7 @@ pub async fn stage_action(
             let kind = c.schedule.stage(index).map(|s| s.kind()).ok_or_else(not_found)?;
             if body.get("action").and_then(Value::as_str) == Some("timing") {
                 let timing: bp_core::officiating::BoutTiming = serde_json::from_value(body.get("timing").cloned().ok_or_else(|| bad_request("durée attendue"))?).map_err(|_| bad_request("durée invalide"))?;
-                timing.validate().map_err(bad_request)?;
-                let stage = c.schedule.stage_mut(index).ok_or_else(not_found)?;
-                if stage.base().locked { return Err(bad_request("phase verrouillée")); }
-                stage.set_bout_timing(timing);
+                c.set_stage_timing(index, timing).map_err(bad_request)?;
                 return stage_view(c, index);
             }
 
@@ -878,6 +890,37 @@ fn sheet_json(name: String, referee: Option<String>, piste: Option<String>, fenc
         "boxes": if max_score <= 60 { max_score } else { 0 },
         "fencers": fencers.into_iter().map(|(n, d)| json!({ "name": n, "details": d })).collect::<Vec<_>>(),
     })
+}
+
+#[derive(serde::Deserialize)]
+pub struct RelaySheetsQuery {
+    /// Nombre de feuilles vierges (0 : les rencontres de la phase).
+    #[serde(default)]
+    blank: u32,
+    /// Par 3 : une feuille par équipe et une pour l'arbitre.
+    #[serde(default)]
+    three: bool,
+}
+
+/// `GET …/stages/{index}/relay_sheets?blank=&three=` : feuilles de match des
+/// rencontres par équipes, déjà mises en page (repère 918 × 1300).
+pub async fn relay_sheets(
+    State(store): State<Shared>,
+    client: Client,
+    Path((id, index)): Path<(String, usize)>,
+    axum::extract::Query(q): axum::extract::Query<RelaySheetsQuery>,
+) -> Result<Json<Value>, ApiError> {
+    use bp_core::relay_sheet;
+    let mut store = store.lock().await;
+    let c = store.get_mut(&client, &id).ok_or_else(not_found)?;
+    let (format, bouts) = c.relay_sheets(index, None).ok_or_else(not_found)?;
+    let base = if q.blank > 0 { vec![c.blank_relay_sheet(); q.blank.min(200) as usize] } else { bouts };
+    let pages: Vec<Value> = base
+        .iter()
+        .flat_map(|s| relay_sheet::copies(s, q.three))
+        .map(|s| json!(relay_sheet::layout(&format, &s)))
+        .collect();
+    Ok(Json(json!({ "width": relay_sheet::WIDTH, "height": relay_sheet::HEIGHT, "label": format.label(), "pages": pages })))
 }
 
 /// `GET …/stages/{index}/match_sheets` : feuilles des matchs du barrage, ou

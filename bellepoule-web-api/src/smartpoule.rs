@@ -33,6 +33,9 @@ struct Submission {
     bout: u64,
     values: Option<[String; 2]>,
     officiating: Option<bp_core::officiating::Officiating>,
+    /// Rencontre par équipes : journal des relais.
+    #[serde(default)]
+    relay: Option<bp_core::relay::RelayLog>,
     referee: u32,
     /// `None` : en attente ; `Some(Ok)` / `Some(Err(message))` : traité.
     result: Option<Result<(), String>>,
@@ -72,7 +75,7 @@ pub async fn pending(State(store): State<Shared>, client: Client) -> Result<Json
         .submissions
         .iter()
         .filter(|s| s.result.is_none())
-        .map(|s| json!({ "id": s.id, "token": s.token, "bout": s.bout, "values": s.values, "officiating": s.officiating, "referee": s.referee }))
+        .map(|s| json!({ "id": s.id, "token": s.token, "bout": s.bout, "values": s.values, "officiating": s.officiating, "relay": s.relay, "referee": s.referee }))
         .collect();
     Ok(Json(json!(list)))
 }
@@ -274,6 +277,9 @@ pub struct PhoneScore {
     bout: u64,
     values: Option<[String; 2]>,
     officiating: Option<bp_core::officiating::Officiating>,
+    /// Rencontre par équipes : journal des relais.
+    #[serde(default)]
+    relay: Option<bp_core::relay::RelayLog>,
 }
 
 /// `POST /api/smartpoule/phone/score` : score d'un match.
@@ -285,7 +291,7 @@ pub async fn phone_score(State(store): State<Shared>, Json(s): Json<PhoneScore>)
         Who::Admin => 0,
         Who::Referee(r, _) => r,
     };
-    if s.values.is_none() && s.officiating.is_none() { return Err(bad_request("score ou arbitrage attendu")); }
+    if s.values.is_none() && s.officiating.is_none() && s.relay.is_none() { return Err(bad_request("score ou arbitrage attendu")); }
     // L'authentification seule ne donne pas accès aux matchs d'un autre arbitre.
     let raw = store.list(&club).find_map(|(_, c)| c.smartpoule_sheet(&s.token, None))
         .or_else(|| store.relays.get(&club.id).and_then(|r| r.state.get("sheets")).and_then(|v| v.get(&s.token)).cloned())
@@ -302,6 +308,7 @@ pub async fn phone_score(State(store): State<Shared>, Json(s): Json<PhoneScore>)
         let result = store
             .update(&club, &id, |c| {
                 if let Some(state) = s.officiating.clone() { c.smartpoule_apply_officiating(&s.token, s.bout as usize, state)?; }
+                if let Some(log) = s.relay.clone() { c.smartpoule_apply_relay(&s.token, s.bout as usize, log)?; }
                 if let Some(values) = s.values.clone() { c.smartpoule_apply_score(&s.token, s.bout as usize, values)?; }
                 Ok::<(), String>(())
             })
@@ -315,13 +322,13 @@ pub async fn phone_score(State(store): State<Shared>, Json(s): Json<PhoneScore>)
     // Compétition de BellePoule : mis en attente.
     let relay = store.relays.entry(club.id.clone()).or_default();
     if let Some(previous) = relay.submissions.iter().find(|previous| previous.token == s.token && previous.bout == s.bout
-        && previous.referee == referee && previous.values == s.values && previous.officiating == s.officiating
+        && previous.referee == referee && previous.values == s.values && previous.officiating == s.officiating && previous.relay == s.relay
         && !matches!(&previous.result, Some(Err(_)))) {
         return Ok(Json(match &previous.result { Some(Ok(())) => json!({"status":"ok"}), _ => json!({"status":"pending","id":previous.id}) }));
     }
     relay.next_id += 1;
     let id = relay.next_id;
-    relay.submissions.push(Submission { id, token: s.token, bout: s.bout, values: s.values, officiating: s.officiating, referee, result: None });
+    relay.submissions.push(Submission { id, token: s.token, bout: s.bout, values: s.values, officiating: s.officiating, relay: s.relay, referee, result: None });
     store.save_relay(&club.id)?;
     Ok(Json(json!({ "status": "pending", "id": id })))
 }

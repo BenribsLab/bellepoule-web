@@ -6,6 +6,8 @@
 pub mod attribute;
 pub mod bout;
 pub mod officiating;
+pub mod relay;
+pub mod relay_sheet;
 pub mod i18n;
 pub mod sort;
 pub mod player;

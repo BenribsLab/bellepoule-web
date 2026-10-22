@@ -217,6 +217,8 @@ pub struct Match {
     pub duration_sec: u32,
     pub duration_span: u32,
     pub officiating: Option<crate::officiating::Officiating>,
+    /// Rencontre par équipes : journal des relais (attribut `Relais`).
+    pub relay: Option<crate::relay::RelayLog>,
 }
 
 impl Match {
@@ -233,6 +235,7 @@ impl Match {
             duration_sec: 0,
             duration_span: 1,
             officiating: None,
+            relay: None,
         }
     }
 
@@ -397,6 +400,9 @@ impl Match {
         if let Some(state) = &self.officiating {
             if let Ok(value) = serde_json::to_string(state) { w.attr("Arbitrage", &value); }
         }
+        if let Some(log) = &self.relay {
+            if let Ok(value) = serde_json::to_string(log) { w.attr("Relais", &value); }
+        }
         w.attr_fmt("ID", self.number);
         if self.net_id != 0 {
             w.attr("NetID", &format!("{:x}", self.net_id));
@@ -458,6 +464,7 @@ impl Match {
     /// Lit les attributs communs d'un `<Match>` (hors tireurs).
     pub fn load_header(&mut self, node: roxmltree::Node) {
         self.officiating = node.attribute("Arbitrage").and_then(|v| serde_json::from_str(v).ok());
+        self.relay = node.attribute("Relais").and_then(|v| serde_json::from_str(v).ok());
         self.number = crate::xml::attr_u32(node, "ID", self.number);
         if let Some(v) = node.attribute("NetID") {
             self.net_id = u32::from_str_radix(v, 16).unwrap_or(0);

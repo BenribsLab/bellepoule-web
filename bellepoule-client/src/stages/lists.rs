@@ -117,7 +117,7 @@ pub fn Splitting(ctx: StageCtx) -> impl IntoView {
 }
 
 /// Classement de chaque groupe, puis de tous les groupes mélangés.
-fn youth_sections(results: Vec<Value>) -> impl IntoView {
+pub(super) fn youth_sections(results: Vec<Value>) -> impl IntoView {
     let mut groups: Vec<u64> = results.iter().map(|r| u(r, "group")).collect();
     groups.dedup();
     let row = |r: &Value, place: String| {
@@ -185,6 +185,11 @@ fn youth_sections(results: Vec<Value>) -> impl IntoView {
     }
 }
 
+/// Classement final de l'entraînement des jeunes pour l'impression.
+fn youth_ranking_print(results: Vec<Value>) -> Value {
+    serde_json::json!(results)
+}
+
 #[component]
 pub fn Classification(ctx: StageCtx, contest: String) -> impl IntoView {
     let contest = StoredValue::new(contest);
@@ -202,7 +207,14 @@ pub fn Classification(ctx: StageCtx, contest: String) -> impl IntoView {
             <button class="light" on:click=move |_| export("html")>"Export HTML"</button>
             <button class="light" on:click=move |_| export("fff")>"Export FFF"</button>
             <button class="light" on:click=move |_| export("frd")>"Export AskFred"</button>
-            <PrintButton />
+            {move || {
+                let d = ctx.data.get().map(|v| v["data"].clone()).unwrap_or(Value::Null);
+                match d.get("youth").and_then(Value::as_array).cloned().filter(|r| !r.is_empty()) {
+                    // Entraînement des jeunes : classement final puis chaque groupe rempli.
+                    Some(results) => view! { <super::groups::GroupSheetsButton ctx=ctx ranking=youth_ranking_print(results) /> }.into_any(),
+                    None => view! { <PrintButton /> }.into_any(),
+                }
+            }}
         </div>
         {move || {
             ctx.data

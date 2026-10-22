@@ -1,5 +1,5 @@
-# API web BellePoule.
-FROM rust:1-bookworm AS build
+# API web ManageComp.
+FROM rust:1-trixie AS build
 WORKDIR /app
 # Dépendances d'abord (couche mise en cache).
 COPY Cargo.toml Cargo.lock* ./
@@ -13,7 +13,7 @@ RUN mkdir -p src bp-core/src bp-net/src marshaller/src && echo "fn main() {}" > 
 COPY . .
 RUN touch src/main.rs bp-core/src/lib.rs bp-net/src/lib.rs marshaller/src/lib.rs && cargo build --release
 
-FROM debian:bookworm-slim
+FROM debian:trixie-slim
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl tzdata \
  && rm -rf /var/lib/apt/lists/* \
  && useradd --system --home /app bellepoule

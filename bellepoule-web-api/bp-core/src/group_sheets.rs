@@ -161,6 +161,10 @@ struct TreeCtx<'a> {
     next_leaf: f64,
     leaf_y: &'a dyn Fn(usize) -> Option<f64>,
     leaf_label: &'a dyn Fn(usize) -> String,
+    /// Nom du vainqueur d'une case (tableau rempli, sinon vide).
+    node_label: &'a dyn Fn(usize) -> String,
+    /// Score du tireur de la case dans le match suivant.
+    score_label: &'a dyn Fn(usize) -> String,
     ys: std::collections::HashMap<usize, f64>,
 }
 
@@ -170,9 +174,9 @@ impl BracketSheet {
             json!({ "t": "slot", "x": x, "y": y - 20.0, "w": SLOT, "h": 20.0, "text": text }),
         );
     }
-    fn score(&mut self, x: f64, y: f64) {
+    fn score(&mut self, x: f64, y: f64, text: &str) {
         self.items
-            .push(json!({ "t": "score", "x": x, "y": y - 20.0, "w": SCORE, "h": 20.0 }));
+            .push(json!({ "t": "score", "x": x, "y": y - 20.0, "w": SCORE, "h": 20.0, "text": text }));
     }
     fn text(&mut self, kind: &str, x: f64, y: f64, text: &str) {
         self.items
@@ -217,11 +221,13 @@ impl BracketSheet {
                 let label_x = if t.dir > 0.0 { join + 4.0 } else { join - 64.0 };
                 self.text("match", label_x, y - 38.0, &m.name);
             }
-            self.slot(slot_x, y, "");
+            let label = (t.node_label)(id);
+            self.slot(slot_x, y, &label);
             y
         };
         if !is_root {
-            self.score(score_x, y);
+            let score = (t.score_label)(id);
+            self.score(score_x, y, &score);
         }
         t.ys.insert(id, y);
         y
@@ -239,6 +245,8 @@ impl BracketSheet {
         top: f64,
         leaf_y: &dyn Fn(usize) -> Option<f64>,
         leaf_label: &dyn Fn(usize) -> String,
+        node_label: &dyn Fn(usize) -> String,
+        score_label: &dyn Fn(usize) -> String,
     ) -> std::collections::HashMap<usize, f64> {
         let Some(root) = set.root() else {
             return std::collections::HashMap::new();
@@ -251,6 +259,8 @@ impl BracketSheet {
             next_leaf: top,
             leaf_y,
             leaf_label,
+            node_label,
+            score_label,
             ys: std::collections::HashMap::new(),
         };
         self.place(&mut t, root, height, true);
@@ -258,7 +268,33 @@ impl BracketSheet {
     }
 }
 
-fn blank_brackets(c: &Contest, pool_sizes: &[usize], fenced: FencedPlaces) -> Option<Value> {
+/// Tireur qui occupe une case : l'entrant (case de départ) ou le vainqueur.
+fn occupant(set: &crate::rounds::table::TableSet, id: usize) -> Option<PlayerRef> {
+    let n = set.nodes().get(id)?;
+    let m = n.bout.as_ref()?;
+    if n.children.is_empty() {
+        m.winner().or_else(|| m.opponent(0))
+    } else {
+        m.winner()
+    }
+}
+
+/// Score du tireur d'une case dans le match où il va ensuite.
+fn score_of(set: &crate::rounds::table::TableSet, id: usize) -> Option<String> {
+    let parent = set.nodes().iter().position(|n| n.children.contains(&id))?;
+    let fencer = occupant(set, id)?;
+    let m = set.nodes()[parent].bout.as_ref()?;
+    let k = (0..2).find(|k| m.opponent(*k) == Some(fencer))?;
+    Some(m.score_at(k).image(m.max_score)).filter(|s| !s.is_empty())
+}
+
+/// Tableau réel d'un groupe (suites dans l'ordre) et ses tireurs.
+pub(crate) struct RealTables<'a> {
+    sets: Vec<&'a crate::rounds::table::TableSet>,
+    players: &'a PlayerStore,
+}
+
+fn blank_brackets(c: &Contest, pool_sizes: &[usize], fenced: FencedPlaces, real: Option<RealTables>) -> Option<Value> {
     use crate::contest::players::new_player;
     use crate::player::{AttrId, PlayerClass};
     let largest = pool_sizes.iter().copied().max().unwrap_or(0);
@@ -339,6 +375,14 @@ fn blank_brackets(c: &Contest, pool_sizes: &[usize], fenced: FencedPlaces) -> Op
     }
     let sets = table.table_sets();
     let main = sets.first()?;
+    // Tableau réel du groupe, s'il a la même forme : noms et scores reportés.
+    // Suite par suite, tant que la forme est la même.
+    let real_set = |k: usize| real.as_ref().and_then(|r| r.sets.get(k).copied()).filter(|s| sets.get(k).is_some_and(|b| b.nodes().len() == s.nodes().len()));
+    let name = |k: usize, id: usize| -> Option<String> {
+        let r = real.as_ref()?;
+        occupant(real_set(k)?, id).map(|p| identity(r.players, p))
+    };
+    let score = |k: usize, id: usize| -> String { real_set(k).and_then(|s| score_of(s, id)).unwrap_or_default() };
     // Entrée d'une suite de classement : « Perdant <match de la suite parente> ».
     let lost_in = |parent: &crate::rounds::table::TableSet,
                    set: &crate::rounds::table::TableSet,
@@ -364,9 +408,16 @@ fn blank_brackets(c: &Contest, pool_sizes: &[usize], fenced: FencedPlaces) -> Op
     };
     let top = 50.0;
     sheet.text("title", 0.0, 4.0, "Tableau");
-    let main_ys = sheet.tree(main, 0.0, 1.0, top, &|_| None, &|leaf| {
-        entrants.get(&leaf).cloned().unwrap_or_default()
-    });
+    let main_ys = sheet.tree(
+        main,
+        0.0,
+        1.0,
+        top,
+        &|_| None,
+        &|leaf| name(0, leaf).unwrap_or_else(|| entrants.get(&leaf).cloned().unwrap_or_default()),
+        &|id| name(0, id).unwrap_or_default(),
+        &|id| score(0, id),
+    );
     let mut bottom = main_ys.values().copied().fold(top, f64::max);
 
     // Perdants du premier tour : vers la gauche, alignés sur leurs matchs.
@@ -378,7 +429,7 @@ fn blank_brackets(c: &Contest, pool_sizes: &[usize], fenced: FencedPlaces) -> Op
                 .map(|r| node_depth(s, r) + 1 == first_round)
                 .unwrap_or(false)
     });
-    if let Some((_, set)) = first_losers {
+    if let Some((fi, set)) = first_losers {
         let entries = set.attendees().iter().flatten().count() as u32;
         let first = set.first_place();
         sheet.text(
@@ -397,7 +448,9 @@ fn blank_brackets(c: &Contest, pool_sizes: &[usize], fenced: FencedPlaces) -> Op
                     .1
                     .and_then(|n| main_ys.get(&n).copied())
             },
-            &|leaf| lost_in(main, set, leaf).0,
+            &|leaf| name(fi, leaf).unwrap_or_else(|| lost_in(main, set, leaf).0),
+            &|id| name(fi, id).unwrap_or_default(),
+            &|id| score(fi, id),
         );
         bottom = bottom.max(ys.values().copied().fold(top, f64::max));
     }
@@ -427,9 +480,16 @@ fn blank_brackets(c: &Contest, pool_sizes: &[usize], fenced: FencedPlaces) -> Op
             format!("Places {first} à {}", first + entries - 1)
         };
         sheet.text("title", 0.0, y - 30.0, &title);
-        let ys = sheet.tree(set, 0.0, 1.0, y + 10.0, &|_| None, &|leaf| {
-            lost_in(parent, set, leaf).0
-        });
+        let ys = sheet.tree(
+            set,
+            0.0,
+            1.0,
+            y + 10.0,
+            &|_| None,
+            &|leaf| name(i, leaf).unwrap_or_else(|| lost_in(parent, set, leaf).0),
+            &|id| name(i, id).unwrap_or_default(),
+            &|id| score(i, id),
+        );
         y = ys.values().copied().fold(y, f64::max) + 80.0;
     }
 
@@ -463,10 +523,38 @@ fn blank_brackets(c: &Contest, pool_sizes: &[usize], fenced: FencedPlaces) -> Op
 }
 
 impl Contest {
+    /// Suites du vrai tableau d'un groupe (phase de tableaux de l'entraînement
+    /// des jeunes), dans leur ordre.
+    pub(crate) fn youth_real_tables(&self, group: u32) -> Option<RealTables<'_>> {
+        for stage in self.schedule.stages() {
+            let Some(sup) = stage.as_any().downcast_ref::<TableSupervisor>() else { continue };
+            let sets: Vec<_> = sup.table_sets().iter().filter(|s| s.group() == Some(group)).collect();
+            if !sets.is_empty() {
+                return Some(RealTables { sets, players: &self.players });
+            }
+        }
+        None
+    }
+
+    /// Index de la phase de poules d'un entraînement des jeunes (pour
+    /// imprimer les feuilles des groupes avec le classement final).
+    pub fn youth_pool_stage(&self) -> Option<usize> {
+        (0..self.schedule.len()).find(|i| {
+            self.schedule.stage(*i).and_then(|s| s.as_any().downcast_ref::<PoolSupervisorStage>()).is_some_and(|s| {
+                s.shared_round().lock().map(|r| r.youth_groups.is_some()).unwrap_or(false)
+            })
+        })
+    }
+
     /// Feuilles des groupes du tour de poules `index` (composition ou
     /// poules) : `{ contest, header, date, groups: [{ group, pools, bracket }] }`.
     /// `bracket` : `{ width, height, items: [{ t, x, y, w?, h?, text? }], lines }`.
     pub fn youth_group_sheets(&self, index: usize) -> Result<Value, String> {
+        // Depuis le tableau ou le classement : la phase de poules des groupes.
+        let is_pools = self.schedule.stage(index).is_some_and(|s| {
+            s.as_any().downcast_ref::<PoolAllocatorStage>().is_some() || s.as_any().downcast_ref::<PoolSupervisorStage>().is_some()
+        });
+        let index = if is_pools { index } else { self.youth_pool_stage().ok_or_else(|| "feuilles des groupes : pas d'entraînement des jeunes".to_string())? };
         let stage = self
             .schedule
             .stage(index)
@@ -508,7 +596,9 @@ impl Contest {
                 "indices": pools,
                 "pools": pools.iter().map(|i| {
                     let pool = &round.pools()[*i];
-                    let sheet = pool.sheet(&self.players, self.referees.store(), true);
+                    let sheet = pool.sheet(&self.players, self.referees.store(), false);
+                    // Poule commencée : scores, victoires, indices et places imprimés.
+                    let started = sheet.matches.iter().any(|m| m.opponents.iter().flatten().any(|f| !f.score.is_empty()));
                     let mine: Vec<&GroupBout> = dispatch.iter().filter(|b| b.pool == *i).collect();
                     let mut matches: Vec<_> = sheet.matches.iter().collect();
                     matches.sort_by_key(|m| mine.iter().find(|b| b.match_index == m.match_index).map(|b| b.number).unwrap_or(usize::MAX));
@@ -528,6 +618,8 @@ impl Contest {
                             "name": identity(&self.players, r.player),
                             "club": r.identity.club,
                             "grey": r.cells.iter().map(|cell| cell.grey).collect::<Vec<_>>(),
+                            "cells": r.cells.iter().map(|cell| if started && !cell.grey { cell.text.clone() } else { String::new() }).collect::<Vec<_>>(),
+                            "dashboard": r.dashboard.as_ref().filter(|_| started).map(|d| vec![d.victories.clone(), d.hits_scored.clone(), d.hits_received.clone(), d.indice.clone(), d.rank.clone()]),
                         })).collect::<Vec<_>>(),
                         "matches": matches.iter().map(|m| {
                             let bout = mine.iter().find(|b| b.match_index == m.match_index);
@@ -541,12 +633,13 @@ impl Contest {
                                 "opponents": m.opponents.iter().flatten().map(|f| json!({
                                     "position": f.position,
                                     "name": format!("{} {}", f.identity.name, f.identity.first_name).trim().to_string(),
+                                    "score": f.score,
                                 })).collect::<Vec<_>>(),
                             })
                         }).collect::<Vec<_>>(),
                     })
                 }).collect::<Vec<_>>(),
-                "bracket": blank_brackets(self, &sizes, fenced),
+                "bracket": blank_brackets(self, &sizes, fenced, self.youth_real_tables(*g)),
             })
         })
         .collect();

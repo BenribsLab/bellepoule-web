@@ -1,6 +1,42 @@
-# BellePoule Web
+# ManageComp — serveur
 
-## Évolution SmartPoule : chrono et cartons (22/10/2026)
+ManageComp est un logiciel libre de gestion de compétitions d'escrime, dérivé de
+**BellePoule** (© 2009-2013 Yannick Le Roux), publié sous **GNU GPL version 3 ou
+ultérieure** (voir `LICENSE` et `CREDITS.md`).
+
+Ce dépôt contient tout le serveur, déployé avec Docker :
+
+| Dossier | Rôle | Technologie | Domaine |
+|---|---|---|---|
+| `bellepoule-web-api/` | API : compétitions (appel, poules, tableaux, classements, entraînement des jeunes, équipes), organisation, arbitres sur téléphone, scores en direct. Contient sa propre copie du cœur (`bp-core`). | Rust, axum | `api.managecomp.org` |
+| `bellepoule-client/` | Version en ligne dans le navigateur ; relaie `/api` vers l'API. | Rust → WebAssembly (Leptos), nginx | `app.`, `arbitre.`, `live.` |
+| `site/` | Site public et documentation, multilingue. | Zola, nginx | `managecomp.org` |
+
+## Lancer
+
+```sh
+cp .env.example .env          # puis renseigner BP_ADMIN_KEY (openssl rand -hex 32)
+docker compose up -d --build
+```
+
+- Version en ligne : <http://127.0.0.1:8090> ; site : <http://127.0.0.1:8091>.
+- Les ports n'écoutent que sur la machine : Apache (ISPConfig, Let's Encrypt) sert les
+  domaines en HTTPS. Directives : `site/content/docs/serveur.md`.
+- Les compétitions sont enregistrées au format `.cotcot` (compatible BellePoule) dans le
+  volume Docker `bellepoule-data` : elles survivent aux redémarrages et aux mises à jour.
+
+## Sécurité
+
+- conteneurs sans droits root, en lecture seule (sauf `/data` et `/tmp`), sans capacités
+  Linux, sans élévation de privilèges ;
+- en-têtes de sécurité (CSP stricte, HSTS, nosniff, pas d'affichage en cadre) ; dans le
+  client, seul le script de démarrage, identifié par son empreinte, peut s'exécuter ;
+- pas de CORS : le navigateur n'appelle l'API que par le même domaine ;
+- clés des clubs enregistrées sous forme d'empreinte SHA-256, comparées en temps constant ;
+  clé d'administration de 32 caractères au moins ;
+- vérification des dépendances : `cargo audit` (base RustSec).
+
+## Historique : chrono et cartons des arbitres (22/10/2026)
 
 Les sources de l'API et du client incluent désormais les paramètres de formule du chronomètre :
 poules 5 touches / 1 × 3 minutes, nouveaux tableaux 15 touches / 3 × 3 minutes. Durée et manches
@@ -18,27 +54,6 @@ La copie `bp-core` a été synchronisée depuis le bureau. Détails et état :
 **Cette évolution n'a pas été compilée/testée ni déployée par l'agent**, sur demande de l'utilisateur.
 L'API, le bureau et l'APK doivent être reconstruits ensemble par l'utilisateur ; aucun conteneur
 n'a été redémarré pendant ces modifications.
-
-BellePoule (gestion de compétitions d'escrime) en version web : une **API** et un **client** dans le
-navigateur, chacun dans son propre conteneur Docker. Les deux projets sont autonomes : le client ne
-parle à l'API qu'en HTTP/JSON.
-
-| Dossier | Rôle | Technologie |
-|---|---|---|
-| `bellepoule-web-api/` | Crée et gère les compétitions (appel, poules, tableaux, classements, entraînement des jeunes). Contient sa propre copie du cœur BellePoule (`bp-core`). | Rust, axum |
-| `bellepoule-client/` | Interface dans le navigateur. | Rust compilé en WebAssembly (Leptos), servi par nginx |
-
-## Lancer
-
-```sh
-docker compose up -d --build
-```
-
-Puis ouvrir <http://localhost:8090> (autre port : `BP_PORT=9000 docker compose up -d`).
-
-- Les compétitions sont enregistrées au format BellePoule (`.cotcot`) dans le volume Docker
-  `bellepoule-data` (dossier `/data` de l'API) : elles survivent aux redémarrages et aux mises à jour.
-- Le client relaie les appels `/api/...` vers l'API : seul le port du client est exposé.
 
 ## Réglages
 

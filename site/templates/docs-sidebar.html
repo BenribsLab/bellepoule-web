@@ -1,0 +1,10 @@
+{# Menu de la documentation : pages de la section, dans l'ordre (weight). #}
+{% set docs_section = get_section(path="docs/_index.md", lang=lang) %}
+<aside class="sidebar">
+  <a class="sidebar-title" href="{{ docs_section.permalink }}">{{ trans(key="docs", lang=lang) }}</a>
+  <ul>
+    {% for p in docs_section.pages %}
+      <li><a href="{{ p.permalink }}" class="{% if current_path is defined and p.path == current_path %}active{% endif %}">{{ p.title }}</a></li>
+    {% endfor %}
+  </ul>
+</aside>

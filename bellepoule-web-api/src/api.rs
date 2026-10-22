@@ -40,6 +40,7 @@ pub fn router(store: Shared) -> Router {
         .route("/api/contests/{id}/stages/{index}", get(stages::get_stage).post(stages::stage_action))
         .route("/api/contests/{id}/stages/{index}/group_sheets", get(stages::group_sheets))
         .route("/api/contests/{id}/stages/{index}/match_sheets", get(stages::match_sheets))
+        .route("/api/contests/{id}/stages/{index}/relay_sheets", get(stages::relay_sheets))
         // Organisation (pistes, arbitres, planning)
         .route("/api/organisation", get(organisation::get).post(organisation::action))
         .route("/api/organisation/import", post(organisation::import))

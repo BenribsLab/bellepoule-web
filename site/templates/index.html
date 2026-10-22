@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block languages %}
+  {% for code in ["fr", "en"] %}
+    <a href="{{ get_url(path='@/_index.md', lang=code) }}" class="{% if code == lang %}active{% endif %}">{{ code | upper }}</a>
+  {% endfor %}
+{% endblock languages %}
+
+{% block content %}
+<section class="hero">
+  <div class="wrap">
+    <h1>{{ section.extra.headline }}</h1>
+    <p class="lead">{{ section.extra.lead }}</p>
+    <p class="actions">
+      <a class="button" href="{{ get_url(path='@/telecharger.md', lang=lang) }}">{{ trans(key="download", lang=lang) }}</a>
+      <a class="button light" href="{{ config.extra.app_url }}">{{ trans(key="app", lang=lang) }}</a>
+      <a class="button light" href="{{ get_url(path='@/docs/_index.md', lang=lang) }}">{{ trans(key="docs", lang=lang) }}</a>
+    </p>
+  </div>
+</section>
+<section class="wrap features">
+  {% for f in section.extra.features %}
+    <article class="feature">
+      <h3>{{ f.title }}</h3>
+      <p>{{ f.text }}</p>
+    </article>
+  {% endfor %}
+</section>
+<section class="wrap prose">
+  {{ section.content | safe }}
+</section>
+{% endblock content %}

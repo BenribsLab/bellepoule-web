@@ -13,7 +13,7 @@ pub fn entries_with_suffix(bytes: &[u8], suffixes: &[&str]) -> Result<Vec<(Strin
     let mut out = Vec::new();
     for i in 0..archive.len() {
         let mut f = archive.by_index(i).map_err(|e| Error::Format(format!("archive ZIP : {e}")))?;
-        let name = f.name().to_string();
+        let name = f.name().map_err(|e| Error::Format(format!("archive ZIP : {e}")))?.to_string();
         if suffixes.iter().any(|s| name.ends_with(s)) {
             let mut data = Vec::new();
             f.read_to_end(&mut data)?;

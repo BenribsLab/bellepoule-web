@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+
+{% block title %}{{ page.title }} · {{ config.title }}{% endblock title %}
+
+{% block languages %}
+  {% for t in page.translations %}
+    <a href="{{ t.permalink }}" class="{% if t.lang == lang %}active{% endif %}">{{ t.lang | upper }}</a>
+  {% endfor %}
+{% endblock languages %}
+
+{% block content %}
+<div class="wrap narrow">
+  <article class="prose">
+    <h1>{{ page.title }}</h1>
+    {{ page.content | safe }}
+  </article>
+</div>
+{% endblock content %}

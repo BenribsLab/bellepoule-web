@@ -420,3 +420,19 @@ table.list.jobs td.center { text-align: center; }
 .live-waiting { position: absolute; top: 45%; width: 100%; text-align: center; font-size: 4vh; color: #aaa; }
 .live-piste { position: absolute; right: 1.5vw; bottom: 1.5vh; display: flex; align-items: center; gap: 0.8rem; font-size: 2.5vh; opacity: 0.6; }
 .live-piste button { background: #333; color: #fff; border: none; border-radius: 6px; font-size: 2.5vh; padding: 0.2rem 0.9rem; }
+
+/* Impression des groupes remplie */
+table.sheet.print td.cell { text-align: center; font-weight: 700; font-size: 0.8rem; }
+table.sheet.print td.cell.small { font-weight: 400; font-size: 0.65rem; }
+table.sheet.print td.cell.small.rank { font-weight: 800; }
+.pp-opp .pp-score { font-weight: 800; color: #00008b; min-width: 1.6em; text-align: right; }
+.bs-score { display: flex; align-items: center; justify-content: center; font-weight: 800; font-size: 12px; }
+
+/* Feuilles de match par équipes (relais) */
+.print-page.relay-page { padding: 6mm; }
+.print-page.relay-page svg { width: 100%; height: auto; display: block; }
+
+/* Pied de page : licence et crédits */
+.app-footer { text-align: center; font-size: 0.8rem; color: var(--muted); padding: 1.5rem 1rem; }
+body.print-groups .app-footer { display: none; }
+@media print { .app-footer { display: none; } }

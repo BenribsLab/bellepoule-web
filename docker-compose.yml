@@ -1,26 +1,56 @@
-# BellePoule Web : l'API et le client, chacun dans son conteneur.
-# Lancement : docker compose up -d --build   puis   http://localhost:8090 (port : BP_PORT)
+# ManageComp : API, version en ligne et site public (documentation), chacun
+# dans son conteneur. Tout se déploie avec :   docker compose up -d --build
+#
+# Les ports ne sont ouverts que sur la machine (127.0.0.1) : Apache, en
+# frontal, sert les domaines en HTTPS (voir site/content/docs/serveur.md).
+#   client (app., api., arbitre., live.)  →  127.0.0.1:${BP_PORT:-8090}
+#   site   (managecomp.org)               →  127.0.0.1:${SITE_PORT:-8091}
+
+# Durcissement commun : pas d'élévation de privilèges, aucune capacité Linux,
+# système de fichiers en lecture seule (sauf les répertoires temporaires).
+x-hardening: &hardening
+  restart: unless-stopped
+  read_only: true
+  security_opt:
+    - no-new-privileges:true
+  cap_drop:
+    - ALL
+
 services:
   api:
+    <<: *hardening
     build: ./bellepoule-web-api
-    restart: unless-stopped
     environment:
       BP_LANGUAGE: fr
       # Clé d'administration (création des clés des clubs) : fichier .env
       BP_ADMIN_KEY: ${BP_ADMIN_KEY:-}
     volumes:
       - bellepoule-data:/data
+    tmpfs:
+      - /tmp
     # L'API n'est pas exposée : le client la relaie sous /api.
 
   client:
+    <<: *hardening
     build: ./bellepoule-client
-    restart: unless-stopped
     environment:
       BP_API_URL: http://api:8080
     depends_on:
       - api
     ports:
-      - "${BP_PORT:-8090}:80"
+      - "127.0.0.1:${BP_PORT:-8090}:8080"
+    tmpfs:
+      - /tmp
+      # Configuration produite au démarrage (adresse de l'API).
+      - /etc/nginx/conf.d:mode=1777
+
+  site:
+    <<: *hardening
+    build: ./site
+    ports:
+      - "127.0.0.1:${SITE_PORT:-8091}:8080"
+    tmpfs:
+      - /tmp
 
 volumes:
   bellepoule-data:

@@ -36,6 +36,8 @@ pub struct PropertiesForm {
     pub date: RwSignal<String>,
     pub color: RwSignal<String>,
     pub team_event: RwSignal<bool>,
+    pub team_size: RwSignal<String>,
+    pub substitutes: RwSignal<String>,
 }
 
 impl PropertiesForm {
@@ -53,6 +55,8 @@ impl PropertiesForm {
             date: RwSignal::new(iso_date(&p.date)),
             color: RwSignal::new(p.color.clone()),
             team_event: RwSignal::new(p.team_event),
+            team_size: RwSignal::new(p.team_size.unwrap_or(3).to_string()),
+            substitutes: RwSignal::new(p.substitutes.unwrap_or(1).to_string()),
         }
     }
 
@@ -70,6 +74,8 @@ impl PropertiesForm {
             date: self.date.get(),
             color: self.color.get(),
             team_event: self.team_event.get(),
+            team_size: self.team_size.get().parse().ok(),
+            substitutes: self.substitutes.get().parse().ok(),
         }
     }
 }
@@ -152,6 +158,16 @@ pub fn PropertiesFields(form: PropertiesForm, meta: Meta, #[prop(default = true)
                 />
                 "Épreuve par équipes"
             </label>
+            <Show when=move || form.team_event.get()>
+                <label>
+                    "Tireurs par équipe"
+                    <input type="number" min="1" max="20" prop:value=move || form.team_size.get() on:input=move |ev| form.team_size.set(event_target_value(&ev)) />
+                </label>
+                <label>
+                    "Remplaçants"
+                    <input type="number" min="0" max="10" prop:value=move || form.substitutes.get() on:input=move |ev| form.substitutes.set(event_target_value(&ev)) />
+                </label>
+            </Show>
         </div>
     }
 }

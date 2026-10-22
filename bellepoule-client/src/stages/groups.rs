@@ -16,7 +16,14 @@ fn set_body_class(on: bool) {
 }
 
 #[component]
-pub fn GroupSheetsButton(ctx: StageCtx, #[prop(optional)] pool: Option<usize>) -> impl IntoView {
+pub fn GroupSheetsButton(
+    ctx: StageCtx,
+    #[prop(optional)] pool: Option<usize>,
+    /// Classement final imprimé avant les groupes (fin de l'épreuve).
+    #[prop(optional)]
+    ranking: Option<Value>,
+) -> impl IntoView {
+    let ranking = StoredValue::new(ranking);
     let sheets = RwSignal::new(None::<Value>);
     // Groupe à imprimer (numéro), ou tous (`None`).
     let only = RwSignal::new(None::<u64>);
@@ -74,6 +81,16 @@ pub fn GroupSheetsButton(ctx: StageCtx, #[prop(optional)] pool: Option<usize>) -
                                 }>"Imprimer"</button>
                                 <button class="light" on:click=close>"Fermer"</button>
                             </div>
+                            {ranking.get_value().map(|r| view! {
+                                <section class="print-page">
+                                    <header class="page-header">
+                                        <div><strong>{s(&v, "contest")}</strong><br />{s(&v, "header")}</div>
+                                        <div class="group-title">"Classement final"</div>
+                                        <div>{s(&v, "date")}</div>
+                                    </header>
+                                    {super::lists::youth_sections(r.as_array().cloned().unwrap_or_default())}
+                                </section>
+                            })}
                             {let v = v.clone(); move || arr(&v, "groups")
                                 .into_iter()
                                 .filter(|g| only.get().is_none_or(|n| u(g, "group") == n))
@@ -169,15 +186,15 @@ fn PrintPool(pool: Value) -> impl IntoView {
                                 <tr>
                                     <td class="name">{s(&r, "name")}</td>
                                     <td class="pos">{u(&r, "position")}</td>
-                                    {arr(&r, "grey").into_iter().map(|g| {
+                                    {arr(&r, "grey").into_iter().enumerate().map(|(j, g)| {
                                         let grey = g.as_bool().unwrap_or(false);
-                                        view! { <td class="cell" class:grey=grey></td> }
+                                        let text = r.get("cells").and_then(|c| c.get(j)).and_then(Value::as_str).unwrap_or("").to_string();
+                                        view! { <td class="cell" class:grey=grey>{text}</td> }
                                     }).collect_view()}
-                                    <td class="cell small"></td>
-                                    <td class="cell small"></td>
-                                    <td class="cell small"></td>
-                                    <td class="cell small"></td>
-                                    <td class="cell small"></td>
+                                    {(0..5).map(|k| {
+                                        let text = r.get("dashboard").and_then(|d| d.get(k)).and_then(Value::as_str).unwrap_or("").to_string();
+                                        view! { <td class="cell small" class:rank=k == 4>{text}</td> }
+                                    }).collect_view()}
                                 </tr>
                             }
                         })
@@ -207,6 +224,7 @@ fn PrintPool(pool: Value) -> impl IntoView {
                                             view! {
                                                 <div class="pp-opp">
                                                     <span>{format!("{} {}", u(&o, "position"), s(&o, "name"))}</span>
+                                                    <span class="pp-score">{s(&o, "score")}</span>
                                                     <span class="touches">{(1..=boxes).map(|i| view! { <span class="touch">{i}</span> }).collect_view()}</span>
                                                 </div>
                                             }
@@ -250,7 +268,7 @@ fn PrintBracket(bracket: Value) -> impl IntoView {
                         let pos = format!("left:{}px;top:{}px", num(&it, "x"), num(&it, "y"));
                         match s(&it, "t").as_str() {
                             "slot" => view! { <div class="bs-slot" style=format!("{pos};width:{}px;height:{}px", num(&it, "w"), num(&it, "h"))>{s(&it, "text")}</div> }.into_any(),
-                            "score" => view! { <div class="bs-score" style=format!("{pos};width:{}px;height:{}px", num(&it, "w"), num(&it, "h"))></div> }.into_any(),
+                            "score" => view! { <div class="bs-score" style=format!("{pos};width:{}px;height:{}px", num(&it, "w"), num(&it, "h"))>{s(&it, "text")}</div> }.into_any(),
                             "match" => view! { <div class="bs-match" style=pos>{s(&it, "text")}</div> }.into_any(),
                             _ => view! { <div class="bs-title" style=pos>{s(&it, "text")}</div> }.into_any(),
                         }

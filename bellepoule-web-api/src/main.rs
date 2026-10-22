@@ -21,7 +21,6 @@ mod view;
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use tower_http::cors::CorsLayer;
 use tower_http::trace::TraceLayer;
 
 fn env_or(key: &str, default: &str) -> String {
@@ -44,15 +43,17 @@ async fn main() -> std::io::Result<()> {
     }
 
     let store = store::Store::open(PathBuf::from(env_or("BP_DATA_DIR", "/data")))?;
-    if std::env::var("BP_ADMIN_KEY").map(|k| k.len() < 16).unwrap_or(true) {
+    if std::env::var("BP_ADMIN_KEY").map(|k| k.len() < 32).unwrap_or(true) {
         tracing::warn!("BP_ADMIN_KEY absente ou trop courte : la création des clés des clients est désactivée");
     }
+    // Pas d'en-têtes CORS : le navigateur n'appelle l'API que depuis le même
+    // domaine (le client la relaie sous /api) ; le logiciel de bureau et les
+    // écrans de piste ne sont pas des navigateurs.
     let app = api::router(Arc::new(tokio::sync::Mutex::new(store)))
-        .layer(CorsLayer::permissive())
         .layer(TraceLayer::new_for_http());
 
     let address = env_or("BP_ADDRESS", "0.0.0.0:8080");
     let listener = tokio::net::TcpListener::bind(&address).await?;
-    tracing::info!("BellePoule Web API à l'écoute sur {address}");
+    tracing::info!("API ManageComp à l'écoute sur {address}");
     axum::serve(listener, app).await
 }

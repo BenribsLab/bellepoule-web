@@ -237,6 +237,47 @@ impl CheckinStage {
         teams::find_team(store, &self.list, name)
     }
 
+    /// Le tireur `fencer` (ou un nouveau tireur) peut-il rejoindre l'équipe
+    /// `team_name` ? Une équipe compte au plus ses tireurs et ses remplaçants
+    /// (réglés à l'appel). Renvoie le message à afficher sinon.
+    pub fn team_full_error(&self, store: &PlayerStore, settings: &crate::stage::ContestSettings, fencer: Option<PlayerRef>, team_name: &str) -> Option<String> {
+        if !settings.team_event || team_name.trim().is_empty() {
+            return None;
+        }
+        let team = self.team_by_name(store, team_name)?;
+        let t = store.get(team)?;
+        if fencer.is_some_and(|f| t.members.contains(&f)) {
+            return None;
+        }
+        let capacity = settings.team_size + settings.substitutes;
+        (t.members.len() as u32 >= capacity).then(|| {
+            format!(
+                "L'équipe {} est complète : {} tireur(s) et {} remplaçant(s) au plus.",
+                t.name(),
+                settings.team_size,
+                settings.substitutes
+            )
+        })
+    }
+
+    /// Équipes venues (au moins un tireur présent) qui n'ont pas assez de
+    /// tireurs présents pour une rencontre : (nom, présents).
+    pub fn incomplete_teams(&self, store: &PlayerStore, settings: &crate::stage::ContestSettings) -> Vec<(String, u32)> {
+        if !settings.team_event {
+            return Vec::new();
+        }
+        self.list
+            .iter()
+            .filter_map(|r| store.get(*r))
+            .filter(|p| p.class == PlayerClass::Team)
+            .filter_map(|t| {
+                let present = t.members.iter().filter_map(|m| store.get(*m)).filter(|m| m.attending()).count() as u32;
+                // Équipe venue (un tireur au moins) mais incomplète.
+                ((t.attending() || present > 0) && present < settings.team_size).then(|| (t.name(), present))
+            })
+            .collect()
+    }
+
     /// `GetPlayerFromRef`.
     pub fn contains(&self, r: PlayerRef) -> bool {
         self.list.contains(&r)
@@ -838,6 +879,27 @@ impl CheckinStage {
 }
 
 impl Stage for CheckinStage {
+    /// Équipes auxquelles il manque des tireurs (avertissement).
+    fn error(&self, ctx: &StageContext) -> Option<crate::stage::StageError> {
+        let missing = self.incomplete_teams(ctx.players, ctx.settings);
+        if missing.is_empty() {
+            return None;
+        }
+        let size = ctx.settings.team_size;
+        let lines: Vec<String> = missing
+            .iter()
+            .map(|(name, present)| {
+                let n = size - present;
+                format!("{name} : il manque {n} tireur{} ({present} présent{} sur {size})", if n > 1 { "s" } else { "" }, if *present > 1 { "s" } else { "" })
+            })
+            .collect();
+        Some(crate::stage::StageError {
+            level: crate::stage::ErrorLevel::Warning,
+            message: lines.join("\n"),
+            guilty: Some(if missing.len() > 1 { format!("{} équipes incomplètes", missing.len()) } else { "Équipe incomplète".into() }),
+        })
+    }
+
     fn base(&self) -> &StageBase {
         &self.base
     }

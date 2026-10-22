@@ -72,7 +72,7 @@ mod tests {
         archive(&z, &f, "Table").unwrap();
         let a = ZipArchive::new(File::open(&z).unwrap()).unwrap();
         assert_eq!(a.len(), 2);
-        assert!(a.file_names().any(|n| n.starts_with("01-") && n.ends_with("-Table.cotcot")));
+        assert!(a.file_names().any(|n| n.is_ok_and(|n| n.starts_with("01-") && n.ends_with("-Table.cotcot"))));
         std::fs::remove_dir_all(&dir).ok();
     }
 }

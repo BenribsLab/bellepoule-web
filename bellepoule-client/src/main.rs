@@ -1,4 +1,4 @@
-//! BellePoule Web — client (navigateur).
+//! ManageComp — client web (navigateur).
 //!
 //! Navigation par l'adresse : `#/` (compétitions), `#/contest/<id>`.
 
@@ -103,7 +103,7 @@ fn App() -> impl IntoView {
 
     view! {
         <header class="topbar">
-            <a class="brand" href="#/">"BellePoule Web"</a>
+            <a class="brand" href="#/">"ManageComp"</a>
             <span class="subtitle">"Gestion de compétitions d'escrime"</span>
             <Show when=move || logged.get()>
                 <nav class="topnav">
@@ -126,6 +126,14 @@ fn App() -> impl IntoView {
                 }}
             </Show>
         </main>
+        <footer class="app-footer">
+            "ManageComp, logiciel libre (GNU GPL v3 ou ultérieure) dérivé de "
+            <a href="http://betton.escrime.free.fr" target="_blank" rel="noopener">"BellePoule"</a>
+            " de Yannick Le Roux · "
+            <a href="https://managecomp.org/docs/licence/" target="_blank" rel="noopener">"Licence et crédits"</a>
+            " · "
+            <a href="https://github.com/BenribsLab" target="_blank" rel="noopener">"Code source"</a>
+        </footer>
     }
 }
 

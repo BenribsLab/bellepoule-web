@@ -31,8 +31,12 @@ fn param(name: &str) -> Option<String> {
 }
 
 /// La page est-elle le tableau d'affichage ?
+/// La page est-elle le tableau d'affichage ? Sous-domaine `live.` (par
+/// exemple live.managecomp.org), ou chemin `/live/` sur les autres domaines.
 pub fn is_live_page() -> bool {
-    web_sys::window().and_then(|w| w.location().pathname().ok()).is_some_and(|p| p.trim_end_matches('/').ends_with("/live"))
+    let Some(location) = web_sys::window().map(|w| w.location()) else { return false };
+    location.hostname().is_ok_and(|h| h.starts_with("live."))
+        || location.pathname().is_ok_and(|p| p.trim_end_matches('/').ends_with("/live"))
 }
 
 #[component]

@@ -112,6 +112,11 @@ pub struct Properties {
     pub color: String,
     #[serde(default)]
     pub team_event: bool,
+    /// Compétition par équipes : tireurs et remplaçants d'une équipe.
+    #[serde(default)]
+    pub team_size: Option<u32>,
+    #[serde(default)]
+    pub substitutes: Option<u32>,
 }
 
 fn properties_of(c: &Contest) -> Properties {
@@ -128,6 +133,8 @@ fn properties_of(c: &Contest) -> Properties {
         date: format!("{:02}/{:02}/{}", c.day, c.month, c.year),
         color: c.color.clone(),
         team_event: c.settings.team_event,
+        team_size: Some(c.settings.team_size),
+        substitutes: Some(c.settings.substitutes),
     }
 }
 
@@ -171,6 +178,9 @@ fn apply(c: &mut Contest, p: &Properties) -> Result<(), ApiError> {
     // Le type d'épreuve ne change plus une fois l'appel commencé.
     if c.schedule.current_index() == 0 && c.players.is_empty() {
         c.set_team_event(p.team_event);
+    }
+    if let (Some(size), Some(subs)) = (p.team_size, p.substitutes) {
+        c.set_team_size(size, subs);
     }
     c.apply_properties(None);
     Ok(())

@@ -115,6 +115,13 @@ pub async fn add_fencer(State(store): State<Shared>, client: Client, Path(id): P
             if player.name().trim().is_empty() {
                 return Err(bad_request("le nom est obligatoire"));
             }
+            if let Some(team) = input.values.get("team").map(|t| t.trim().to_string()).filter(|t| !t.is_empty()) {
+                let settings = c.settings.clone();
+                if let Some(message) = c.schedule.checkin().and_then(|ch| ch.team_full_error(&c.players, &settings, None, &team)) {
+                    return Err(bad_request(message));
+                }
+            }
+
             c.with_schedule(|s, ctx| s.checkin_mut().map(|ch| ch.form_new_player(ctx, player)));
             checkin_view(c).ok_or_else(not_found)
         })
@@ -146,6 +153,12 @@ pub async fn update_fencer(
             check_open(c)?;
             if c.players.get(reference).is_none() {
                 return Err(not_found());
+            }
+            if let Some(team) = input.values.get("team").map(|t| t.trim().to_string()).filter(|t| !t.is_empty()) {
+                let settings = c.settings.clone();
+                if let Some(message) = c.schedule.checkin().and_then(|ch| ch.team_full_error(&c.players, &settings, Some(reference), &team)) {
+                    return Err(bad_request(message));
+                }
             }
             c.with_schedule(|s, ctx| {
                 if let Some(ch) = s.checkin_mut() {

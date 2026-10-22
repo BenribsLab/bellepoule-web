@@ -1,0 +1,5 @@
+public/
+*.md.bak
+README.md
+Dockerfile
+.dockerignore

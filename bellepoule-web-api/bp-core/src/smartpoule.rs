@@ -199,7 +199,9 @@ impl Contest {
                                     "name": format!("{} {}", f.identity.name, f.identity.first_name).trim().to_string(),
                                     "club": f.identity.club,
                                     "score": f.score,
+                                    "members": self.team_members(f.player),
                                 })).collect::<Vec<_>>(),
+                                "relay_log": pool.matches().get(m.match_index).and_then(|x| x.bout.relay.as_ref()),
                                 "over": pool.matches().get(m.match_index).map(|x| x.bout.is_over()).unwrap_or(false),
                                 "officiating": pool.matches().get(m.match_index).and_then(|x| x.bout.officiating.as_ref()),
                             })
@@ -216,6 +218,8 @@ impl Contest {
                         // `round` est déjà verrouillé : le getter de la phase
                         // reprendrait le même Mutex et bloquerait la synchro.
                         "timing": round.bout_timing,
+                        // Rencontres par équipes : format des relais.
+                        "relay": self.settings.team_event.then(|| { let mut f = round.bout_timing.relay; f.team_size = self.settings.team_size; f.substitutes = self.settings.substitutes; f }),
                         "fencers": sheet.rows.iter().map(|r| json!({
                             "position": r.position,
                             "name": format!("{} {}", r.identity.name, r.identity.first_name).trim().to_string(),
@@ -245,7 +249,7 @@ impl Contest {
                         .filter_map(|k| {
                             let f = m.opponent(k)?;
                             let (name, club) = identity(&self.players, f);
-                            Some(json!({ "reference": f, "position": k + 1, "name": name, "club": club, "score": m.score_at(k).image(m.max_score) }))
+                            Some(json!({ "reference": f, "position": k + 1, "name": name, "club": club, "score": m.score_at(k).image(m.max_score), "members": self.team_members(f) }))
                         })
                         .collect();
                     return Some(json!({
@@ -257,7 +261,8 @@ impl Contest {
                         "piste": if m.piste != 0 { format!("{:02}", m.piste) } else { String::new() },
                         "max_score": m.max_score,
                         "timing": stage.bout_timing(),
-                        "bouts": [{ "index": 0, "name": m.name, "piste": Some(m.piste).filter(|p| *p != 0), "fencers": fencers, "over": m.is_over(), "officiating": m.officiating }],
+                        "relay": self.settings.team_event.then(|| { let mut f = stage.bout_timing().relay; f.team_size = self.settings.team_size; f.substitutes = self.settings.substitutes; f }),
+                        "bouts": [{ "index": 0, "name": m.name, "piste": Some(m.piste).filter(|p| *p != 0), "fencers": fencers, "over": m.is_over(), "officiating": m.officiating, "relay_log": m.relay }],
                         "over": m.is_over(),
                     }));
                 }
@@ -338,8 +343,44 @@ impl Contest {
 
 
 impl Contest {
+    /// Membres d'une équipe (« NOM Prénom »), pour la composition de la rencontre.
+    pub fn team_members(&self, team: crate::player::PlayerRef) -> Vec<String> {
+        self.players
+            .get(team)
+            .map(|t| {
+                t.members
+                    .iter()
+                    .filter_map(|m| self.players.get(*m))
+                    .map(|p| format!("{} {}", p.name(), p.str_attr("first_name").unwrap_or_default()).trim().to_string())
+                    .collect()
+            })
+            .unwrap_or_default()
+    }
+
     /// Enregistre le chronomètre arrêté et le journal des cartons sans valider le score.
     pub fn smartpoule_apply_officiating(&mut self, token: &str, bout: usize, state: crate::officiating::Officiating) -> Result<(), String> {
+        self.smartpoule_edit_match(token, bout, move |m, timing| apply_officiating(m, timing, state))
+    }
+
+    /// Rencontre par équipes : enregistre le journal des relais (équipe du
+    /// haut, composition, scores cumulés) sans valider le score.
+    pub fn smartpoule_apply_relay(&mut self, token: &str, bout: usize, log: crate::relay::RelayLog) -> Result<(), String> {
+        self.smartpoule_edit_match(token, bout, move |m, _| {
+            log.validate()?;
+            if let Some(old) = &m.relay {
+                if old == &log { return Ok(()); }
+                if log.revision <= old.revision { return Err("une version plus récente de la rencontre existe : recharger sa feuille".into()); }
+            }
+            if log.scores().is_some_and(|s| s.iter().any(|x| *x > m.max_score)) {
+                return Err(format!("score au-delà du maximum de la rencontre ({})", m.max_score));
+            }
+            m.relay = Some(log);
+            Ok(())
+        })
+    }
+
+    /// Match désigné par un jeton SmartPoule, modifié par `edit`.
+    fn smartpoule_edit_match(&mut self, token: &str, bout: usize, edit: impl FnOnce(&mut Match, crate::officiating::BoutTiming) -> Result<(), String>) -> Result<(), String> {
         let parts: Vec<_> = token.split('~').collect();
         if parts.get(1).and_then(|s| s.parse::<u32>().ok()) != Some(self.net_id) { return Err("compétition invalide".into()); }
         let stage_id = parts.get(2).and_then(|s| s.parse::<u32>().ok()).ok_or("jeton invalide")?;
@@ -355,7 +396,7 @@ impl Contest {
                 let mut round = shared.lock().unwrap_or_else(|e| e.into_inner());
                 let pool = round.pools_mut().iter_mut().find(|p| p.number() == number).ok_or("poule introuvable")?;
                 let m = pool.bout_mut(bout).ok_or("match introuvable")?;
-                apply_officiating(m, timing, state)?;
+                edit(m, timing)?;
                 drop(round);
                 self.dirty = true;
                 return Ok(());
@@ -369,7 +410,7 @@ impl Contest {
                 let set = sup.table_set_by_id(set_id).ok_or("tableau introuvable")?;
                 let node = sup.table_set(set).node_from_path(path).ok_or("match introuvable")?;
                 let m = sup.table_set_mut(set).bout_mut(node).ok_or("match introuvable")?;
-                apply_officiating(m, timing, state)?;
+                edit(m, timing)?;
                 self.dirty = true;
                 return Ok(());
             }

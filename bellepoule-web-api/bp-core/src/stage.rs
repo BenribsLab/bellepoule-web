@@ -104,6 +104,10 @@ pub struct ContestSettings {
     pub gender: String,
     pub team_event: bool,
     pub minimum_team_size: u32,
+    /// Tireurs d'une équipe dans une rencontre (fixé à l'appel).
+    pub team_size: u32,
+    /// Remplaçants d'une équipe (fixé à l'appel).
+    pub substitutes: u32,
     pub default_classification: u32,
     pub manual_classification: bool,
     /// « ScoreAleatoire » : saisie automatique de scores (tests).
@@ -117,6 +121,8 @@ impl Default for ContestSettings {
             gender: "M".into(),
             team_event: false,
             minimum_team_size: 3,
+            team_size: 3,
+            substitutes: 1,
             default_classification: 10000,
             manual_classification: false,
             score_stuffing_allowed: false,
@@ -206,7 +212,7 @@ impl StageBase {
             locked: false,
             rand_seed: 0,
             max_score: None,
-            bout_timing: crate::officiating::BoutTiming { period_seconds: 180, periods: if kind == StageKind::TableSupervisor { 3 } else { 1 } },
+            bout_timing: crate::officiating::BoutTiming { period_seconds: 180, periods: if kind == StageKind::TableSupervisor { 3 } else { 1 }, relay: Default::default() },
             nb_qualified: None,
             net_id: 0,
             attendees: Vec::new(),

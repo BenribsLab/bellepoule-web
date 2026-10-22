@@ -1,0 +1,64 @@
+# Site public de ManageComp : présentation, téléchargement et documentation.
+# Construit avec Zola (https://www.getzola.org). Langue par défaut : français.
+# Ajouter une langue : un bloc [languages.xx] ci-dessous, puis les fichiers
+# `*.xx.md` dans content/ (voir README.md).
+
+base_url = "https://managecomp.org"
+title = "ManageComp"
+description = "Logiciel libre de gestion de compétitions d'escrime"
+default_language = "fr"
+compile_sass = false
+build_search_index = false
+generate_feeds = false
+
+[markdown]
+highlight_code = false
+smart_punctuation = true
+
+[extra]
+# Adresses de l'infrastructure.
+app_url = "https://app.managecomp.org"
+arbitre_url = "https://arbitre.managecomp.org"
+live_url = "https://live.managecomp.org"
+source_url = "https://github.com/BenribsLab"
+bellepoule_url = "http://betton.escrime.free.fr"
+releases_url = "https://github.com/BenribsLab/bellepoule-rust/releases"
+
+# Libellés de l'interface (français).
+[translations]
+home = "Accueil"
+docs = "Documentation"
+download = "Télécharger"
+app = "Version en ligne"
+language = "Langue"
+on_this_page = "Dans cette page"
+previous = "Précédent"
+next = "Suivant"
+edit_source = "Code source"
+footer_free = "ManageComp est un logiciel libre publié sous licence GNU GPL version 3 ou ultérieure."
+footer_credit = "Il est dérivé de BellePoule © 2009-2013 Yannick Le Roux, logiciel libre sous la même licence."
+footer_credits_link = "Licence et crédits"
+docs_intro = "Tout ce qu'il faut pour organiser une compétition avec ManageComp."
+read_more = "Lire la suite"
+
+[languages.en]
+title = "ManageComp"
+description = "Free software to run fencing competitions"
+generate_feeds = false
+build_search_index = false
+
+[languages.en.translations]
+home = "Home"
+docs = "Documentation"
+download = "Download"
+app = "Online version"
+language = "Language"
+on_this_page = "On this page"
+previous = "Previous"
+next = "Next"
+edit_source = "Source code"
+footer_free = "ManageComp is free software released under the GNU GPL version 3 or later."
+footer_credit = "It is derived from BellePoule © 2009-2013 Yannick Le Roux, free software under the same license."
+footer_credits_link = "License and credits"
+docs_intro = "Everything you need to run a competition with ManageComp."
+read_more = "Read more"

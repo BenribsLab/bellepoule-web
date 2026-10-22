@@ -79,9 +79,9 @@ impl FromRequestParts<Shared> for Admin {
     type Rejection = ApiError;
 
     async fn from_request_parts(parts: &mut Parts, _state: &Shared) -> Result<Self, Self::Rejection> {
-        let expected = std::env::var("BP_ADMIN_KEY").ok().filter(|k| k.len() >= 16);
+        let expected = std::env::var("BP_ADMIN_KEY").ok().filter(|k| k.len() >= 32);
         let Some(expected) = expected else {
-            return Err(ApiError(StatusCode::FORBIDDEN, "administration désactivée : définir BP_ADMIN_KEY (16 caractères au moins)".into()));
+            return Err(ApiError(StatusCode::FORBIDDEN, "administration désactivée : définir BP_ADMIN_KEY (32 caractères au moins)".into()));
         };
         let key = presented_key(parts).ok_or_else(unauthorized)?;
         if same(&key, &expected) {

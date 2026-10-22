@@ -182,6 +182,10 @@ pub struct Properties {
     pub date: String,
     pub color: String,
     pub team_event: bool,
+    #[serde(default)]
+    pub team_size: Option<u32>,
+    #[serde(default)]
+    pub substitutes: Option<u32>,
 }
 
 #[derive(Clone, Debug, Serialize)]

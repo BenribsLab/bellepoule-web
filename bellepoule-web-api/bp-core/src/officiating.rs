@@ -4,11 +4,15 @@ use crate::xml::XmlWriter;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct BoutTiming {
+    /// Durée d'une manche ; pour une rencontre par équipes, temps maximum d'un relais.
     pub period_seconds: u32,
     pub periods: u32,
+    /// Rencontres par équipes : type de relais, taille des équipes, points par relais.
+    #[serde(default)]
+    pub relay: crate::relay::RelayFormat,
 }
 impl Default for BoutTiming {
-    fn default() -> Self { Self { period_seconds: 180, periods: 1 } }
+    fn default() -> Self { Self { period_seconds: 180, periods: 1, relay: Default::default() } }
 }
 impl BoutTiming {
     pub fn validate(&self) -> Result<(), String> {
@@ -18,15 +22,19 @@ impl BoutTiming {
         Ok(())
     }
     pub fn load(&mut self, node: roxmltree::Node) {
+        let mut relay = self.relay;
+        relay.load(node);
         let value = Self {
             period_seconds: crate::xml::attr_u32(node, "DureeManche", self.period_seconds),
             periods: crate::xml::attr_u32(node, "NbManches", self.periods),
+            relay,
         };
         if value.validate().is_ok() { *self = value; }
     }
     pub fn save(&self, w: &mut XmlWriter) {
         w.attr_fmt("DureeManche", self.period_seconds);
         w.attr_fmt("NbManches", self.periods);
+        self.relay.save(w);
     }
 }
 
