@@ -484,6 +484,55 @@ impl Schedule {
         true
     }
 
+    /// Bloc d'une phase dans la formule : la phase et son fournisseur
+    /// d'entrée (composition + tour de poules).
+    fn block_of(&self, index: usize) -> Option<std::ops::RangeInclusive<usize>> {
+        let stage = self.stages.get(index)?;
+        if stage.is_input_provider() && index + 1 < self.stages.len() {
+            return Some(index..=index + 1);
+        }
+        if stage.input_provider().is_some() && index > 0 && self.stages[index - 1].is_input_provider() {
+            return Some(index - 1..=index);
+        }
+        Some(index..=index)
+    }
+
+    /// Un bloc peut changer de place : phase supprimable, pas encore jouée.
+    fn block_movable(&self, block: &std::ops::RangeInclusive<usize>) -> bool {
+        *block.start() > self.current_stage && self.can_remove(*block.end()) && block.clone().all(|i| !self.stages[i].base().locked)
+    }
+
+    /// Blocs à échanger pour monter (`up`) ou descendre la phase `index`.
+    fn move_blocks(&self, index: usize, up: bool) -> Option<(std::ops::RangeInclusive<usize>, std::ops::RangeInclusive<usize>)> {
+        let mine = self.block_of(index)?;
+        let other = if up {
+            self.block_of(mine.start().checked_sub(1)?)?
+        } else {
+            self.block_of(mine.end() + 1)?
+        };
+        (self.block_movable(&mine) && self.block_movable(&other)).then_some((mine, other))
+    }
+
+    /// La phase peut-elle monter (`up`) ou descendre d'un cran dans la formule ?
+    pub fn can_move(&self, index: usize, up: bool) -> bool {
+        self.move_blocks(index, up).is_some()
+    }
+
+    /// Échange la phase (avec sa composition de poules) et sa voisine.
+    /// Renvoie le nouvel index de la phase.
+    pub fn move_user_stage(&mut self, index: usize, up: bool) -> Option<usize> {
+        let (mine, other) = self.move_blocks(index, up)?;
+        let (first, second) = if up { (other, mine.clone()) } else { (mine.clone(), other) };
+        let first_len = first.end() - first.start() + 1;
+        self.stages[*first.start()..=*second.end()].rotate_left(first_len);
+        self.after_structure_change();
+        for i in 0..self.stages.len() {
+            self.give_name(i);
+        }
+        let offset = index - mine.start();
+        Some(if up { *first.start() + offset } else { *first.start() + (second.end() - second.start() + 1) + offset })
+    }
+
     /// Applique la renumérotation faite par le pointage aux autres phases.
     pub fn apply_renumbering(&mut self, ctx: &mut StageContext) {
         let _ = ctx;

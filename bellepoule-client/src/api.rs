@@ -200,6 +200,10 @@ pub struct StageInfo {
     pub locked: bool,
     #[serde(default)]
     pub removable: bool,
+    #[serde(default)]
+    pub can_up: bool,
+    #[serde(default)]
+    pub can_down: bool,
 }
 
 #[derive(Clone, Debug, PartialEq, Deserialize)]

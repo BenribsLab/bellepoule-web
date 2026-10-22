@@ -16,14 +16,24 @@ fn set_body_class(on: bool) {
 }
 
 #[component]
-pub fn GroupSheetsButton(ctx: StageCtx) -> impl IntoView {
+pub fn GroupSheetsButton(ctx: StageCtx, #[prop(optional)] pool: Option<usize>) -> impl IntoView {
     let sheets = RwSignal::new(None::<Value>);
+    // Groupe à imprimer (numéro), ou tous (`None`).
+    let only = RwSignal::new(None::<u64>);
     let open = move |_| {
         let path = format!("{}/group_sheets", ctx.path.get_value());
         spawn_local(async move {
             match api::get::<Value>(&path).await {
                 Ok(v) => {
                     set_body_class(true);
+                    // Par défaut : le groupe de la poule affichée.
+                    let group = pool.and_then(|p| {
+                        arr(&v, "groups")
+                            .into_iter()
+                            .find(|g| arr(g, "indices").iter().any(|i| i.as_u64() == Some(p as u64)))
+                            .map(|g| u(&g, "group"))
+                    });
+                    only.set(group);
                     sheets.set(Some(v));
                 }
                 Err(e) => alert(&e.message),
@@ -35,7 +45,7 @@ pub fn GroupSheetsButton(ctx: StageCtx) -> impl IntoView {
         sheets.set(None);
     };
     view! {
-        <button class="light" on:click=open>"Feuilles des groupes"</button>
+        <button class="light" title="Une page par groupe : ses poules et son tableau" on:click=open>"Imprimer"</button>
         {move || {
             sheets
                 .get()
@@ -47,6 +57,16 @@ pub fn GroupSheetsButton(ctx: StageCtx) -> impl IntoView {
                             <div class="print-bar">
                                 <strong>"Une feuille par groupe : ses poules et son tableau"</strong>
                                 <span class="spacer"></span>
+                                <select on:change=move |ev| only.set(event_target_value(&ev).parse().ok())>
+                                    <option value="" selected=move || only.get().is_none()>"Tous les groupes"</option>
+                                    {arr(&v, "groups")
+                                        .into_iter()
+                                        .map(|g| {
+                                            let n = u(&g, "group");
+                                            view! { <option value=n.to_string() selected=move || only.get() == Some(n)>{format!("Seulement le groupe {n}")}</option> }
+                                        })
+                                        .collect_view()}
+                                </select>
                                 <button on:click=move |_| {
                                     if let Some(w) = web_sys::window() {
                                         let _ = w.print();
@@ -54,8 +74,9 @@ pub fn GroupSheetsButton(ctx: StageCtx) -> impl IntoView {
                                 }>"Imprimer"</button>
                                 <button class="light" on:click=close>"Fermer"</button>
                             </div>
-                            {arr(&v, "groups")
+                            {let v = v.clone(); move || arr(&v, "groups")
                                 .into_iter()
+                                .filter(|g| only.get().is_none_or(|n| u(g, "group") == n))
                                 .map(|g| {
                                     view! {
                                         <section class="print-page">
@@ -65,7 +86,20 @@ pub fn GroupSheetsButton(ctx: StageCtx) -> impl IntoView {
                                                     <br />
                                                     {s(&v, "header")}
                                                 </div>
-                                                <div class="group-title">{format!("Groupe {}", u(&g, "group"))}</div>
+                                                <div class="group-title">
+                                                    {format!("Groupe {}", u(&g, "group"))}
+                                                    {
+                                                        let mut all: Vec<String> = Vec::new();
+                                                        for p in arr(&g, "pools") {
+                                                            for name in referee_names(&p) {
+                                                                if !all.contains(&name) {
+                                                                    all.push(name);
+                                                                }
+                                                            }
+                                                        }
+                                                        (!all.is_empty()).then(|| view! { <div class="group-referees">{format!("Arbitres : {}", all.join(" · "))}</div> })
+                                                    }
+                                                </div>
                                                 <div>{s(&v, "date")}</div>
                                             </header>
                                             <div class="page-pools">
@@ -84,16 +118,33 @@ pub fn GroupSheetsButton(ctx: StageCtx) -> impl IntoView {
     }
 }
 
+/// « DUPONT Hugo (CLUB B) » pour chaque arbitre de la poule.
+fn referee_names(pool: &Value) -> Vec<String> {
+    arr(pool, "referees")
+        .iter()
+        .map(|r| {
+            let club = s(r, "club");
+            if club.is_empty() { s(r, "name") } else { format!("{} ({club})", s(r, "name")) }
+        })
+        .collect()
+}
+
 #[component]
 fn PrintPool(pool: Value) -> impl IntoView {
     let rows = arr(&pool, "rows");
     let n = rows.len();
+    let referees = referee_names(&pool);
+    let dispatch = arr(&pool, "matches").iter().any(|m| !s(m, "referee").is_empty() || m.get("piste").is_some_and(|p| !p.is_null()));
     view! {
         <div class="print-pool">
             <div class="pp-head">
                 <strong>{s(&pool, "name")}</strong>
-                <span class="box-label">"Arbitre"</span>
-                <span class="box-line"></span>
+                <span class="box-label">{if referees.len() > 1 { "Arbitres" } else { "Arbitre" }}</span>
+                {if referees.is_empty() {
+                    view! { <span class="box-line"></span> }.into_any()
+                } else {
+                    view! { <span class="pp-referees">{referees.join(" · ")}</span> }.into_any()
+                }}
                 <span class="box-label">"Piste"</span>
                 <span class="box-line short">{pool.get("piste").and_then(Value::as_str).unwrap_or("").to_string()}</span>
             </div>
@@ -141,6 +192,13 @@ fn PrintPool(pool: Value) -> impl IntoView {
                         view! {
                             <div class="pp-bout">
                                 <strong>{s(&m, "name")}</strong>
+                                {dispatch.then(|| view! {
+                                    <span class="pp-res">
+                                        {m.get("piste").and_then(Value::as_u64).map(|p| format!("Piste {p:02}")).unwrap_or_default()}
+                                        <br />
+                                        <b>{s(&m, "referee")}</b>
+                                    </span>
+                                })}
                                 <div style="white-space:pre-line;font-size:10px">{s(&m, "officiating")}</div>
                                 <div>
                                     {arr(&m, "opponents")

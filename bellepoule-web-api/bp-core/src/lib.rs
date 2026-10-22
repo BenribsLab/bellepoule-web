@@ -27,6 +27,7 @@ pub mod rounds;
 // Formats d'import/export
 pub mod formats;
 pub mod net;
+pub mod group_sheets;
 pub mod smartpoule;
 
 pub use player::{Owner, Player, PlayerClass, PlayerRef, PlayerStore};

@@ -59,8 +59,8 @@ pub fn Pools(ctx: StageCtx) -> impl IntoView {
                             <button class="light" class:active=move || view_mode.get() == "sheet" on:click=move |_| view_mode.set("sheet")>"Feuille"</button>
                             <button class="light" class:active=move || view_mode.get() == "ranking" on:click=move |_| view_mode.set("ranking")>"Classement"</button>
                             <button class="light" class:active=move || view_mode.get() == "current" on:click=move |_| view_mode.set("current")>"Classement du tour"</button>
-                            {youth.then(|| view! { <super::groups::GroupSheetsButton ctx=ctx /> })}
-                            <PrintButton />
+                            // Entraînement des jeunes : on imprime toujours le groupe complet.
+                            {if youth { view! { <super::groups::GroupSheetsButton ctx=ctx pool=u(pool.as_ref().unwrap_or(&Value::Null), "index") as usize /> }.into_any() } else { view! { <PrintButton /> }.into_any() }}
                         </div>
                         {move || match view_mode.get() {
                             "ranking" => view! { <ListTable list=classification.clone() /> }.into_any(),

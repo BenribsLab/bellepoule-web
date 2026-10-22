@@ -54,6 +54,8 @@ struct Org {
     selected_referees: RwSignal<Vec<u64>>,
     editing: RwSignal<Option<Value>>,
     assigning: RwSignal<bool>,
+    /// « Placer un groupe » : (compétition, lot, groupe proposé).
+    placing_group: RwSignal<Option<(u64, u64, u64)>>,
 }
 
 impl Org {
@@ -87,6 +89,54 @@ impl Org {
     }
 }
 
+/// Arbitres de `referees` du même club qu'un tireur des matchs `jobs` :
+/// une ligne par cas, à faire confirmer.
+fn club_conflicts(data: &Value, jobs: &[u64], referees: &[u64]) -> Vec<String> {
+    let norm = |x: &str| x.trim().to_lowercase();
+    let members: Vec<Value> = arr(data, "referees").iter().flat_map(|l| arr(l, "members")).collect();
+    let mut out = Vec::new();
+    for c in arr(data, "competitions") {
+        for bt in arr(&c, "batches") {
+            for j in arr(&bt, "jobs") {
+                if !jobs.contains(&u(&j, "key")) {
+                    continue;
+                }
+                for r in referees {
+                    let Some(m) = members.iter().find(|m| u(m, "reference") == *r) else { continue };
+                    let club = s(m, "club");
+                    if norm(&club).is_empty() {
+                        continue;
+                    }
+                    let fencers: Vec<String> = arr(&j, "fencers").iter().filter(|f| norm(&s(f, "club")) == norm(&club)).map(|f| s(f, "name")).collect();
+                    if !fencers.is_empty() {
+                        out.push(format!("• {} {} ({}) : même club que {} ({})", s(m, "name"), s(m, "first_name"), club, fencers.join(", "), s(&j, "name")));
+                    }
+                }
+            }
+        }
+    }
+    out
+}
+
+/// Vrai s'il n'y a pas de conflit de club, ou si l'utilisateur confirme.
+fn confirm_clubs(org: Org, jobs: &[u64], referees: &[u64]) -> bool {
+    let lines = org.data.get_untracked().map(|d| club_conflicts(&d, jobs, referees)).unwrap_or_default();
+    lines.is_empty() || confirm(&format!("Arbitre du même club qu'un tireur :\n\n{}\n\nAffecter quand même ?", lines.join("\n")))
+}
+
+/// Matchs d'un groupe d'un lot.
+fn group_jobs(data: &Value, competition: u64, batch: u64, group: u64) -> Vec<u64> {
+    arr(data, "competitions")
+        .iter()
+        .filter(|c| u(c, "id") == competition)
+        .flat_map(|c| arr(c, "batches"))
+        .filter(|bt| u(bt, "id") == batch)
+        .flat_map(|bt| arr(&bt, "jobs"))
+        .filter(|j| u(j, "group") == group)
+        .map(|j| u(&j, "key"))
+        .collect()
+}
+
 #[component]
 pub fn Organisation() -> impl IntoView {
     let org = Org {
@@ -102,6 +152,7 @@ pub fn Organisation() -> impl IntoView {
         selected_referees: RwSignal::new(Vec::new()),
         editing: RwSignal::new(None),
         assigning: RwSignal::new(false),
+        placing_group: RwSignal::new(None),
     };
     org.reload();
     // Avancement des matchs et horloge
@@ -131,6 +182,7 @@ pub fn Organisation() -> impl IntoView {
                         <JobDetail org=org d=d.clone() />
                         <RefereeForm org=org />
                         <AssignDialog org=org d=d.clone() />
+                        <GroupDialog org=org d=d.clone() />
                     }
                         .into_any()
                 }
@@ -522,58 +574,101 @@ fn BatchJobs(org: Org, comp: Value, bt: Value) -> impl IntoView {
                 </select>
             })}
         </div>
-        <table class="list jobs">
-            <tbody>
-                {arr(&bt, "jobs")
-                    .into_iter()
-                    .map(|j| {
-                        let key = u(&j, "key");
-                        let status = s(&j, "status");
-                        let icon = match status.as_str() {
-                            "pending" => "❓",
-                            "error" => "⚠",
-                            _ => "✔",
-                        };
-                        let placed = strings_of_pistes(&j);
-                        let warning = j.get("warning").and_then(Value::as_str).map(|w| format!("background:{w}")).unwrap_or_default();
-                        view! {
-                            <tr
-                                draggable="true"
-                                class:held=move || org.held_job.get() == Some(key)
-                                class:selected=move || org.selected_jobs.get().contains(&key)
-                                on:dragstart=move |ev: leptos::ev::DragEvent| {
-                                    if let Some(t) = ev.data_transfer() {
-                                        let _ = t.set_data("text/plain", &format!("job:{key}"));
-                                    }
+        {
+            let groups: Vec<u64> = arr(&bt, "groups").iter().filter_map(Value::as_u64).collect();
+            let mut jobs = arr(&bt, "jobs");
+            // Les matchs à placer d'abord, bien visibles.
+            jobs.sort_by_key(|j| b(j, "placed"));
+            let pending = jobs.iter().filter(|j| !b(j, "placed")).count();
+            let placed = jobs.len() - pending;
+            let has_groups = !groups.is_empty();
+            let first_group = groups.first().copied().unwrap_or(0);
+            view! {
+                <div class="jobs-summary">
+                    <span class="pill pending">{format!("{pending} à placer")}</span>
+                    <span class="pill placed">{format!("{placed} placé{}", if placed > 1 { "s" } else { "" })}</span>
+                    <span class="spacer"></span>
+                    {has_groups.then(|| view! {
+                        <button class="light" title="Entraînement des jeunes : placer toutes les poules d'un groupe sur une ou plusieurs pistes" on:click=move |_| {
+                            let current = org.selected_jobs.get_untracked().first().copied().and_then(|k| {
+                                org.data.get_untracked().and_then(|d| {
+                                    arr(&d, "competitions").iter().flat_map(|c| arr(c, "batches")).flat_map(|bt| arr(&bt, "jobs")).find(|j| u(j, "key") == k).map(|j| u(&j, "group"))
+                                })
+                            }).filter(|g| *g > 0).unwrap_or(first_group);
+                            org.placing_group.set(Some((c, id, current)));
+                        }>"Placer un groupe…"</button>
+                    })}
+                </div>
+                <table class="list jobs">
+                    <thead>
+                        <tr>
+                            <th>"État"</th>
+                            <th>"Match"</th>
+                            {has_groups.then(|| view! { <th>"Groupe"</th> })}
+                            <th>"Piste"</th>
+                            <th>"Heure"</th>
+                            <th>"Arbitres"</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {jobs
+                            .into_iter()
+                            .map(|j| {
+                                let key = u(&j, "key");
+                                let status = s(&j, "status");
+                                let is_placed = b(&j, "placed");
+                                let icon = match status.as_str() {
+                                    "pending" => "❓ ",
+                                    "error" => "⚠ ",
+                                    _ => "",
+                                };
+                                let state = if !is_placed { "À placer" } else if arr(&j, "pistes").is_empty() { "Arbitres seuls" } else { "Placé" };
+                                let placed_on = strings_of_pistes(&j);
+                                let warning = j.get("warning").and_then(Value::as_str).map(|w| format!("background:{w}")).unwrap_or_default();
+                                let group = j.get("group").and_then(Value::as_u64).map(|g| g.to_string()).unwrap_or_default();
+                                view! {
+                                    <tr
+                                        draggable="true"
+                                        class:to-place=!is_placed
+                                        class:held=move || org.held_job.get() == Some(key)
+                                        class:selected=move || org.selected_jobs.get().contains(&key)
+                                        on:dragstart=move |ev: leptos::ev::DragEvent| {
+                                            if let Some(t) = ev.data_transfer() {
+                                                let _ = t.set_data("text/plain", &format!("job:{key}"));
+                                            }
+                                        }
+                                        on:click=move |ev: leptos::ev::MouseEvent| {
+                                            if ev.ctrl_key() || ev.shift_key() {
+                                                org.selected_jobs.update(|l| if l.contains(&key) { l.retain(|k| *k != key) } else { l.push(key) });
+                                            } else {
+                                                org.selected_jobs.set(vec![key]);
+                                                org.job_detail.set(Some(key));
+                                            }
+                                        }
+                                    >
+                                        <td class="state">{icon}{state}</td>
+                                        <td style=warning><strong>{s(&j, "name")}</strong></td>
+                                        {has_groups.then(|| view! { <td class="center">{group.clone()}</td> })}
+                                        <td class="muted">{placed_on}</td>
+                                        <td class="muted">{s(&j, "start")}</td>
+                                        <td class="muted">{strings(&j, "referees").join(", ")}</td>
+                                        <td>
+                                            {(!is_placed).then(|| view! {
+                                                <button class="light small" title="Placer ce match : cliquez ensuite sur une piste" on:click=move |ev| {
+                                                    ev.stop_propagation();
+                                                    org.held_job.set(Some(key));
+                                                }>"→ piste"</button>
+                                            })}
+                                        </td>
+                                    </tr>
                                 }
-                                on:click=move |ev: leptos::ev::MouseEvent| {
-                                    if ev.ctrl_key() || ev.shift_key() {
-                                        org.selected_jobs.update(|l| if l.contains(&key) { l.retain(|k| *k != key) } else { l.push(key) });
-                                    } else {
-                                        org.selected_jobs.set(vec![key]);
-                                        org.job_detail.set(Some(key));
-                                    }
-                                }
-                            >
-                                <td class="icon">{icon}</td>
-                                <td style=warning><strong>{s(&j, "name")}</strong></td>
-                                <td class="muted">{placed}</td>
-                                <td class="muted">{s(&j, "start")}</td>
-                                <td class="muted">{strings(&j, "referees").join(", ")}</td>
-                                <td>
-                                    {(status == "pending").then(|| view! {
-                                        <button class="light small" title="Placer ce match : cliquez ensuite sur une piste" on:click=move |ev| {
-                                            ev.stop_propagation();
-                                            org.held_job.set(Some(key));
-                                        }>"→ piste"</button>
-                                    })}
-                                </td>
-                            </tr>
-                        }
-                    })
-                    .collect_view()}
-            </tbody>
-        </table>
+                            })
+                            .collect_view()}
+                    </tbody>
+                </table>
+            }
+        }
     }
 }
 
@@ -636,6 +731,116 @@ fn AssignDialog(org: Org, d: Value) -> impl IntoView {
     }
 }
 
+/// « Placer un groupe » (entraînement des jeunes) : le groupe, ses pistes et
+/// ses arbitres.
+#[component]
+fn GroupDialog(org: Org, d: Value) -> impl IntoView {
+    let pistes: Vec<(u64, u64)> = arr(&d, "pistes").iter().filter(|p| !b(p, "blocked")).map(|p| (u(p, "key"), u(p, "id"))).collect();
+    let referees_on = b(&d, "referees_enabled");
+    let pistes_on = b(&d, "pistes_enabled");
+    let cursor = s(&d, "cursor");
+    view! {
+        {move || {
+            let (c, bt, proposed) = org.placing_group.get()?;
+            let data = org.data.get_untracked()?;
+            let comp = arr(&data, "competitions").into_iter().find(|x| u(x, "id") == c)?;
+            let batch = arr(&comp, "batches").into_iter().find(|x| u(x, "id") == bt)?;
+            let groups: Vec<u64> = arr(&batch, "groups").iter().filter_map(Value::as_u64).collect();
+            let weapon = s(&comp, "weapon");
+            let candidates: Vec<Value> = arr(&data, "referees")
+                .into_iter()
+                .find(|l| s(l, "weapon") == weapon)
+                .map(|l| arr(&l, "members"))
+                .unwrap_or_default()
+                .into_iter()
+                .filter(|r| b(r, "attending"))
+                .collect();
+            let group = RwSignal::new(proposed);
+            let free: Vec<(u64, Vec<u64>)> = arr(&batch, "group_referees")
+                .iter()
+                .map(|x| (u(x, "group"), arr(x, "referees").iter().filter_map(Value::as_u64).collect()))
+                .collect();
+            let free_at_submit = free.clone();
+            let chosen_pistes: RwSignal<Vec<u64>> = RwSignal::new(Vec::new());
+            let chosen_refs: RwSignal<Vec<u64>> = RwSignal::new(Vec::new());
+            let pistes = pistes.clone();
+            let cursor = cursor.clone();
+            Some(view! {
+                <div class="modal-backdrop" on:click=move |_| org.placing_group.set(None)>
+                    <div class="modal" on:click=|ev| ev.stop_propagation()>
+                        <h3>"Placer un groupe"</h3>
+                        <p class="muted">{format!("{} · à partir de {cursor}", s(&comp, "title"))}</p>
+                        <div class="row">
+                            <label>"Groupe : "</label>
+                            <select on:change=move |ev| group.set(event_target_value(&ev).parse().unwrap_or(0))>
+                                {groups.iter().map(|g| {
+                                    let g = *g;
+                                    view! { <option value=g.to_string() selected=g == proposed>{format!("Groupe {g}")}</option> }
+                                }).collect_view()}
+                            </select>
+                        </div>
+                        <p class="muted small">"Une piste : les poules du groupe s'enchaînent. Autant de pistes que de poules (ou plus) : elles se tirent en même temps. Les arbitres sont répartis sur les pistes ; sur une piste à plusieurs arbitres, ils alternent match après match en évitant les tireurs de leur club."</p>
+                        <div class="two-lists">
+                            {pistes_on.then(|| view! {
+                                <fieldset>
+                                    <legend>"Pistes"</legend>
+                                    {pistes.iter().map(|(k, id)| {
+                                        let k = *k;
+                                        view! {
+                                            <label class="check">
+                                                <input type="checkbox" on:change=move |ev| {
+                                                    let on = event_target_checked(&ev);
+                                                    chosen_pistes.update(|l| if on { if !l.contains(&k) { l.push(k) } } else { l.retain(|x| *x != k) });
+                                                } />
+                                                {format!("Piste {id}")}
+                                            </label>
+                                        }
+                                    }).collect_view()}
+                                </fieldset>
+                            })}
+                            {referees_on.then(|| view! {
+                                <fieldset>
+                                    <legend>"Arbitres"</legend>
+                                    {candidates.iter().map(|r| {
+                                        let k = u(r, "reference");
+                                        let club = s(r, "club");
+                                        let free = free.clone();
+                                        // Arbitre déjà pris pendant le groupe : non proposé.
+                                        let shown = move || free.iter().find(|(g, _)| *g == group.get()).map(|(_, l)| l.contains(&k)).unwrap_or(true);
+                                        view! {
+                                            <label class="check" style:display=move || if shown() { "" } else { "none" }>
+                                                <input type="checkbox" on:change=move |ev| {
+                                                    let on = event_target_checked(&ev);
+                                                    chosen_refs.update(|l| if on { if !l.contains(&k) { l.push(k) } } else { l.retain(|x| *x != k) });
+                                                } />
+                                                {format!("{} {}{}", s(r, "name"), s(r, "first_name"), if club.is_empty() { String::new() } else { format!(" ({club})") })}
+                                            </label>
+                                        }
+                                    }).collect_view()}
+                                </fieldset>
+                            })}
+                        </div>
+                        <div class="actions">
+                            <button class="light" on:click=move |_| org.placing_group.set(None)>"Annuler"</button>
+                            <button on:click=move |_| {
+                                let g = group.get_untracked();
+                                let allowed = free_at_submit.iter().find(|(x, _)| *x == g).map(|(_, l)| l.clone());
+                                let refs: Vec<u64> = chosen_refs.get_untracked().into_iter().filter(|r| allowed.as_ref().is_none_or(|l| l.contains(r))).collect();
+                                let jobs = org.data.get_untracked().map(|d| group_jobs(&d, c, bt, g)).unwrap_or_default();
+                                if !confirm_clubs(org, &jobs, &refs) {
+                                    return;
+                                }
+                                org.placing_group.set(None);
+                                org.act(json!({ "action": "place_group", "competition": c, "batch": bt, "group": g, "pistes": chosen_pistes.get_untracked(), "referees": refs }));
+                            }>"Placer le groupe"</button>
+                        </div>
+                    </div>
+                </div>
+            })
+        }}
+    }
+}
+
 /// Fiche d'un match (`JobBoard`) : tireurs, piste, heure, arbitres.
 #[component]
 fn JobDetail(org: Org, d: Value) -> impl IntoView {
@@ -668,6 +873,10 @@ fn JobDetail(org: Org, d: Value) -> impl IntoView {
             let placed = !arr(&job, "pistes").is_empty();
             let candidates: Vec<Value> = weapon_referees(&s(&comp, "weapon")).into_iter().filter(|r| b(r, "attending")).collect();
             let assigned = strings(&job, "referees");
+            let current_refs: Vec<u64> = arr(&job, "referee_keys").iter().filter_map(Value::as_u64).collect();
+            let current_refs_all = current_refs.clone();
+            let free: Vec<u64> = arr(&job, "available_referees").iter().filter_map(Value::as_u64).collect();
+            let candidates: Vec<Value> = candidates.into_iter().filter(|r| free.contains(&u(r, "reference")) || current_refs.contains(&u(r, "reference"))).collect();
             let move_to = RwSignal::new(String::new());
             let time = RwSignal::new(job.get("start").and_then(Value::as_str).map(str::to_string).unwrap_or_default());
             let pool = b(&job, "pool");
@@ -712,29 +921,38 @@ fn JobDetail(org: Org, d: Value) -> impl IntoView {
                                     <option value="">"Choisir un arbitre…"</option>
                                     {candidates.iter().map(|r| view! { <option value=u(r, "reference").to_string()>{format!("{} {} ({})", s(r, "name"), s(r, "first_name"), s(r, "club"))}</option> }).collect_view()}
                                 </select>
-                                <button class="light" on:click=move |_| {
-                                    if let Ok(r) = choose.get_untracked().parse::<u64>() {
-                                        org.act(json!({ "action": "job_referees", "job": key, "referees": [r] }));
+                                <button class="light" on:click={
+                                    let current = current_refs.clone();
+                                    move |_| {
+                                        if let Ok(r) = choose.get_untracked().parse::<u64>() {
+                                            if !confirm_clubs(org, &[key], &[r]) {
+                                                return;
+                                            }
+                                            let mut list = current.clone();
+                                            if !list.contains(&r) {
+                                                list.push(r);
+                                            }
+                                            org.act(json!({ "action": "job_referees", "job": key, "referees": list }));
+                                        }
                                     }
-                                }>"Affecter"</button>
+                                }>"Ajouter"</button>
                                 <button class="light" on:click=move |_| org.act(json!({ "action": "job_referees", "job": key, "referees": [] }))>"Retirer les arbitres"</button>
                             </div>
                         })}
                         {(placed && pool && pistes_on).then(|| {
                             let chosen: RwSignal<Vec<u64>> = RwSignal::new(current_pistes.clone());
-                            let refs: Vec<RwSignal<String>> = (0..pistes.len()).map(|_| RwSignal::new(String::new())).collect();
-                            let refs2 = refs.clone();
-                            let candidates = candidates.clone();
+                            let chosen_refs: RwSignal<Vec<u64>> = RwSignal::new(current_refs.clone());
+                            // Les arbitres de la poule d'abord, dans leur ordre.
+                            let mut listed: Vec<Value> = current_refs.iter().filter_map(|r| candidates.iter().find(|c| u(c, "reference") == *r).cloned()).collect();
+                            listed.extend(candidates.iter().filter(|c| !current_refs.contains(&u(c, "reference"))).cloned());
                             view! {
-                                <h4>"Pistes de la poule"</h4>
-                                <p class="muted small">"Une poule peut se tirer sur plusieurs pistes en même temps, avec un arbitre par piste."</p>
-                                <div class="form-grid">
-                                    {pistes
-                                        .iter()
-                                        .zip(refs.iter())
-                                        .map(|((k, id), r)| {
-                                            let (k, id, r) = (*k, *id, *r);
-                                            let candidates = candidates.clone();
+                                <h4>"Pistes et arbitres de la poule"</h4>
+                                <p class="muted small">"Une poule peut se tirer sur plusieurs pistes en même temps. Les arbitres sont répartis sur les pistes ; à plusieurs sur une piste, ils alternent match après match en évitant les tireurs de leur club."</p>
+                                <div class="two-lists">
+                                    <fieldset>
+                                        <legend>"Pistes"</legend>
+                                        {pistes.iter().map(|(k, id)| {
+                                            let (k, id) = (*k, *id);
                                             view! {
                                                 <label class="check">
                                                     <input type="checkbox" prop:checked=move || chosen.get().contains(&k) on:change=move |ev| {
@@ -743,34 +961,40 @@ fn JobDetail(org: Org, d: Value) -> impl IntoView {
                                                     } />
                                                     {format!("Piste {id}")}
                                                 </label>
-                                                {if referees_on {
-                                                    view! {
-                                                        <select on:change=move |ev| r.set(event_target_value(&ev))>
-                                                            <option value="">"Arbitre…"</option>
-                                                            {candidates.iter().map(|c| view! { <option value=u(c, "reference").to_string()>{format!("{} {}", s(c, "name"), s(c, "first_name"))}</option> }).collect_view()}
-                                                        </select>
-                                                    }.into_any()
-                                                } else {
-                                                    view! { <span></span> }.into_any()
-                                                }}
                                             }
-                                        })
-                                        .collect_view()}
+                                        }).collect_view()}
+                                    </fieldset>
+                                    {referees_on.then(|| view! {
+                                        <fieldset>
+                                            <legend>"Arbitres"</legend>
+                                            {listed.iter().map(|r| {
+                                                let k = u(r, "reference");
+                                                let club = s(r, "club");
+                                                view! {
+                                                    <label class="check">
+                                                        <input type="checkbox" prop:checked=move || chosen_refs.get().contains(&k) on:change=move |ev| {
+                                                            let on = event_target_checked(&ev);
+                                                            chosen_refs.update(|l| if on { if !l.contains(&k) { l.push(k) } } else { l.retain(|x| *x != k) });
+                                                        } />
+                                                        {format!("{} {}{}", s(r, "name"), s(r, "first_name"), if club.is_empty() { String::new() } else { format!(" ({club})") })}
+                                                    </label>
+                                                }
+                                            }).collect_view()}
+                                        </fieldset>
+                                    })}
                                 </div>
                                 <button class="light" on:click={
                                     let pistes = pistes.clone();
                                     move |_| {
                                         let selected = chosen.get_untracked();
-                                        let referees: Vec<u64> = pistes
-                                            .iter()
-                                            .zip(refs2.iter())
-                                            .filter(|((k, _), _)| selected.contains(k))
-                                            .filter_map(|(_, r)| r.get_untracked().parse::<u64>().ok())
-                                            .collect();
+                                        let referees = if referees_on { chosen_refs.get_untracked() } else { current_refs_all.clone() };
+                                        if referees_on && !confirm_clubs(org, &[key], &referees) {
+                                            return;
+                                        }
                                         let ordered: Vec<u64> = pistes.iter().map(|(k, _)| *k).filter(|k| selected.contains(k)).collect();
                                         org.act(json!({ "action": "pool_resources", "job": key, "pistes": ordered, "referees": referees }));
                                     }
-                                }>"Appliquer les pistes"</button>
+                                }>"Appliquer"</button>
                             }
                         })}
                         <div class="actions">

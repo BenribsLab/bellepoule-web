@@ -109,7 +109,8 @@ pub fn Allocator(ctx: StageCtx) -> impl IntoView {
                                     })
                                     .collect_view()}
                             </select>
-                            <PrintButton />
+                            // Entraînement des jeunes : on imprime toujours le groupe complet.
+                            {if youth { view! { <super::groups::GroupSheetsButton ctx=ctx /> }.into_any() } else { view! { <PrintButton /> }.into_any() }}
                         </div>
                         <div class="pools-grid">
                             {arr(&d, "pools").into_iter().map(|p| view! { <PoolCard ctx=ctx pool=p columns=columns.clone() locked=locked /> }).collect_view()}

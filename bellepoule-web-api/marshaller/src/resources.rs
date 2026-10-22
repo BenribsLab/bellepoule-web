@@ -100,9 +100,9 @@ impl Hall {
         if self
             .slots
             .get(&sk)
-            .is_some_and(|s| !s.additional_pistes.is_empty() && selected.len() != s.pistes().len())
+            .is_some_and(|s| !s.additional_pistes.is_empty() && selected.len() < s.pistes().len())
         {
-            return Err(tr("Assign a different referee to each piste."));
+            return Err(tr("Assign at least one referee to each piste."));
         }
         for r in &old {
             if !selected.contains(r) {
@@ -252,8 +252,8 @@ impl Hall {
         if pistes.is_empty() {
             return Err(tr("Select at least one piste."));
         }
-        if require_referees && pistes.len() > 1 && referees.len() != pistes.len() {
-            return Err(tr("Assign a different referee to each piste."));
+        if require_referees && pistes.len() > 1 && referees.len() < pistes.len() {
+            return Err(tr("Assign at least one referee to each piste."));
         }
         let overlaps = |other: &crate::slot::Slot| {
             old.start < add(other.start, other.duration)

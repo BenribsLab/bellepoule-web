@@ -224,6 +224,9 @@ impl Hall {
         let real_duration = message.get_uint("duration_sec") as Span * time::SECOND;
         let netid = message.net_id();
         if let Some(existing) = self.job_by_netid(c, b, netid) {
+            if let Some(j) = self.jobs.get_mut(&existing) {
+                j.group = Some(message.get_uint("group")).filter(|g| *g > 0);
+            }
             self.job_set_real_duration(existing, real_duration);
             self.redraw();
             return;

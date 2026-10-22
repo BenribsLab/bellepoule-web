@@ -386,3 +386,23 @@ p.small { font-size: 0.78rem; }
 table.payment { width: 100%; border-collapse: collapse; }
 table.payment td { border-bottom: 1px solid #999; height: 11mm; padding: 0 4px; }
 .page-number { text-align: right; font-weight: 700; }
+
+/* Organisation : les matchs à placer, bien visibles en haut */
+.org-columns .org-batches { grid-column: 1 / -1; order: -1; }
+.jobs-summary { display: flex; align-items: center; gap: 0.5rem; margin: 0.4rem 0; }
+.pill { border-radius: 999px; padding: 0.15rem 0.7rem; font-weight: 700; font-size: 0.85rem; }
+.pill.pending { background: #fff3d6; color: #b45309; border: 1px solid #f5c26b; }
+.pill.placed { background: #e7f6ec; color: #15803d; border: 1px solid #9fd8b3; }
+table.list.jobs thead th { text-align: left; font-size: 0.8rem; color: var(--muted); border-bottom: 1px solid var(--border); }
+table.list.jobs tr.to-place { background: #fff9eb; }
+table.list.jobs tr.to-place td.state { color: #b45309; font-weight: 700; }
+table.list.jobs td.state { white-space: nowrap; color: #15803d; }
+table.list.jobs td.center { text-align: center; }
+.two-lists { display: grid; grid-template-columns: 1fr 1fr; gap: 0.8rem; max-height: 50vh; overflow: auto; }
+.two-lists fieldset { display: flex; flex-direction: column; gap: 0.2rem; }
+
+/* Impression des groupes : arbitres et répartition des matchs */
+.print-pool .pp-referees { flex: 1; color: #00008b; font-weight: 700; font-size: 0.75rem; }
+.pp-bout .pp-res { width: 7.5em; font-size: 0.6rem; color: #555; line-height: 1.15; }
+.pp-bout .pp-res b { color: #00008b; }
+.page-header .group-referees { font-size: 0.7rem; font-weight: 700; color: #00008b; text-align: center; }

@@ -115,6 +115,8 @@ pub struct Job {
     pub regular_duration: Span,
     pub duration_span: u32,
     pub over: bool,
+    /// Groupe de la poule (entraînement des jeunes).
+    pub group: Option<u32>,
     /// Feuille de route `BellePoule2D::Roadmap` (absente pendant la destruction).
     pub parcel: Option<Message>,
 }
@@ -150,6 +152,7 @@ impl Job {
             regular_duration: 0,
             duration_span,
             over: false,
+            group: Some(message.get_uint("group")).filter(|g| *g > 0),
             parcel: Some(parcel),
         }
     }

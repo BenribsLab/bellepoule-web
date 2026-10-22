@@ -121,6 +121,10 @@ impl Contest {
                 pool.save(&self.players, &mut w);
                 job.set("xml", w.finish());
                 job.set("display_position", pool.number());
+                // Entraînement des jeunes : groupe de la poule (placement par groupe).
+                if let Some(g) = pool.group() {
+                    job.set("group", g);
+                }
                 job.set("duration_sec", pool.duration_sec());
                 job.set("workload_units", pool.workload());
                 out.push(job);

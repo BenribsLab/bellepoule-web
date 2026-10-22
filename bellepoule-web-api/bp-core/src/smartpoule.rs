@@ -83,7 +83,8 @@ impl Contest {
                     let mine = match referee {
                         None => true,
                         Some(r) => {
-                            pool.referees().contains(&r) || pool.match_assignments().iter().any(|m| m.referee == Some(r))
+                            pool.referees().contains(&r) || pool.match_assignments_with_clubs(&self.players, self.referees.store()).iter().any(|m| m.referee == Some(r))
+                                || pool.group().is_some_and(|g| crate::group_sheets::group_dispatch(&round, g, &self.players, self.referees.store()).iter().any(|b| b.referee == Some(r) && round.pools().get(b.pool).map(|p| p.number()) == Some(pool.number())))
                         }
                     };
                     if !mine || pool.nb_players() == 0 {
@@ -98,7 +99,7 @@ impl Contest {
                         "time": pool.start_time_image().unwrap_or_default(),
                         "over": pool.is_over(),
                         "fencers": pool.nb_players(),
-                        "referees": pool.referees().iter().copied().chain(pool.match_assignments().iter().filter_map(|m| m.referee)).collect::<Vec<_>>(),
+                        "referees": pool.referees().iter().copied().chain(pool.match_assignments_with_clubs(&self.players, self.referees.store()).iter().filter_map(|m| m.referee)).collect::<Vec<_>>(),
                     }));
                 }
             }
@@ -156,21 +157,36 @@ impl Contest {
                     if round.net_id() != stage_id {
                         continue;
                     }
-                    let pool = round.pools().iter().find(|p| p.number() == number)?;
+                    let pool_index = round.pools().iter().position(|p| p.number() == number)?;
+                    let pool = &round.pools()[pool_index];
                     let sheet = pool.sheet(&self.players, self.referees.store(), false);
-                    let bouts: Vec<Value> = sheet
-                        .matches
-                        .iter()
-                        .filter(|m| match (referee, &m.assignment) {
-                            (Some(r), Some(a)) if pool.strips().len() > 1 => a.referee == Some(r),
+                    // Entraînement des jeunes : numéros, pistes et arbitres du groupe entier.
+                    let group_bouts: Option<Vec<crate::group_sheets::GroupBout>> = pool.group().map(|g| {
+                        crate::group_sheets::group_dispatch(&round, g, &self.players, self.referees.store()).into_iter().filter(|b| b.pool == pool_index).collect()
+                    });
+                    let group_bout = |m: usize| group_bouts.as_ref().and_then(|l| l.iter().find(|b| b.match_index == m));
+                    let referee_name = |r: u32| self.referees.store().get(r).map(|p| format!("{} {}", p.name(), p.str_attr("first_name").unwrap_or_default()).trim().to_string()).unwrap_or_default();
+                    let mut matches: Vec<_> = sheet.matches.iter().collect();
+                    if group_bouts.is_some() {
+                        matches.sort_by_key(|m| group_bout(m.match_index).map(|b| b.number).unwrap_or(usize::MAX));
+                    }
+                    let bouts: Vec<Value> = matches
+                        .into_iter()
+                        .filter(|m| match (referee, group_bout(m.match_index), &m.assignment) {
+                            (Some(r), Some(b), _) if b.referee.is_some() => b.referee == Some(r),
+                            (Some(r), None, Some(a)) if pool.strips().len() > 1 || pool.referees().len() > 1 => a.referee == Some(r),
                             _ => true,
                         })
                         .map(|m| {
+                            let bout = group_bout(m.match_index);
                             json!({
                                 "index": m.match_index,
-                                "name": m.name,
-                                "referee": m.assignment.as_ref().and_then(|a| a.referee),
-                                "resource": m.resource,
+                                "name": bout.map(|b| format!("M{}", b.number)).unwrap_or_else(|| m.name.clone()),
+                                "referee": bout.map(|b| b.referee).unwrap_or_else(|| m.assignment.as_ref().and_then(|a| a.referee)),
+                                "resource": match bout {
+                                    Some(b) => Some(format!("Piste {:02}\n{}", b.piste, b.referee.map(referee_name).unwrap_or_default())),
+                                    None => m.resource.clone(),
+                                },
                                 "fencers": m.opponents.iter().flatten().map(|f| json!({
                                     "reference": f.player,
                                     "position": f.position,
@@ -190,7 +206,9 @@ impl Contest {
                         "name": pool.name(),
                         "piste": pool.piste_label().unwrap_or_default(),
                         "max_score": pool.max_score(),
-                        "timing": stage.bout_timing(),
+                        // `round` est déjà verrouillé : le getter de la phase
+                        // reprendrait le même Mutex et bloquerait la synchro.
+                        "timing": round.bout_timing,
                         "fencers": sheet.rows.iter().map(|r| json!({
                             "position": r.position,
                             "name": format!("{} {}", r.identity.name, r.identity.first_name).trim().to_string(),

@@ -211,7 +211,7 @@ pub fn ContestPage(id: String) -> impl IntoView {
     }
 }
 
-/// Formule : phases de la compétition, ajout et retrait (« Préférences » de l'application).
+/// Formule : phases de la compétition, ajout, retrait et ordre (« Préférences » de l'application).
 #[component]
 fn FormulaDialog(id: String, schedule: RwSignal<Option<ScheduleView>>, on_close: Callback<()>) -> impl IntoView {
     let id = StoredValue::new(id);
@@ -239,6 +239,15 @@ fn FormulaDialog(id: String, schedule: RwSignal<Option<ScheduleView>>, on_close:
             }
         });
     };
+    let shift = move |index: usize, up: bool| {
+        let id = id.get_value();
+        spawn_local(async move {
+            match api::send::<_, ScheduleView>("POST", &format!("/api/contests/{id}/schedule/stages/{index}/move"), &serde_json::json!({ "up": up })).await {
+                Ok(s) => schedule.set(Some(s)),
+                Err(e) => alert(&e.message),
+            }
+        });
+    };
     view! {
         <div class="overlay">
             <div class="dialog">
@@ -259,6 +268,8 @@ fn FormulaDialog(id: String, schedule: RwSignal<Option<ScheduleView>>, on_close:
                                                     <td class="number">{index + 1}</td>
                                                     <td>{label}{if st.locked { " 🔒" } else { "" }}{if index == s.current { " (en cours)" } else { "" }}</td>
                                                     <td class="actions">
+                                                        {st.can_up.then(|| view! { <button class="small" title="Monter" on:click=move |_| shift(index, true)>"▲"</button> })}
+                                                        {st.can_down.then(|| view! { <button class="small" title="Descendre" on:click=move |_| shift(index, false)>"▼"</button> })}
                                                         {st.removable.then(|| view! { <button class="danger small" on:click=move |_| remove(index)>"Retirer"</button> })}
                                                     </td>
                                                 </tr>

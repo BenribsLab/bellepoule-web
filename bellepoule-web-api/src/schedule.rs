@@ -21,6 +21,9 @@ pub struct StageInfo {
     locked: bool,
     /// La phase peut être retirée de la formule.
     removable: bool,
+    /// La phase peut monter / descendre d'un cran dans la formule.
+    can_up: bool,
+    can_down: bool,
 }
 
 #[derive(Serialize)]
@@ -59,11 +62,15 @@ pub fn view(c: &mut bp_core::contest::Contest) -> ScheduleView {
             name: s.name(),
             locked: s.base().locked,
             removable: false,
+            can_up: false,
+            can_down: false,
         })
         .collect();
     let mut stages: Vec<StageInfo> = stages;
     for st in stages.iter_mut() {
         st.removable = c.schedule.can_remove(st.index);
+        st.can_up = c.schedule.can_move(st.index, true);
+        st.can_down = c.schedule.can_move(st.index, false);
     }
     let current = c.schedule.current_index();
     let count = c.schedule.len();
@@ -180,6 +187,27 @@ pub async fn remove_stage(State(store): State<Shared>, client: Client, Path((id,
                 return Err(bad_request("cette phase ne peut pas être retirée"));
             }
             c.with_schedule(|s, ctx| s.remove_user_stage(ctx, index));
+            Ok(view(c))
+        })
+        .ok_or_else(not_found)?
+        .map_err(internal)?;
+    Ok(Json(result?))
+}
+
+#[derive(Deserialize)]
+pub struct MoveStage {
+    /// Vers le haut (sinon vers le bas).
+    up: bool,
+}
+
+/// Monte ou descend une phase (avec sa composition de poules) dans la formule.
+pub async fn move_stage(State(store): State<Shared>, client: Client, Path((id, index)): Path<(String, usize)>, Json(input): Json<MoveStage>) -> Result<Json<ScheduleView>, ApiError> {
+    let mut store = store.lock().await;
+    let result = store
+        .update(&client, &id, |c| {
+            if c.with_schedule(|s, _| s.move_user_stage(index, input.up)).is_none() {
+                return Err(bad_request("cette phase ne peut pas être déplacée"));
+            }
             Ok(view(c))
         })
         .ok_or_else(not_found)?

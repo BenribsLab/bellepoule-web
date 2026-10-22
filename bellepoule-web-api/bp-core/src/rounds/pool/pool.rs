@@ -547,26 +547,70 @@ impl Pool {
         self.set_roadmap(players, list.first().copied().unwrap_or(0), start);
         self.additional_strips = list.into_iter().skip(1).collect();
         let strips = self.strips();
-        self.piste_referees = if strips.len() > 1 && self.referee_list.len() != strips.len() {
-            previous.into_iter().filter(|(p, r)| strips.contains(p) && self.referee_list.contains(r)).collect()
+        let kept: Vec<_> = previous.into_iter().filter(|(p, r)| strips.contains(p) && self.referee_list.contains(r)).collect();
+        // Un arbitre attitré par piste ; les arbitres en plus sont répartis
+        // tour à tour sur les pistes (`referees_by_piste`).
+        self.piste_referees = if strips.len() > 1 && self.referee_list.len() != strips.len() && !kept.is_empty() {
+            kept
         } else { strips.into_iter().zip(self.referee_list.iter().copied()).collect() };
     }
 
     pub fn piste_referees(&self) -> &[(u32, PlayerRef)] { &self.piste_referees }
 
+    /// Arbitres de chaque piste : l'arbitre attitré de la piste, puis les
+    /// arbitres restants répartis tour à tour sur les pistes les moins pourvues.
+    pub fn referees_by_piste(&self) -> Vec<(u32, Vec<PlayerRef>)> {
+        let mut out: Vec<(u32, Vec<PlayerRef>)> = self.strips().into_iter().map(|p| (p, Vec::new())).collect();
+        if out.is_empty() {
+            return out;
+        }
+        let mut rest = Vec::new();
+        for r in &self.referee_list {
+            let attached = self.piste_referees.iter().find(|(_, x)| x == r).and_then(|(p, _)| out.iter().position(|(q, _)| q == p));
+            match attached {
+                Some(i) => out[i].1.push(*r),
+                None => rest.push(*r),
+            }
+        }
+        for r in rest {
+            if let Some(i) = (0..out.len()).min_by_key(|i| (out[*i].1.len(), *i)) {
+                out[i].1.push(r);
+            }
+        }
+        out
+    }
+
     /// Vagues de matchs sans tireur engagé deux fois simultanément. Les pistes
     /// les moins chargées sont prioritaires ; l'ordre FIE départage les matchs.
     pub fn match_assignments(&self) -> Vec<MatchAssignment> {
-        let pistes = self.strips();
-        if pistes.is_empty() { return Vec::new(); }
-        let mut counts = vec![0usize; pistes.len()];
+        self.match_assignments_by(&|_, _| false)
+    }
+
+    /// Comme `match_assignments`, en évitant autant que possible qu'un
+    /// arbitre juge un tireur de son club.
+    pub fn match_assignments_with_clubs(&self, players: &PlayerStore, referees: &PlayerStore) -> Vec<MatchAssignment> {
+        let club = |store: &PlayerStore, r: PlayerRef| store.get(r).and_then(|p| p.str_attr("club").map(|c| c.trim().to_lowercase())).unwrap_or_default();
+        self.match_assignments_by(&|referee, fencer| {
+            let c = club(referees, referee);
+            !c.is_empty() && c == club(players, fencer)
+        })
+    }
+
+    /// Répartition des matchs ; sur une piste à plusieurs arbitres, ils
+    /// alternent match après match, sauf si l'un est du club d'un des tireurs
+    /// (`conflict(arbitre, tireur)`) et qu'un autre arbitre est disponible.
+    pub fn match_assignments_by(&self, conflict: &dyn Fn(PlayerRef, PlayerRef) -> bool) -> Vec<MatchAssignment> {
+        let by_piste = self.referees_by_piste();
+        if by_piste.is_empty() { return Vec::new(); }
+        let mut counts = vec![0usize; by_piste.len()];
+        let mut refereed: std::collections::HashMap<PlayerRef, usize> = std::collections::HashMap::new();
         let mut pending: Vec<_> = (0..self.matches.len()).collect();
         let mut result = Vec::new();
         let mut wave = 0;
         while !pending.is_empty() {
             wave += 1;
             let mut used = Vec::new();
-            let mut order: Vec<_> = (0..pistes.len()).collect();
+            let mut order: Vec<_> = (0..by_piste.len()).collect();
             order.sort_by_key(|i| (counts[*i], *i));
             for i in order {
                 let next = pending.iter().position(|index| {
@@ -574,11 +618,18 @@ impl Pool {
                 });
                 let Some(next) = next else { break };
                 let match_index = pending.remove(next);
-                used.extend((0..2).filter_map(|k| self.matches[match_index].bout.opponent(k)));
-                let piste = pistes[i];
-                let referee = self.piste_referees.iter().find(|(p, _)| *p == piste).map(|(_, r)| *r)
-                    .or_else(|| if pistes.len() == 1 { self.referee_list.first().copied() } else { None });
-                result.push(MatchAssignment { match_index, wave, piste, referee });
+                let fencers: Vec<PlayerRef> = (0..2).filter_map(|k| self.matches[match_index].bout.opponent(k)).collect();
+                used.extend(fencers.iter().copied());
+                let (piste, candidates) = &by_piste[i];
+                let referee = candidates
+                    .iter()
+                    .enumerate()
+                    .min_by_key(|(order, r)| (fencers.iter().any(|f| conflict(**r, *f)), refereed.get(*r).copied().unwrap_or(0), *order))
+                    .map(|(_, r)| *r);
+                if let Some(r) = referee {
+                    *refereed.entry(r).or_insert(0) += 1;
+                }
+                result.push(MatchAssignment { match_index, wave, piste: *piste, referee });
                 counts[i] += 1;
             }
         }
@@ -1191,7 +1242,7 @@ impl Pool {
             });
             rows.push(SheetRow { position: i + 1, player: *a, identity: player_identity(players, *a), cells, dashboard });
         }
-        let assignments = self.match_assignments();
+        let assignments = self.match_assignments_with_clubs(players, referees);
         let mut matches: Vec<_> = self
             .matches
             .iter()
@@ -1206,12 +1257,12 @@ impl Pool {
                     })
                 };
                 let assignment = assignments.iter().find(|a| a.match_index == match_index);
-                let resource = if self.strips().len() > 1 {
+                // Plusieurs pistes ou plusieurs arbitres : piste et arbitre de chaque match.
+                let resource = if self.strips().len() > 1 || self.referee_list.len() > 1 {
                     assignment.map(|a| {
                         let referee = a.referee.and_then(|r| referees.get(r)).map(|p| format!("{} {}", p.name(), p.first_name()))
                             .unwrap_or_else(|| tr("Not assigned"));
-                        format!("{} · {}\n{} {}", tr("Wave %d").replace("%d", &a.wave.to_string()),
-                            tr("Piste %d").replace("%d", &a.piste.to_string()), tr("Referee"), referee)
+                        format!("{}\n{} {}", tr("Piste %d").replace("%d", &a.piste.to_string()), tr("Referee"), referee)
                     })
                 } else { None };
                 MatchSheet { match_index, resource, officiating: m.bout.officiating.as_ref().map(|s| s.summary()).unwrap_or_default(), assignment: assignment.cloned(), name: m.name(), rest_error: m.rest_error, opponents: [opp(0), opp(1)], score_boxes: if self.max_score <= 15 { self.max_score } else { 0 } }

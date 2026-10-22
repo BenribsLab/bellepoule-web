@@ -282,12 +282,24 @@ fn view(org: &Organisation) -> Value {
                     "extension1": b.extension1,
                     "extension2": b.extension2,
                     "extension": b.extension_choice,
+                    // Entraînement des jeunes : groupes des poules du lot.
+                    "groups": hall.batch_groups(c.id, b.id),
+                    // Arbitres libres pour chaque groupe (les autres ne sont pas proposés).
+                    "group_referees": hall.batch_groups(c.id, b.id).into_iter().map(|g| json!({
+                        "group": g,
+                        "referees": hall.referees.referees.keys().copied().filter(|r| hall.group_referee_available(c.id, b.id, g, *r)).collect::<Vec<_>>(),
+                    })).collect::<Vec<_>>(),
                     "jobs": b.rows.iter().filter_map(|row| hall.jobs.get(&row.job).map(|j| {
                         let slot = j.slot.and_then(|s| hall.slots.get(&s));
                         json!({
                             "key": j.key,
                             "name": j.name,
                             "pool": j.is_pool,
+                            "group": j.group,
+                            "placed": slot.is_some(),
+                            "referee_keys": slot.map(|s| s.referees.clone()).unwrap_or_default(),
+                            // Arbitres libres pendant ce match.
+                            "available_referees": hall.referees.referees.keys().copied().filter(|r| hall.pool_referee_available(j.key, *r)).collect::<Vec<_>>(),
                             "status": match row.status { JobStatus::None => "ok", JobStatus::Question => "pending", JobStatus::Error => "error" },
                             "warning": row.warning.map(|w| w.to_css()),
                             "pistes": slot.map(|s| s.pistes().into_iter().map(piste_id).collect::<Vec<_>>()).unwrap_or_default(),
@@ -540,6 +552,10 @@ pub async fn action(State(store): State<Shared>, client: Client, Json(a): Json<V
         }
         "job_referees" => {
             hall.set_job_referees(u32_of(&a, "job"), &list_of(&a, "referees")).map_err(bad_request)?;
+        }
+        "place_group" => {
+            hall.place_group(u32_of(&a, "competition"), u32_of(&a, "batch"), u32_of(&a, "group"), &list_of(&a, "pistes"), &list_of(&a, "referees"))
+                .map_err(bad_request)?;
         }
         "pool_resources" => {
             hall.set_pool_resources_optional(u32_of(&a, "job"), &list_of(&a, "pistes"), &list_of(&a, "referees"), org.referees)

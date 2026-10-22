@@ -6,6 +6,7 @@ pub mod assign;
 pub mod color;
 pub mod config;
 pub mod crypto;
+pub mod groups;
 pub mod hall;
 pub mod model;
 pub mod piste;
