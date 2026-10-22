@@ -93,6 +93,7 @@ impl Contest {
                     out.push(json!({
                         "token": format!("p~{}~{}~{}", self.net_id, round.net_id(), pool.number()),
                         "kind": "pool",
+                        "color": self.color,
                         "competition": self.title(),
                         "name": pool.name(),
                         "piste": pool.piste_label().unwrap_or_default(),
@@ -183,6 +184,11 @@ impl Contest {
                                 "index": m.match_index,
                                 "name": bout.map(|b| format!("M{}", b.number)).unwrap_or_else(|| m.name.clone()),
                                 "referee": bout.map(|b| b.referee).unwrap_or_else(|| m.assignment.as_ref().and_then(|a| a.referee)),
+                                // Piste du match (écran LivePoule de la piste).
+                                "piste": bout.map(|b| b.piste)
+                                    .or_else(|| m.assignment.as_ref().map(|a| a.piste))
+                                    .or_else(|| pool.strips().first().copied())
+                                    .filter(|p| *p != 0),
                                 "resource": match bout {
                                     Some(b) => Some(format!("Piste {:02}\n{}", b.piste, b.referee.map(referee_name).unwrap_or_default())),
                                     None => m.resource.clone(),
@@ -202,6 +208,7 @@ impl Contest {
                     return Some(json!({
                         "token": token,
                         "kind": "pool",
+                        "color": self.color,
                         "competition": self.title(),
                         "name": pool.name(),
                         "piste": pool.piste_label().unwrap_or_default(),
@@ -244,12 +251,13 @@ impl Contest {
                     return Some(json!({
                         "token": token,
                         "kind": "match",
+                        "color": self.color,
                         "competition": self.title(),
                         "name": format!("{} — {}", set.name(), m.name),
                         "piste": if m.piste != 0 { format!("{:02}", m.piste) } else { String::new() },
                         "max_score": m.max_score,
                         "timing": stage.bout_timing(),
-                        "bouts": [{ "index": 0, "name": m.name, "fencers": fencers, "over": m.is_over(), "officiating": m.officiating }],
+                        "bouts": [{ "index": 0, "name": m.name, "piste": Some(m.piste).filter(|p| *p != 0), "fencers": fencers, "over": m.is_over(), "officiating": m.officiating }],
                         "over": m.is_over(),
                     }));
                 }

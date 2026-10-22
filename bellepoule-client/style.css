@@ -406,3 +406,17 @@ table.list.jobs td.center { text-align: center; }
 .pp-bout .pp-res { width: 7.5em; font-size: 0.6rem; color: #555; line-height: 1.15; }
 .pp-bout .pp-res b { color: #00008b; }
 .page-header .group-referees { font-size: 0.7rem; font-weight: 700; color: #00008b; text-align: center; }
+
+/* Tableau d'affichage d'une piste (/live/) */
+.live-board { position: fixed; inset: 0; background: #000; color: #fff; display: flex; flex-direction: column; font-family: system-ui, sans-serif; }
+.live-title { background: #1f5ae0; color: #fff; text-align: center; font-size: 4vh; font-weight: 800; padding: 1.5vh; min-height: 6vh; }
+.live-scores { flex: 1; display: grid; grid-template-columns: 1fr 1fr; }
+.live-side { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2vh; }
+.live-side.red .live-score { color: #ff5252; }
+.live-side.green .live-score { color: #00e676; }
+.live-name { font-size: 5vh; font-weight: 700; text-align: center; padding: 0 2vw; }
+.live-score { font-size: 30vh; font-weight: 900; line-height: 1; }
+.live-clock { text-align: center; font-size: 16vh; font-weight: 800; font-variant-numeric: tabular-nums; }
+.live-waiting { position: absolute; top: 45%; width: 100%; text-align: center; font-size: 4vh; color: #aaa; }
+.live-piste { position: absolute; right: 1.5vw; bottom: 1.5vh; display: flex; align-items: center; gap: 0.8rem; font-size: 2.5vh; opacity: 0.6; }
+.live-piste button { background: #333; color: #fff; border: none; border-radius: 6px; font-size: 2.5vh; padding: 0.2rem 0.9rem; }

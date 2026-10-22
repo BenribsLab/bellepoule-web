@@ -22,6 +22,8 @@ pub struct Store {
     pub(crate) organisations: std::collections::HashMap<String, crate::organisation::Organisation>,
     /// Relais SmartPoule de chaque client.
     pub(crate) relays: std::collections::HashMap<String, crate::smartpoule::Relay>,
+    /// Scores en direct (téléphones → écrans LivePoule) : club → piste → état.
+    pub(crate) live: std::collections::HashMap<String, std::collections::HashMap<u32, crate::smartpoule::LiveBoard>>,
 }
 
 impl Store {
@@ -53,7 +55,7 @@ impl Store {
             }
         }
         tracing::info!("{} client(s), {} compétition(s) chargés depuis {}", clients.len(), contests.len(), dir.display());
-        Ok(Store { dir, clients, contests, organisations: Default::default(), relays: Default::default() })
+        Ok(Store { dir, clients, contests, organisations: Default::default(), relays: Default::default(), live: Default::default() })
     }
 
     // ------------------------------------------------------------- clients

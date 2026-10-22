@@ -346,3 +346,97 @@ pub async fn phone_result(State(store): State<Shared>, Query(q): Query<PhoneQuer
 pub fn pending_count(relays: &HashMap<String, Relay>, club: &str) -> usize {
     relays.get(club).map(|r| r.submissions.iter().filter(|s| s.result.is_none()).count()).unwrap_or(0)
 }
+
+// ------------------------------------------------------------ en direct
+
+/// Dernier état d'une piste, envoyé par le téléphone de l'arbitre.
+pub struct LiveBoard {
+    state: Value,
+    at: std::time::Instant,
+}
+
+/// Un écran sans nouvelles depuis ce délai repasse à vide.
+const LIVE_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(15 * 60);
+
+#[derive(Deserialize)]
+pub struct PhoneLive {
+    c: String,
+    r: u32,
+    k: String,
+    piste: u32,
+    #[serde(default)]
+    competition: String,
+    #[serde(default)]
+    color: String,
+    #[serde(default)]
+    bout: String,
+    /// Tireur de gauche (rouge) et de droite (vert) : `{ name, score }`.
+    red: Value,
+    green: Value,
+    #[serde(default)]
+    remaining_ms: i64,
+    #[serde(default)]
+    running: bool,
+    #[serde(default)]
+    period: u32,
+    #[serde(default)]
+    periods: u32,
+    #[serde(default)]
+    over: bool,
+}
+
+/// `POST /api/smartpoule/phone/live` : score et chrono du match en cours sur
+/// une piste, pour son écran LivePoule.
+pub async fn phone_live(State(store): State<Shared>, Json(l): Json<PhoneLive>) -> Result<Json<Value>, ApiError> {
+    let mut store = store.lock().await;
+    let q = PhoneQuery { c: l.c.clone(), r: l.r, k: l.k.clone(), token: None, id: None };
+    let (club, _) = store.authenticate(&q)?;
+    if l.piste == 0 {
+        return Err(bad_request("piste inconnue"));
+    }
+    let state = json!({
+        "piste": l.piste,
+        "competition": l.competition,
+        "color": l.color,
+        "bout": l.bout,
+        "red": l.red,
+        "green": l.green,
+        "remaining_ms": l.remaining_ms.max(0),
+        "running": l.running,
+        "period": l.period,
+        "periods": l.periods,
+        "over": l.over,
+    });
+    store.live.entry(club.id).or_default().insert(l.piste, LiveBoard { state, at: std::time::Instant::now() });
+    Ok(Json(json!({ "status": "ok" })))
+}
+
+#[derive(Deserialize)]
+pub struct LiveQuery {
+    /// Club.
+    c: String,
+    /// Piste.
+    p: u32,
+}
+
+/// `GET /api/live?c=<club>&p=<piste>` : ce qu'affiche l'écran de la piste
+/// (lecture publique : ce sont les scores affichés dans la salle). Le chrono
+/// en marche est recalé sur l'âge de l'état.
+pub async fn live(State(store): State<Shared>, Query(q): Query<LiveQuery>) -> Result<Json<Value>, ApiError> {
+    let store = store.lock().await;
+    let club = store.club(&q.c).ok_or_else(|| ApiError(StatusCode::NOT_FOUND, "club inconnu".into()))?;
+    let board = store.live.get(&club.id).and_then(|m| m.get(&q.p)).filter(|b| b.at.elapsed() < LIVE_TIMEOUT);
+    let Some(board) = board else {
+        return Ok(Json(json!({ "active": false, "piste": q.p, "club": club.name })));
+    };
+    let mut state = board.state.clone();
+    let age = board.at.elapsed().as_millis() as i64;
+    if state.get("running").and_then(Value::as_bool).unwrap_or(false) {
+        let remaining = state.get("remaining_ms").and_then(Value::as_i64).unwrap_or(0);
+        state["remaining_ms"] = json!((remaining - age).max(0));
+    }
+    state["active"] = json!(true);
+    state["age_ms"] = json!(age);
+    state["club"] = json!(club.name);
+    Ok(Json(state))
+}

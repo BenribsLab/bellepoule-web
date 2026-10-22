@@ -6,6 +6,7 @@ mod api;
 mod checkin;
 mod contest;
 mod home;
+mod live;
 mod organisation;
 mod properties;
 mod stages;
@@ -15,7 +16,12 @@ use leptos::task::spawn_local;
 
 fn main() {
     console_error_panic_hook::set_once();
-    leptos::mount::mount_to_body(App);
+    // `/live/?c=…&p=…` : tableau d'affichage d'une piste, sans connexion.
+    if live::is_live_page() {
+        leptos::mount::mount_to_body(live::LivePage);
+    } else {
+        leptos::mount::mount_to_body(App);
+    }
 }
 
 /// Écran affiché.
