@@ -16,7 +16,9 @@ ManageComp propose les formules de poules possibles (nombre et taille). Les tire
 
 {{ figure(src="poules-saisie.png", caption="Une poule : grille des scores, statuts, classement et liste des matchs.") }}
 
-Cliquez une case de la grille et tapez le score : `5` ou `V` pour le vainqueur, le nombre de touches pour le perdant. Le menu de chaque tireur indique son statut : qualifié, abandon, exclu, forfait. Ce menu ne change qu'au clic (la molette fait défiler la page).
+Cliquez une case de la grille et tapez le score : `5` ou `V` pour le vainqueur, le nombre de touches pour le perdant.
+
+Si le match s'arrête à la fin du temps sans que le vainqueur ait atteint le score maximum, tapez `W` suivi de ses touches : `W3` pour une victoire 3 à 2. La grille affiche alors `V3`. Le menu de chaque tireur indique son statut : qualifié, abandon, exclu, forfait. Ce menu ne change qu'au clic (la molette fait défiler la page).
 
 Les arbitres peuvent aussi saisir leurs matchs sur leur téléphone ([Arbitres sur téléphone](@/docs/arbitre.md)).
 

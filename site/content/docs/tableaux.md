@@ -12,7 +12,7 @@ Le tableau principal est garni d'après le classement de la phase précédente. 
 
 {{ figure(src="tableau.png", caption="Le tableau d'élimination directe en cours.") }}
 
-Cliquez sur un match et saisissez le score de chaque tireur. Le vainqueur avance dans le tableau.
+Cliquez sur un match et saisissez le score de chaque tireur. Si le temps s'achève avant le score maximum, tapez `W` suivi des touches du vainqueur (`W12` pour une victoire 12 à 10). Le vainqueur avance dans le tableau.
 
 ## Feuilles de match
 

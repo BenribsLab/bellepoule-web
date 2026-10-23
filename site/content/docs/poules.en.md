@@ -17,7 +17,9 @@ ManageComp suggests the possible pool formulas (number and size). Fencers are sp
 
 {{ figure(src="poules-saisie.png", caption="A pool: score grid, statuses, ranking and list of bouts.") }}
 
-Click a cell of the grid and type the score: `5` or `V` for the winner, the number of touches for the loser. Each fencer's menu shows their status: qualified, withdrawn, excluded, forfeit. This menu only changes on click (the mouse wheel scrolls the page).
+Click a cell of the grid and type the score: `5` or `V` for the winner, the number of touches for the loser.
+
+If the bout stops at the end of time before the winner reaches the maximum score, type `W` followed by their touches: `W3` for a 3–2 win. The grid then shows `V3`. Each fencer's menu shows their status: qualified, withdrawn, excluded, forfeit. This menu only changes on click (the mouse wheel scrolls the page).
 
 Referees can also enter their bouts on their phone ([Referees on their phone](@/docs/arbitre.md)).
 

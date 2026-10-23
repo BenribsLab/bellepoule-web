@@ -13,7 +13,7 @@ The main table is seeded from the previous phase's ranking. Depending on the set
 
 {{ figure(src="tableau.png", caption="The direct elimination table in progress.") }}
 
-Click a bout and enter each fencer's score. The winner moves forward in the table.
+Click a bout and enter each fencer's score. If time runs out before the maximum score, type `W` followed by the winner's touches (`W12` for a 12–10 win). The winner moves forward in the table.
 
 ## Match sheets
 
