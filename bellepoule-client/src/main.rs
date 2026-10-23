@@ -7,6 +7,7 @@ mod arbitre;
 mod checkin;
 mod contest;
 mod home;
+mod icons;
 mod live;
 mod organisation;
 mod properties;
@@ -57,11 +58,36 @@ pub fn navigate(route: &Route) {
     }
 }
 
-/// Message d'erreur dans une fenêtre du navigateur.
+/// Message passager (en bas de l'écran), à la place d'une fenêtre du navigateur.
 pub fn alert(message: &str) {
-    if let Some(w) = web_sys::window() {
-        let _ = w.alert_with_message(message);
-    }
+    use wasm_bindgen::JsCast;
+    let Some(window) = web_sys::window() else { return };
+    let Some(document) = window.document() else { return };
+    let Some(body) = document.body() else { return };
+    let stack = match document.get_element_by_id("toasts") {
+        Some(stack) => stack,
+        None => {
+            let Ok(stack) = document.create_element("div") else { return };
+            stack.set_id("toasts");
+            let _ = body.append_child(&stack);
+            stack
+        }
+    };
+    let Ok(toast) = document.create_element("div") else { return };
+    toast.set_class_name("toast");
+    toast.set_text_content(Some(message));
+    let _ = stack.append_child(&toast);
+    let leave = toast.clone();
+    let close = wasm_bindgen::closure::Closure::once_into_js(move || {
+        leave.set_class_name("toast leaving");
+        let gone = leave.clone();
+        let remove = wasm_bindgen::closure::Closure::once_into_js(move || gone.remove());
+        if let Some(w) = web_sys::window() {
+            let _ = w.set_timeout_with_callback_and_timeout_and_arguments_0(remove.unchecked_ref(), 300);
+        }
+    });
+    let delay = (3500 + message.len() as i32 * 40).min(9000);
+    let _ = window.set_timeout_with_callback_and_timeout_and_arguments_0(close.unchecked_ref(), delay);
 }
 
 pub fn confirm(message: &str) -> bool {
@@ -106,30 +132,50 @@ fn App() -> impl IntoView {
     };
 
     view! {
-        <header class="topbar">
-            <a class="brand" href="#/">"ManageComp"</a>
-            <span class="subtitle">"Gestion de compétitions d'escrime"</span>
-            <Show when=move || logged.get()>
-                <nav class="topnav">
-                    <a href="#/" class:active=move || route.get() == Route::Home>"Compétitions"</a>
-                    <a href="#/organisation" class:active=move || route.get() == Route::Organisation>"Organisation"</a>
-                </nav>
-            </Show>
-            <span class="spacer"></span>
-            {move || me.get().map(|m| view! { <span class="who">{m.name}</span> })}
-            <Show when=move || logged.get()>
-                <button class="light" on:click=logout>"Se déconnecter"</button>
-            </Show>
-        </header>
-        <main>
-            <Show when=move || logged.get() fallback=move || view! { <Login logged=logged /> }>
-                {move || match route.get() {
-                    Route::Home => view! { <home::Home /> }.into_any(),
-                    Route::Contest(id) => view! { <contest::ContestPage id=id /> }.into_any(),
-                    Route::Organisation => view! { <organisation::Organisation /> }.into_any(),
-                }}
-            </Show>
-        </main>
+        <Show when=move || logged.get() fallback=move || view! { <Login logged=logged /> }>
+            <div class="shell">
+                <aside class="sidebar">
+                    <a class="brand" href="#/">
+                        <icons::Logo />
+                        <span class="brand-text"><strong>"ManageComp"</strong><small>"Compétitions d'escrime"</small></span>
+                    </a>
+                    <nav class="side-nav">
+                        <span class="side-title">"Club"</span>
+                        <a href="#/" class:active=move || matches!(route.get(), Route::Home | Route::Contest(_))>
+                            <icons::Icon name="trophy" />"Compétitions"
+                        </a>
+                        <a href="#/organisation" class:active=move || route.get() == Route::Organisation>
+                            <icons::Icon name="grid" />"Organisation"
+                        </a>
+                    </nav>
+                    <span class="spacer"></span>
+                    <div class="side-user">
+                        <span class="avatar">{move || me.get().and_then(|m| m.name.chars().next()).map(|c| c.to_uppercase().to_string()).unwrap_or_default()}</span>
+                        <span class="side-user-name">{move || me.get().map(|m| m.name).unwrap_or_default()}</span>
+                        <button class="ghost icon-only" title="Se déconnecter" on:click=logout><icons::Icon name="logout" /></button>
+                    </div>
+                </aside>
+                <div class="content">
+                    <main>
+                        {move || {
+                            let page = match route.get() {
+                                Route::Home => view! { <home::Home /> }.into_any(),
+                                Route::Contest(id) => view! { <contest::ContestPage id=id /> }.into_any(),
+                                Route::Organisation => view! { <organisation::Organisation /> }.into_any(),
+                            };
+                            view! { <div class="page">{page}</div> }
+                        }}
+                    </main>
+                    <Footer />
+                </div>
+            </div>
+        </Show>
+    }
+}
+
+#[component]
+fn Footer() -> impl IntoView {
+    view! {
         <footer class="app-footer">
             "ManageComp, logiciel libre (GNU GPL v3 ou ultérieure) dérivé de "
             <a href="http://betton.escrime.free.fr" target="_blank" rel="noopener">"BellePoule"</a>
@@ -159,20 +205,28 @@ fn Login(logged: RwSignal<bool>) -> impl IntoView {
         });
     };
     view! {
-        <section class="card login">
-            <h2>"Connexion"</h2>
-            <p class="muted">"Saisissez la clé d'API de votre club, fournie par l'administrateur du serveur."</p>
-            <form on:submit=submit>
-                <input
-                    type="password"
-                    placeholder="Clé d'API"
-                    autocomplete="off"
-                    prop:value=move || key.get()
-                    on:input=move |ev| key.set(event_target_value(&ev))
-                />
-                <button type="submit">"Se connecter"</button>
-            </form>
-            {move || error.get().map(|e| view! { <p class="error">{e}</p> })}
-        </section>
+        <div class="login-screen">
+            <div class="login-glow"></div>
+            <section class="login-card">
+                <icons::Logo />
+                <h1>"ManageComp"</h1>
+                <p class="muted">"Saisissez la clé d'API de votre club, fournie par l'administrateur du serveur."</p>
+                <form on:submit=submit>
+                    <label class="input-icon">
+                        <icons::Icon name="key" />
+                        <input
+                            type="password"
+                            placeholder="Clé d'API"
+                            autocomplete="off"
+                            prop:value=move || key.get()
+                            on:input=move |ev| key.set(event_target_value(&ev))
+                        />
+                    </label>
+                    <button type="submit" class="big">"Se connecter"</button>
+                </form>
+                {move || error.get().map(|e| view! { <p class="error">{e}</p> })}
+            </section>
+            <Footer />
+        </div>
     }
 }

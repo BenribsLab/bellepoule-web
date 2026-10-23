@@ -3,7 +3,7 @@
 {% set meta = get_image_metadata(path=file, allow_missing=true) %}
 {% if meta %}
 <figure class="shot{% if class is defined %} {{ class }}{% endif %}">
-  <a href="{{ get_url(path=file) }}"><img src="{{ get_url(path=file) }}" alt="{{ caption }}" width="{{ meta.width }}" height="{{ meta.height }}" loading="lazy"></a>
+  <a href="{{ get_url(path=file, cachebust=true) }}"><img src="{{ get_url(path=file, cachebust=true) }}" alt="{{ caption }}" width="{{ meta.width }}" height="{{ meta.height }}" loading="lazy"></a>
   <figcaption>{{ caption }}</figcaption>
 </figure>
 {% endif %}

@@ -810,12 +810,21 @@ impl Contest {
     /// Export HTML ; `classification` remplace le contenu du classement
     /// général (entraînement des jeunes : classement de chaque groupe).
     pub fn dump_to_html_with(&mut self, classification: Option<String>) -> String {
+        self.dump_to_html_scope(classification, false)
+    }
+
+    /// Export HTML ; `final_only` : le classement final seul, sans les poules
+    /// ni les tableaux.
+    pub fn dump_to_html_scope(&mut self, classification: Option<String>, final_only: bool) -> String {
         let header = self.header();
         let current = self.schedule.current_index();
         let ctx = StageContext { players: &mut self.players, settings: &self.settings };
         let mut rounds = Vec::new();
         for (index, stage) in self.schedule.stages().enumerate() {
             if stage.is_input_provider() {
+                continue;
+            }
+            if final_only && stage.kind() != crate::stage::StageKind::GeneralClassification {
                 continue;
             }
             let mut html = String::new();

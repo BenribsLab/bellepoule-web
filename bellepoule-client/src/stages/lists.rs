@@ -196,7 +196,8 @@ pub fn Classification(ctx: StageCtx, contest: String) -> impl IntoView {
     let export = move |format: &'static str| {
         let id = contest.get_value();
         spawn_local(async move {
-            if let Err(e) = api::download(&format!("/api/contests/{id}/export/{format}"), &format!("classement.{format}")).await {
+            let extension = format.split('-').next().unwrap_or(format);
+            if let Err(e) = api::download(&format!("/api/contests/{id}/export/{format}"), &format!("classement.{extension}")).await {
                 alert(&e.message);
             }
         });
@@ -204,7 +205,8 @@ pub fn Classification(ctx: StageCtx, contest: String) -> impl IntoView {
     view! {
         <div class="stage-bar">
             <span class="spacer"></span>
-            <button class="light" on:click=move |_| export("html")>"Export HTML"</button>
+            <button class="light" title="Le classement final seul" on:click=move |_| export("html-final")>"HTML : classement final"</button>
+            <button class="light" title="Poules, tableaux et classement final" on:click=move |_| export("html")>"HTML : résultats complets"</button>
             <button class="light" on:click=move |_| export("fff")>"Export FFF"</button>
             <button class="light" on:click=move |_| export("frd")>"Export AskFred"</button>
             {move || {

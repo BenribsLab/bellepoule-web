@@ -263,15 +263,15 @@ pub async fn download(State(store): State<Shared>, client: Client, Path(id): Pat
     Ok(([(header::CONTENT_TYPE, "application/xml; charset=utf-8".to_string()), (header::CONTENT_DISPOSITION, disposition)], xml).into_response())
 }
 
-/// Exports : `html` (résultats complets), `fff` (classement FFF), `frd` (AskFred).
+/// Exports : `html` (résultats complets), `html-final` (classement final seul), `fff` (classement FFF), `frd` (AskFred).
 pub async fn export(State(store): State<Shared>, client: Client, Path((id, format)): Path<(String, String)>) -> Result<Response, ApiError> {
     let mut store = store.lock().await;
     let c = store.get_mut(&client, &id).ok_or_else(not_found)?;
     let base = c.default_file_name().trim_end_matches(".cotcot").to_string();
     let (bytes, mime, ext): (Vec<u8>, &str, &str) = match format.as_str() {
-        "html" => {
+        "html" | "html-final" => {
             let youth = crate::stages::youth_html(c);
-            (c.dump_to_html_with(youth).into_bytes(), "text/html; charset=utf-8", "html")
+            (c.dump_to_html_scope(youth, format == "html-final").into_bytes(), "text/html; charset=utf-8", "html")
         }
         "fff" => (
             c.export_final_classification_fff(0).ok_or_else(|| bad_request("pas de classement général"))?,
@@ -279,7 +279,7 @@ pub async fn export(State(store): State<Shared>, client: Client, Path((id, forma
             "fff",
         ),
         "frd" => (c.export_askfred().into_bytes(), "application/xml; charset=utf-8", "frd"),
-        _ => return Err(bad_request("format inconnu : html, fff ou frd")),
+        _ => return Err(bad_request("format inconnu : html, html-final, fff ou frd")),
     };
     let disposition = format!("attachment; filename=\"{}.{ext}\"", base.replace('"', ""));
     Ok(([(header::CONTENT_TYPE, mime.to_string()), (header::CONTENT_DISPOSITION, disposition)], bytes).into_response())

@@ -4,6 +4,7 @@ use leptos::prelude::*;
 use leptos::task::spawn_local;
 
 use crate::api::{self, ContestSummary, Meta, NewContest};
+use crate::icons::Icon;
 use crate::properties::{new_properties, PropertiesFields, PropertiesForm};
 use crate::{alert, confirm, navigate, Route};
 
@@ -18,23 +19,51 @@ pub fn Home() -> impl IntoView {
     let reload = move || version.update(|v| *v += 1);
     let creating = RwSignal::new(false);
 
+    let search = RwSignal::new(String::new());
+
     view! {
-        <section class="card">
-            <div class="card-head">
-                <h2>"Compétitions"</h2>
-                <span class="spacer"></span>
-                <ImportButton on_done=reload />
-                <button on:click=move |_| creating.set(true)>"Nouvelle compétition"</button>
+        <header class="page-head">
+            <div>
+                <h1>"Compétitions"</h1>
+                <p class="muted">
+                    {move || match contests.get() {
+                        Some(Ok(list)) => match list.len() {
+                            0 => "Aucune compétition pour l'instant".to_string(),
+                            1 => "1 compétition".to_string(),
+                            n => format!("{n} compétitions"),
+                        },
+                        _ => String::new(),
+                    }}
+                </p>
             </div>
-            {move || match contests.get() {
-                None => view! { <p class="muted">"Chargement…"</p> }.into_any(),
-                Some(Err(e)) => view! { <p class="error">{e.message}</p> }.into_any(),
-                Some(Ok(list)) if list.is_empty() => {
-                    view! { <p class="muted">"Aucune compétition pour l'instant."</p> }.into_any()
-                }
-                Some(Ok(list)) => view! { <ContestTable list=list on_change=reload /> }.into_any(),
-            }}
-        </section>
+            <span class="spacer"></span>
+            <label class="input-icon search">
+                <Icon name="search" />
+                <input type="search" placeholder="Rechercher" prop:value=move || search.get() on:input=move |ev| search.set(event_target_value(&ev)) />
+            </label>
+            <ImportButton on_done=reload />
+            <button on:click=move |_| creating.set(true)><Icon name="plus" />"Nouvelle compétition"</button>
+        </header>
+        {move || match contests.get() {
+            None => view! { <div class="contest-grid">{(0..3).map(|_| view! { <div class="contest-card skeleton"></div> }).collect_view()}</div> }.into_any(),
+            Some(Err(e)) => view! { <p class="error">{e.message}</p> }.into_any(),
+            Some(Ok(list)) if list.is_empty() => view! {
+                <div class="empty">
+                    <Icon name="trophy" />
+                    <h2>"Aucune compétition"</h2>
+                    <p class="muted">"Créez une compétition ou ouvrez un fichier .cotcot du logiciel de bureau."</p>
+                    <button on:click=move |_| creating.set(true)><Icon name="plus" />"Nouvelle compétition"</button>
+                </div>
+            }.into_any(),
+            Some(Ok(list)) => {
+                let needle = search.get().to_lowercase();
+                let list: Vec<_> = list
+                    .into_iter()
+                    .filter(|c| needle.is_empty() || format!("{} {} {} {}", c.name, c.label, c.location, c.category).to_lowercase().contains(&needle))
+                    .collect();
+                view! { <ContestCards list=list on_change=reload /> }.into_any()
+            }
+        }}
         <Show when=move || creating.get()>
             {move || match meta.get() {
                 Some(Ok(m)) => view! { <NewContestDialog meta=m on_close=move || creating.set(false) /> }.into_any(),
@@ -46,63 +75,60 @@ pub fn Home() -> impl IntoView {
 }
 
 #[component]
-fn ContestTable(list: Vec<ContestSummary>, on_change: impl Fn() + Copy + 'static) -> impl IntoView {
+fn ContestCards(list: Vec<ContestSummary>, on_change: impl Fn() + Copy + 'static) -> impl IntoView {
     view! {
-        <table class="list">
-            <thead>
-                <tr>
-                    <th></th>
-                    <th>"Nom"</th>
-                    <th>"Arme"</th>
-                    <th>"Sexe"</th>
-                    <th>"Catégorie"</th>
-                    <th>"Date"</th>
-                    <th>"Lieu"</th>
-                    <th class="number">"Tireurs"</th>
-                    <th>"Phase en cours"</th>
-                    <th></th>
-                </tr>
-            </thead>
-            <tbody>
-                {list
-                    .into_iter()
-                    .map(|c| {
-                        let open_id = c.id.clone();
-                        let del_id = c.id.clone();
-                        let name = c.name.clone();
-                        let delete = move |ev: leptos::ev::MouseEvent| {
-                            ev.stop_propagation();
-                            if confirm(&format!("Supprimer « {name} » ?")) {
-                                let id = del_id.clone();
-                                spawn_local(async move {
-                                    if let Err(e) = api::delete(&format!("/api/contests/{id}")).await {
-                                        alert(&e.message);
-                                    }
-                                    on_change();
-                                });
-                            }
-                        };
-                        let swatch = format!("background:{}", c.color);
-                        view! {
-                            <tr class="clickable" on:click=move |_| navigate(&Route::Contest(open_id.clone()))>
-                                <td><span class="swatch" style=swatch></span></td>
-                                <td class="name">{c.name.clone()}{(!c.label.is_empty()).then(|| format!(" — {}", c.label))}</td>
-                                <td>{c.weapon_label.clone()}</td>
-                                <td>{c.gender_label.clone()}</td>
-                                <td>{c.category.clone()}</td>
-                                <td>{c.date.clone()}</td>
-                                <td>{c.location.clone()}</td>
-                                <td class="number">{c.fencers}</td>
-                                <td>{c.stage.clone()}</td>
-                                <td class="actions">
-                                    <button class="danger small" on:click=delete>"Supprimer"</button>
-                                </td>
-                            </tr>
+        <div class="contest-grid">
+            {list
+                .into_iter()
+                .enumerate()
+                .map(|(i, c)| {
+                    let open_id = c.id.clone();
+                    let del_id = c.id.clone();
+                    let name = c.name.clone();
+                    let delete = move |ev: leptos::ev::MouseEvent| {
+                        ev.stop_propagation();
+                        if confirm(&format!("Supprimer « {name} » ?")) {
+                            let id = del_id.clone();
+                            spawn_local(async move {
+                                if let Err(e) = api::delete(&format!("/api/contests/{id}")).await {
+                                    alert(&e.message);
+                                }
+                                on_change();
+                            });
                         }
-                    })
-                    .collect_view()}
-            </tbody>
-        </table>
+                    };
+                    let style = format!("--c:{};--i:{}", c.color, i.min(12));
+                    let detail = [c.weapon_label.clone(), c.gender_label.clone(), c.category.clone()]
+                        .into_iter()
+                        .filter(|s| !s.is_empty())
+                        .collect::<Vec<_>>()
+                        .join(" · ");
+                    view! {
+                        <article class="contest-card" style=style tabindex="0" on:click=move |_| navigate(&Route::Contest(open_id.clone()))>
+                            <div class="cc-band"></div>
+                            <div class="cc-body">
+                                <div class="cc-top">
+                                    <span class="cc-weapon">{detail}</span>
+                                    <button class="ghost icon-only danger" title="Supprimer" on:click=delete><Icon name="trash" /></button>
+                                </div>
+                                <h3>{c.name.clone()}</h3>
+                                {(!c.label.is_empty()).then(|| view! { <p class="muted cc-label">{c.label.clone()}</p> })}
+                                <div class="cc-meta">
+                                    {(!c.date.is_empty()).then(|| view! { <span><Icon name="calendar" />{c.date.clone()}</span> })}
+                                    {(!c.location.is_empty()).then(|| view! { <span><Icon name="pin" />{c.location.clone()}</span> })}
+                                </div>
+                                <div class="cc-foot">
+                                    <span class="chip"><Icon name="users" />{c.fencers}</span>
+                                    {(!c.stage.is_empty()).then(|| view! { <span class="chip accent">{c.stage.clone()}</span> })}
+                                    <span class="spacer"></span>
+                                    <span class="cc-open"><Icon name="chevron-right" /></span>
+                                </div>
+                            </div>
+                        </article>
+                    }
+                })
+                .collect_view()}
+        </div>
     }
 }
 
@@ -170,7 +196,8 @@ fn ImportButton(on_done: impl Fn() + Copy + 'static) -> impl IntoView {
     };
     view! {
         <label class="button light">
-            "Ouvrir un fichier .cotcot"
+            <Icon name="upload" />
+            "Ouvrir un fichier"
             <input type="file" accept=".cotcot,.xml" class="hidden" node_ref=input on:change=changed />
         </label>
     }

@@ -6,6 +6,7 @@ use leptos::task::spawn_local;
 
 use crate::api::{self, ContestSummary, Meta, Properties, ScheduleView};
 use crate::checkin::Checkin;
+use crate::icons::Icon;
 use crate::properties::{PropertiesFields, PropertiesForm};
 use crate::{alert, confirm};
 
@@ -95,78 +96,93 @@ pub fn ContestPage(id: String) -> impl IntoView {
             summary
                 .get()
                 .map(|s| {
-                    let style = format!("background:{}", s.color);
+                    let style = format!("--c:{}", s.color);
+                    let detail = [s.weapon_label.clone(), s.gender_label.clone(), s.category.clone()]
+                        .into_iter()
+                        .filter(|x| !x.is_empty())
+                        .collect::<Vec<_>>()
+                        .join(" · ");
                     view! {
-                        <section class="contest-header" style=style>
-                            <div class="title">
-                                <a href="#/" class="back">"‹ Compétitions"</a>
-                                <h2>{s.name.clone()}</h2>
-                                <span>{format!("{} - {} - {}", s.weapon_label, s.gender_label, s.category)}</span>
+                        <section class="contest-hero" style=style>
+                            <div class="hero-main">
+                                <a href="#/" class="back"><Icon name="chevron-left" />"Compétitions"</a>
+                                <h1>{s.name.clone()}</h1>
+                                <div class="hero-chips">
+                                    <span class="chip glass"><Icon name="blade" />{detail}</span>
+                                    {(!s.date.is_empty()).then(|| view! { <span class="chip glass"><Icon name="calendar" />{s.date.clone()}</span> })}
+                                    {(!s.location.is_empty()).then(|| view! { <span class="chip glass"><Icon name="pin" />{s.location.clone()}</span> })}
+                                    <span class="chip glass"><Icon name="users" />{format!("{} {}", s.fencers, if s.team_event { "équipes" } else { "tireurs" })}</span>
+                                </div>
                             </div>
-                            <div class="meta">
-                                <span>{s.date.clone()}</span>
-                                <span>{s.location.clone()}</span>
+                            <div class="hero-actions">
+                                <button class="glass" on:click=open_properties><Icon name="settings" />"Propriétés"</button>
+                                <button class="glass" on:click=move |_| formula.set(true)><Icon name="flow" />"Formule"</button>
+                                <button class="glass" on:click=download><Icon name="download" />"Enregistrer"</button>
                             </div>
                         </section>
                     }
                 })
         }}
-        <section class="toolbar">
-            <button class="light" on:click=open_properties>"Propriétés"</button>
-            <button class="light" on:click=move |_| formula.set(true)>"Formule"</button>
-            <button class="light" on:click=download>"Enregistrer (.cotcot)"</button>
-            <span class="spacer"></span>
-            {move || schedule.get().and_then(|s| s.error.clone()).map(|e| view! { <span class="stage-error">{e}</span> })}
+        <section class="stepper-bar">
             <button
-                class="light"
+                class="light round"
+                title="Tour précédent"
                 disabled=move || !schedule.get().map(|s| s.can_previous).unwrap_or(false)
                 on:click=move |_| step(false)
             >
-                "‹ Tour précédent"
+                <Icon name="chevron-left" />
             </button>
-            <button disabled=move || !schedule.get().map(|s| s.can_next).unwrap_or(false) on:click=move |_| step(true)>
-                "Tour suivant ›"
+            <nav class="stepper">
+                {move || {
+                    schedule
+                        .get()
+                        .map(|s| {
+                            let current = s.current;
+                            s.stages
+                                .iter()
+                                .map(|st| {
+                                    let index = st.index;
+                                    let label = if st.name.is_empty() { st.class_name.clone() } else { format!("{} — {}", st.class_name, st.name) };
+                                    let state = if index < current { "done" } else if index == current { "current" } else { "future" };
+                                    view! {
+                                        <button
+                                            class=format!("step {state}")
+                                            class:active=move || selected.get() == Some(index)
+                                            on:click=move |_| selected.set(Some(index))
+                                        >
+                                            <span class="dot">
+                                                {if index < current { view! { <Icon name="check" /> }.into_any() } else { view! { <span>{index + 1}</span> }.into_any() }}
+                                            </span>
+                                            <span class="step-label">{label}</span>
+                                            {st.locked.then(|| view! { <Icon name="lock" /> })}
+                                        </button>
+                                    }
+                                })
+                                .collect_view()
+                        })
+                }}
+            </nav>
+            <button
+                class="round"
+                title="Tour suivant"
+                disabled=move || !schedule.get().map(|s| s.can_next).unwrap_or(false)
+                on:click=move |_| step(true)
+            >
+                <Icon name="chevron-right" />
             </button>
         </section>
-        <nav class="tabs">
-            {move || {
-                schedule
-                    .get()
-                    .map(|s| {
-                        let current = s.current;
-                        s.stages
-                            .iter()
-                            .map(|st| {
-                                let index = st.index;
-                                let future = index > current;
-                                let label = if st.name.is_empty() { st.class_name.clone() } else { format!("{} — {}", st.class_name, st.name) };
-                                let lock = if st.locked { " 🔒" } else { "" };
-                                view! {
-                                    <button
-                                        class="tab"
-                                        class:future=future
-                                        class:active=move || selected.get() == Some(index)
-                                        on:click=move |_| selected.set(Some(index))
-                                    >
-                                        {label}
-                                        {lock}
-                                    </button>
-                                }
-                            })
-                            .collect_view()
-                    })
-            }}
-        </nav>
+        {move || schedule.get().and_then(|s| s.error.clone()).map(|e| view! { <div class="banner warn"><Icon name="alert" />{e}</div> })}
         <section class="stage">
             {move || {
                 // Seuls le changement d'onglet ou de phase reconstruisent l'écran :
                 // une saisie (score, présence…) ne doit pas faire perdre le focus.
                 let (index, kind, _) = panel.get()?;
                 let contest = id.get_value();
-                Some(match kind.as_str() {
+                let screen = match kind.as_str() {
                     "checkin" => view! { <Checkin id=contest on_change=Callback::new(move |_| reload()) /> }.into_any(),
                     kind => view! { <crate::stages::StageView id=contest index=index kind=kind.to_string() on_change=Callback::new(move |_| reload()) /> }.into_any(),
-                })
+                };
+                Some(view! { <div class="stage-in">{screen}</div> })
             }}
         </section>
         {move || {
