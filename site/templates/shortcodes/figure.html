@@ -1,9 +1,18 @@
-{# Capture d'écran avec légende ; rien n'est affiché si l'image n'existe pas. #}
+{# Capture d'écran avec légende ; rien n'est affiché si l'image n'existe pas.
+   Un clic l'agrandit dans une fenêtre au-dessus de la page (sans script :
+   cible d'ancre `:target`) ; un clic n'importe où la referme. #}
 {% set file = "docs/" ~ src %}
 {% set meta = get_image_metadata(path=file, allow_missing=true) %}
 {% if meta %}
-<figure class="shot{% if class is defined %} {{ class }}{% endif %}">
-  <a href="{{ get_url(path=file, cachebust=true) }}"><img src="{{ get_url(path=file, cachebust=true) }}" alt="{{ caption }}" width="{{ meta.width }}" height="{{ meta.height }}" loading="lazy"></a>
+{% set id = src | replace(from=".png", to="") | replace(from=".", to="-") %}
+{% set url = get_url(path=file, cachebust=true) %}
+<figure class="shot{% if class is defined %} {{ class }}{% endif %}" id="fig-{{ id }}">
+  <a href="#zoom-{{ id }}" title="Agrandir · Enlarge"><img src="{{ url }}" alt="{{ caption }}" width="{{ meta.width }}" height="{{ meta.height }}" loading="lazy"></a>
   <figcaption>{{ caption }}</figcaption>
 </figure>
+<a class="lightbox{% if class is defined %} {{ class }}{% endif %}" id="zoom-{{ id }}" href="#fig-{{ id }}" aria-label="Fermer · Close">
+  <span class="lightbox-close" aria-hidden="true">×</span>
+  <img src="{{ url }}" alt="{{ caption }}" width="{{ meta.width }}" height="{{ meta.height }}" loading="lazy">
+  <span class="lightbox-caption">{{ caption }}</span>
+</a>
 {% endif %}

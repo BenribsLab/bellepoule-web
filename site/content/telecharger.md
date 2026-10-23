@@ -6,7 +6,7 @@ description = "Télécharger ManageComp pour Windows ou utiliser la version en l
 
 ## ManageComp pour Windows
 
-1. Téléchargez la dernière version (archive `.zip` pour Windows 64 bits) sur la [page des versions](https://github.com/BenribsLab/bellepoule-rust/releases).
+1. Téléchargez la dernière version (archive `.zip` pour Windows 64 bits) sur la [page des versions](https://github.com/BenribsLab/managecomp-rust/releases).
 2. Décompressez l'archive où vous voulez.
 3. Lancez `bin\managecomp.exe`. Rien d'autre à installer : tout ce qu'il faut est dans l'archive.
 

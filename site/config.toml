@@ -22,7 +22,7 @@ arbitre_url = "https://arbitre.managecomp.org"
 live_url = "https://live.managecomp.org"
 source_url = "https://github.com/BenribsLab"
 bellepoule_url = "http://betton.escrime.free.fr"
-releases_url = "https://github.com/BenribsLab/bellepoule-rust/releases"
+releases_url = "https://github.com/BenribsLab/managecomp-rust/releases"
 
 # Libellés de l'interface (français).
 [translations]
