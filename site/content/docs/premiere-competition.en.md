@@ -7,6 +7,8 @@ description = "Create a competition and set it up."
 
 ## Create the competition
 
+{{ figure(src="accueil.png", caption="The home screen: new competition, youth training, recent competitions.") }}
+
 On the home screen, choose:
 
 - **New competition** for an individual or team event;
@@ -24,6 +26,8 @@ The properties window opens:
 | Colour | identifies the competition in the organisation and on screens |
 
 ## Save
+
+{{ figure(src="proprietes.png", caption="Competition properties and formula.") }}
 
 The **Save** button (or `Ctrl+S`) saves the `.cotcot` file. The button shows "Saved" while nothing has changed. When closing, ManageComp only asks if the latest version has not been saved.
 

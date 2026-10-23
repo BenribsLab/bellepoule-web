@@ -14,9 +14,13 @@ Les colonnes affichées se choisissent dans le menu de la liste. La recherche et
 
 ## Pointer les présents
 
+{{ figure(src="appel.png", caption="L'appel : liste des tireurs, présents et absents.") }}
+
 Cochez la case de présence de chaque tireur, ou utilisez **Présents** / **Absents** pour tout cocher ou tout décocher. Les compteurs indiquent le nombre de présents et d'absents.
 
 ## Compétition par équipes
+
+{{ figure(src="equipes-appel.png", caption="L'appel d'une épreuve par équipes : tireurs par équipe et remplaçants.") }}
 
 Chaque tireur appartient à une équipe (colonne *Équipe*). Dans la configuration de l'appel :
 

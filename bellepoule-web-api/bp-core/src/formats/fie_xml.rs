@@ -214,7 +214,7 @@ pub fn write(header: &ContestHeader, store: &PlayerStore, people: &XmlPeople, ph
     let mut w = XmlWriter::document();
     let root = if header.team_event { "CompetitionParEquipes" } else { "CompetitionIndividuelle" };
     w.dtd(root);
-    w.comment(&format!("\n           By BellePoule (V{version})\n\n   http://betton.escrime.free.fr/index.php/bellepoule\n"));
+    w.comment(&format!("\n           By ManageComp (V{version}), derived from BellePoule\n\n   https://managecomp.org\n"));
     w.start(root);
     write_header_attributes(&mut w, header);
     write_people(&mut w, header.team_event, store, people, false);

@@ -15,9 +15,13 @@ Displayed columns are chosen from the list menu. Search and filters (All, Presen
 
 ## Mark who is present
 
+{{ figure(src="appel.png", caption="Check-in: list of fencers, present and absent.") }}
+
 Tick each fencer's presence box, or use **Present** / **Absent** to tick or untick everyone. Counters show how many are present and absent.
 
 ## Team event
+
+{{ figure(src="equipes-appel.png", caption="Check-in for a team event: fencers per team and substitutes.") }}
 
 Each fencer belongs to a team (*Team* column). In the check-in settings:
 

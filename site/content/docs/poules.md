@@ -6,11 +6,15 @@ description = "Composition, saisie des scores et classement des poules."
 
 ## Composition
 
+{{ figure(src="poules-composition.png", caption="Composition des poules : formules proposées et répartition des tireurs.") }}
+
 ManageComp propose les formules de poules possibles (nombre et taille). Les tireurs sont répartis en serpentin selon leur classement, avec le **décalage** par club, ligue, région ou pays pour éviter que des tireurs du même club se rencontrent en poule. Les tireurs peuvent être déplacés d'une poule à l'autre par glisser-déposer.
 
 **Valider la composition** crée les matchs ; on peut alors imprimer les feuilles et placer les poules sur les pistes.
 
 ## Saisie des scores
+
+{{ figure(src="poules-saisie.png", caption="Une poule : grille des scores, statuts, classement et liste des matchs.") }}
 
 Cliquez une case de la grille et tapez le score : `5` ou `V` pour le vainqueur, le nombre de touches pour le perdant. Le menu de chaque tireur indique son statut : qualifié, abandon, exclu, forfait. Ce menu ne change qu'au clic (la molette fait défiler la page).
 

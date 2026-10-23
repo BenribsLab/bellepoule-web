@@ -92,3 +92,10 @@ a { color: var(--blue); }
 /* Pied de page */
 .footer { border-top: 1px solid var(--border); background: var(--soft); color: var(--muted); font-size: 0.9rem; padding: 24px 0; }
 .footer p { margin: 4px 0; }
+
+/* Captures d'écran de la documentation */
+.prose figure.shot { margin: 1.4em 0; }
+.prose figure.shot img { display: block; width: 100%; height: auto; border: 1px solid var(--border); border-radius: 10px; box-shadow: 0 6px 22px #15294f1f; }
+.prose figure.shot.page img { max-width: 520px; margin: 0 auto; }
+.prose figure.shot.phone img { max-width: 300px; margin: 0 auto; border-radius: 18px; }
+.prose figure.shot figcaption { color: var(--muted); font-size: 0.9rem; text-align: center; margin-top: 8px; }

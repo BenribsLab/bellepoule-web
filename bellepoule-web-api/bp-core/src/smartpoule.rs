@@ -190,7 +190,17 @@ impl Contest {
                                     .or_else(|| pool.strips().first().copied())
                                     .filter(|p| *p != 0),
                                 "resource": match bout {
-                                    Some(b) => Some(format!("Piste {:02}\n{}", b.piste, b.referee.map(referee_name).unwrap_or_default())),
+                                    // Piste et arbitre du match, quand ils sont connus.
+                                    Some(b) => {
+                                        let parts: Vec<String> = [
+                                            (b.piste != 0).then(|| format!("Piste {:02}", b.piste)),
+                                            b.referee.map(referee_name).filter(|n| !n.is_empty()),
+                                        ]
+                                        .into_iter()
+                                        .flatten()
+                                        .collect();
+                                        (!parts.is_empty()).then(|| parts.join("\n"))
+                                    }
                                     None => m.resource.clone(),
                                 },
                                 "fencers": m.opponents.iter().flatten().map(|f| json!({

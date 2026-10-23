@@ -436,3 +436,69 @@ table.sheet.print td.cell.small.rank { font-weight: 800; }
 .app-footer { text-align: center; font-size: 0.8rem; color: var(--muted); padding: 1.5rem 1rem; }
 body.print-groups .app-footer { display: none; }
 @media print { .app-footer { display: none; } }
+
+/* ManageComp Arbitre : téléphone d'abord */
+body:has(.ref-app) { background: #f3f6fb; }
+.ref-app { max-width: 640px; margin: 0 auto; padding: 12px 12px 48px; font-size: 17px; color: #15294f; }
+.ref-screen h1 { margin: 0.2rem 0; }
+.ref-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px; }
+.ref-head > div { min-width: 0; }
+.ref-head > button { flex-shrink: 0; }
+.ref-app { overflow-wrap: anywhere; }
+.ref-brand { font-weight: 800; font-size: 1.25rem; color: #1f5ae0; }
+.ref-back { font-weight: 700; text-decoration: none; color: #1f5ae0; padding: 6px 0; }
+.ref-title { font-size: 1.35rem; margin: 6px 0 2px; }
+.ref-muted { color: #5f6f8c; }
+.ref-small { font-size: 0.85rem; }
+.ref-center { text-align: center; justify-content: center; }
+.ref-error { color: #b42318; font-weight: 600; }
+.ref-ok { color: #168456; font-weight: 700; }
+.ref-place { color: #1f5ae0; font-weight: 700; font-size: 1.05rem; }
+.ref-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.ref-grow { flex: 1; min-width: 0; }
+.ref-board .ref-row { flex-wrap: nowrap; }
+.ref-pre { white-space: pre-line; text-align: right; }
+.ref-card { display: block; background: #fff; border: 1px solid #dce5f4; border-radius: 14px; padding: 12px 14px; margin: 10px 0; text-decoration: none; color: inherit; }
+.ref-card.done { opacity: 0.65; }
+.ref-fencer { margin-top: 6px; }
+.ref-pos { width: 1.6em; font-weight: 700; color: #5f6f8c; }
+.ref-score { font-size: 1.5rem; font-weight: 800; color: #1f5ae0; min-width: 1.6em; text-align: right; }
+.ref-grid-scroll { overflow-x: auto; margin: 10px 0; }
+.ref-grid { border-collapse: collapse; background: #fff; font-size: 0.9rem; }
+.ref-grid th, .ref-grid td { border: 1px solid #dce5f4; padding: 6px 7px; text-align: center; }
+.ref-grid td.grey { background: #bdbdbd; }
+.ref-grid .ref-gname { text-align: left; font-weight: 700; white-space: nowrap; }
+.ref-clock { margin: 12px auto 6px; font-size: clamp(3rem, 17vw, 4.4rem); font-weight: 800; text-align: center; font-variant-numeric: tabular-nums; background: #fff; border-radius: 16px; padding: 6px 0; user-select: none; }
+.ref-clock.zero { color: #b42318; }
+.ref-main { background: #00ba32; color: #fff; border: none; border-radius: 12px; font-size: 1.2rem; font-weight: 800; padding: 12px 34px; }
+.ref-main.pause { background: #ffa000; }
+.ref-main:disabled { opacity: 0.5; }
+.ref-adjust { flex-wrap: wrap; margin: 8px 0; }
+.ref-light { background: #fff; color: #1f5ae0; border: 1px solid #1f5ae0; border-radius: 10px; padding: 8px 12px; font-size: 0.95rem; }
+.ref-light.chosen, .ref-team.chosen { background: #1f5ae0; color: #fff; }
+.ref-light:disabled { opacity: 0.45; }
+.ref-wide { width: 100%; margin-top: 8px; }
+.ref-link { background: none; border: none; color: #5f6f8c; text-decoration: underline; }
+.ref-board { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; margin: 12px 0; }
+.ref-side { min-width: 0; background: #111; color: #fff; border-radius: 16px; padding: 10px 8px 12px; display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.ref-side .ref-name { font-weight: 700; text-align: center; min-height: 2.6em; font-size: 0.95rem; }
+.ref-side .ref-big { font-size: clamp(2.8rem, 15vw, 4.4rem); font-weight: 900; line-height: 1; }
+.ref-side.red .ref-big { color: #ff5252; }
+.ref-side.green .ref-big { color: #00e676; }
+.ref-step { width: clamp(44px, 15vw, 64px); height: clamp(44px, 15vw, 64px); border-radius: 14px; border: none; font-size: 2rem; font-weight: 800; background: #3a3a3a; color: #fff; }
+.ref-step.plus { background: #1f5ae0; }
+.ref-cards { display: flex; gap: 6px; }
+.ref-cards button { width: clamp(28px, 9vw, 38px); height: clamp(36px, 11vw, 46px); border-radius: 6px; border: 1px solid #555; font-weight: 800; }
+.card-y { background: #f5d90a; color: #111; }
+.card-r { background: #e02424; color: #fff; }
+.card-b { background: #111; color: #fff; }
+.ref-send { display: block; width: 100%; margin-top: 14px; background: #1f5ae0; color: #fff; border: none; border-radius: 12px; padding: 14px; font-size: 1.15rem; font-weight: 800; }
+.ref-send:disabled { opacity: 0.5; }
+.ref-status { text-align: center; font-weight: 600; min-height: 1.4em; }
+.ref-team { flex: 1 1 0; min-width: 0; background: #fff; border: 2px solid #1f5ae0; color: #1f5ae0; border-radius: 12px; padding: 12px; font-weight: 800; font-size: 1rem; }
+.ref-lineup { margin: 6px 0; }
+.ref-lineup select { flex: 1; font-size: 1rem; padding: 8px; border-radius: 8px; }
+.ref-num { width: 2.2em; font-weight: 800; font-size: 1.1rem; }
+.ref-final { font-size: 1.6rem; font-weight: 800; text-align: center; margin: 14px 0; color: #1f5ae0; }
+.ref-history { padding-left: 18px; }
+.ref-screen.ref-center { padding-top: 30vh; }

@@ -11,6 +11,8 @@ ManageComp Live shows, for one piste, the bout in progress: names, scores, timer
 
 Open the address given by the software (Organisation › Referees on phones… menu, "Piste screens" line) on a smart TV, a computer or a tablet next to the piste. The − and + buttons change the piste.
 
+{{ figure(src="live.png", caption="A piste screen during a bout.") }}
+
 ## Piste box
 
 The ManageComp Live box (Raspberry Pi) can also read the scoring machine plugged in by USB. First start: with the link address and the piste number; they are remembered afterwards.

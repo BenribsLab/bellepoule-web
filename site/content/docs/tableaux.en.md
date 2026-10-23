@@ -11,6 +11,8 @@ The main table is seeded from the previous phase's ranking. Depending on the set
 
 ## Score entry
 
+{{ figure(src="tableau.png", caption="The direct elimination table in progress.") }}
+
 Click a bout and enter each fencer's score. The winner moves forward in the table.
 
 ## Match sheets

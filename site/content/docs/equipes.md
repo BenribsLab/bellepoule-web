@@ -6,6 +6,8 @@ description = "Relais, feuilles de match et saisie des rencontres."
 
 ## Types de rencontre
 
+{{ figure(src="equipes-preferences.png", caption="Les préférences d'une phase par équipes : type de rencontre, points et temps des relais.") }}
+
 Les tireurs et les remplaçants d'une équipe se règlent une fois pour toutes à l'[appel](@/docs/appel.md). Chaque phase choisit ensuite son type de rencontre :
 
 | Type | Haut | Bas | Ordre des relais |
@@ -18,9 +20,13 @@ Le score est **cumulé** : le relais *n* se termine quand une équipe atteint *n
 
 ## Au début de la rencontre
 
+{{ figure(src="equipes-tableau.png", caption="Le tableau d'une épreuve par équipes.") }}
+
 Les équipes choisissent leur ordre et le donnent à l'arbitre : rien n'est prérempli. L'arbitre désigne l'équipe du **haut** et celle du **bas**, puis le tireur de chaque numéro.
 
 ## Feuilles de match
+
+{{ figure(src="equipes-feuille.png", caption="Une feuille de match remplie : équipes du haut et du bas, tireurs, relais joués et bilans.", class="page") }}
 
 - **Vierges**, en nombre, ou **celles des rencontres** de la phase (noms des équipes) ;
 - à l'unité ou **par 3** : une pour chaque équipe et une pour l'arbitre ;

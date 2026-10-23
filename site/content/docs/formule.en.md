@@ -14,6 +14,8 @@ The formula is the sequence of phases: check-in, pool rounds, tables, split poin
 
 ## Change the order
 
+{{ figure(src="proprietes.png", caption="The formula in the competition preferences: Move up, Move down, Add, Remove.") }}
+
 The **Move up** and **Move down** buttons move the selected phase. A pool round moves with its composition. Only phases not yet fenced can move; check-in stays first and the general ranking last.
 
 ## Phase preferences

@@ -575,7 +575,7 @@ impl Contest {
         let root = if self.settings.team_event { "CompetitionParEquipes" } else { "CompetitionIndividuelle" };
         w.dtd(root);
         w.comment(&format!(
-            "\n           By BellePoule (V{VERSION}.{VERSION_REVISION}{VERSION_MATURITY})\n\n   http://betton.escrime.free.fr/index.php/bellepoule\n"
+            "\n           By ManageComp (V{VERSION}.{VERSION_REVISION}{VERSION_MATURITY}), derived from BellePoule\n\n   https://managecomp.org\n"
         ));
         w.start(root);
         w.attr("Couleur", &self.color);

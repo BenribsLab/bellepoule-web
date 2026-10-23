@@ -68,7 +68,7 @@ pub fn dump_contest(header: &ContestHeader, rounds: &[HtmlRound], current_stage:
     }
 
     out.push_str(
-        "      <div class=\"Footer\">\n        <h6>Managed by BellePoule <a href=\"http://betton.escrime.free.fr/index.php/bellepoule\">http://betton.escrime.free.fr/index.php/bellepoule</a><h6/>\n      <div>\n    </div>\n  </body>\n",
+        "      <div class=\"Footer\">\n        <h6>Managed by ManageComp, derived from BellePoule <a href=\"https://managecomp.org\">https://managecomp.org</a><h6/>\n      <div>\n    </div>\n  </body>\n",
     );
     out.push_str("</html>\n");
     out

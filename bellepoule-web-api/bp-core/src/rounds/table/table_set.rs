@@ -1020,6 +1020,7 @@ impl TableSet {
 /// `Table::LoadMatch` : horaires, arbitres et scores d'un `<Match>`.
 pub(crate) fn load_match(m: &mut Match, node: roxmltree::Node, env: &Env) {
     if let Some(value) = node.attribute("Arbitrage") { m.officiating = serde_json::from_str(value).ok(); }
+    if let Some(value) = node.attribute("Relais") { m.relay = serde_json::from_str(value).ok(); }
     use crate::xml::attr_u32;
     if let Some(v) = node.attribute("Piste") {
         m.piste = crate::attribute::parse_leading_int(v) as u32;

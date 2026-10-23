@@ -7,11 +7,15 @@ description = "Pool composition, score entry and ranking."
 
 ## Composition
 
+{{ figure(src="poules-composition.png", caption="Pool composition: suggested formulas and fencer distribution.") }}
+
 ManageComp suggests the possible pool formulas (number and size). Fencers are spread in a serpentine according to their ranking, with **separation** by club, league, region or country so that fencers of the same club do not meet in pools. Fencers can be moved between pools by drag and drop.
 
 **Validating the composition** creates the bouts; sheets can then be printed and pools placed on pistes.
 
 ## Score entry
+
+{{ figure(src="poules-saisie.png", caption="A pool: score grid, statuses, ranking and list of bouts.") }}
 
 Click a cell of the grid and type the score: `5` or `V` for the winner, the number of touches for the loser. Each fencer's menu shows their status: qualified, withdrawn, excluded, forfeit. This menu only changes on click (the mouse wheel scrolls the page).
 

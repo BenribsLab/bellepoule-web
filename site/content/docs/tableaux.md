@@ -10,6 +10,8 @@ Le tableau principal est garni d'après le classement de la phase précédente. 
 
 ## Saisie des scores
 
+{{ figure(src="tableau.png", caption="Le tableau d'élimination directe en cours.") }}
+
 Cliquez sur un match et saisissez le score de chaque tireur. Le vainqueur avance dans le tableau.
 
 ## Feuilles de match

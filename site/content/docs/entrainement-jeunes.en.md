@@ -9,6 +9,8 @@ Youth training splits fencers into **groups**. Each group fences its pools, then
 
 ## Create the training
 
+{{ figure(src="jeunes-groupes.png", caption="Creating the groups of a youth training.") }}
+
 On the home screen: **New youth training**. The formula contains the "Youth training" phase; its preferences set:
 
 - fencers and pools per group;
@@ -19,8 +21,12 @@ The phase screen creates the groups (number, size of each group); fencers can be
 
 ## Place a group
 
+{{ figure(src="jeunes-poules.png", caption="The pools of a group.") }}
+
 In the [organisation](@/docs/organisation.md), **Place a group…** puts all the pools of a group on one or several pistes, with one or more referees. The group's pools are fenced **together**: their bouts are interleaved (M1 pool 1, M2 pool 2, M3 pool 1…) and numbered once for the whole group; referees take turns at each bout.
 
 ## Printing
+
+{{ figure(src="jeunes-impression.png", caption="A group's page: its pools and table, filled in as results come.", class="page") }}
 
 Printing always gives **the complete page of the group**: its pools and its table, blank or filled in as results come. You choose to print this group or all groups.

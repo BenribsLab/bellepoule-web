@@ -9,6 +9,8 @@ The organisation shows the **hall** (the pistes), the **timeline**, the list of 
 
 ## Place bouts
 
+{{ figure(src="organisation.png", caption="The organisation: hall and pistes, timeline, bouts to place, referees.") }}
+
 - The list shows each pool or bout's state: **To place** (at the top), Placed, Referees only.
 - **Place…** automatically spreads a batch's bouts over free pistes from the timeline cursor.
 - You can also drag a bout onto a piste, or double-click a piste or a pool to set its **time** by hand.

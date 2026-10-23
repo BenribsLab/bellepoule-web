@@ -107,7 +107,11 @@ pub fn LivePage() -> impl IntoView {
                     {(!active).then(|| view! { <div class="live-waiting">"En attente d'un match sur cette piste…"</div> })}
                 }
             }}
-            <div class="live-clock">{move || clock().unwrap_or_else(|| "--:--".into())}</div>
+            // Chrono seulement pendant un match.
+            {move || {
+                let active = state.get().is_some_and(|v| v.get("active").and_then(Value::as_bool).unwrap_or(false));
+                active.then(|| view! { <div class="live-clock">{clock().unwrap_or_default()}</div> })
+            }}
             <div class="live-piste">
                 <button on:click=move |_| change(-1)>"−"</button>
                 <span>{move || format!("Piste {:02}", piste.get())}</span>

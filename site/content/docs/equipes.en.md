@@ -7,6 +7,8 @@ description = "Relays, match sheets and entering team matches."
 
 ## Match types
 
+{{ figure(src="equipes-preferences.png", caption="Preferences of a team phase: match type, relay points and time.") }}
+
 The fencers and substitutes of a team are set once and for all at [check-in](@/docs/appel.md). Each phase then chooses its match type:
 
 | Type | Top | Bottom | Relay order |
@@ -19,9 +21,13 @@ The score is **cumulative**: relay *n* ends when a team reaches *n* × (points p
 
 ## At the start of the match
 
+{{ figure(src="equipes-tableau.png", caption="The table of a team event.") }}
+
 Teams choose their order and give it to the referee: nothing is pre-filled. The referee sets which team is at the **top** and which at the **bottom**, then the fencer of each number.
 
 ## Match sheets
+
+{{ figure(src="equipes-feuille.png", caption="A filled-in match sheet: top and bottom teams, fencers, relays fenced and balances.", class="page") }}
 
 - **Blank**, in any quantity, or **those of the phase's matches** (team names);
 - one at a time or **by 3**: one for each team and one for the referee;

@@ -6,6 +6,8 @@ description = "Créer une compétition et la régler."
 
 ## Créer la compétition
 
+{{ figure(src="accueil.png", caption="L'écran d'accueil : nouvelle compétition, entraînement des jeunes, compétitions récentes.") }}
+
 Sur l'écran d'accueil, choisissez :
 
 - **Nouvelle compétition** pour une épreuve individuelle ou par équipes ;
@@ -23,6 +25,8 @@ La fenêtre des propriétés s'ouvre :
 | Couleur | repère de la compétition dans l'organisation et sur les écrans |
 
 ## Enregistrer
+
+{{ figure(src="proprietes.png", caption="Les propriétés de la compétition et sa formule.") }}
 
 Le bouton **Enregistrer** (ou `Ctrl+S`) sauvegarde le fichier `.cotcot`. Le bouton indique « Enregistré » tant qu'il n'y a pas de modification. À la fermeture, ManageComp ne pose la question que si la dernière version n'a pas été enregistrée.
 

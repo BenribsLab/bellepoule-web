@@ -8,6 +8,8 @@ L'organisation montre la **salle** (les pistes), la **frise** horaire, la liste 
 
 ## Placer les matchs
 
+{{ figure(src="organisation.png", caption="L'organisation : salle et pistes, frise horaire, matchs à placer, arbitres.") }}
+
 - La liste indique l'état de chaque poule ou match : **À placer** (en tête de liste), Placé, Arbitres seuls.
 - **Placer…** répartit automatiquement les matchs d'un lot sur les pistes libres à partir du curseur de la frise.
 - On peut aussi glisser un match sur une piste, ou double-cliquer sur une piste ou une poule pour régler **l'heure** à la main.

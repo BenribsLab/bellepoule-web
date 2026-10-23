@@ -8,6 +8,8 @@ L'entraînement des jeunes répartit les tireurs en **groupes**. Chaque groupe t
 
 ## Créer l'entraînement
 
+{{ figure(src="jeunes-groupes.png", caption="La création des groupes de l'entraînement des jeunes.") }}
+
 Sur l'accueil : **Nouvel entraînement des jeunes**. La formule contient la phase « Entraînement des jeunes » ; ses préférences règlent :
 
 - les tireurs et les poules par groupe ;
@@ -18,8 +20,12 @@ L'écran de la phase crée les groupes (nombre, taille de chaque groupe) ; on pe
 
 ## Placer un groupe
 
+{{ figure(src="jeunes-poules.png", caption="Les poules d'un groupe.") }}
+
 Dans l'[organisation](@/docs/organisation.md), **Placer un groupe…** met toutes les poules du groupe sur une ou plusieurs pistes, avec un ou plusieurs arbitres. Les poules du groupe se tirent **ensemble** : leurs matchs sont entrelacés (M1 poule 1, M2 poule 2, M3 poule 1…) et numérotés une seule fois pour tout le groupe ; les arbitres alternent à chaque match.
 
 ## Imprimer
+
+{{ figure(src="jeunes-impression.png", caption="La page d'un groupe : ses poules et son tableau, remplis au fil des résultats.", class="page") }}
 
 L'impression donne toujours **la page complète du groupe** : ses poules et son tableau, vierges ou remplis au fil des résultats. On choisit d'imprimer ce groupe ou tous les groupes.

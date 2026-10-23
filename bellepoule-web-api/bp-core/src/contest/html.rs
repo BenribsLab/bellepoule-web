@@ -78,6 +78,6 @@ pub fn header(html: &mut String, name: &str, date: &str, weapon: &str, gender: &
 
 /// Pied du document.
 pub fn footer(html: &mut String) {
-    html.push_str("      <div class=\"Footer\">\n        <h6>Managed by BellePoule <a href=\"http://betton.escrime.free.fr/index.php/bellepoule\">http://betton.escrime.free.fr/index.php/bellepoule</a><h6/>\n      <div>\n    </div>\n  </body>\n");
+    html.push_str("      <div class=\"Footer\">\n        <h6>Managed by ManageComp, derived from BellePoule <a href=\"https://managecomp.org\">https://managecomp.org</a><h6/>\n      <div>\n    </div>\n  </body>\n");
     html.push_str("</html>\n");
 }

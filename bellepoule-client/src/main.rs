@@ -3,6 +3,7 @@
 //! Navigation par l'adresse : `#/` (compétitions), `#/contest/<id>`.
 
 mod api;
+mod arbitre;
 mod checkin;
 mod contest;
 mod home;
@@ -19,6 +20,9 @@ fn main() {
     // `/live/?c=…&p=…` : tableau d'affichage d'une piste, sans connexion.
     if live::is_live_page() {
         leptos::mount::mount_to_body(live::LivePage);
+    } else if arbitre::is_arbitre_page() {
+        // `arbitre.<domaine>` : saisie des matchs par les arbitres, sans connexion club.
+        leptos::mount::mount_to_body(arbitre::ArbitrePage);
     } else {
         leptos::mount::mount_to_body(App);
     }

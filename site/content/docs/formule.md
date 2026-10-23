@@ -13,6 +13,8 @@ La formule est la suite des phases : appel, tours de poules, tableaux, points de
 
 ## Changer l'ordre
 
+{{ figure(src="proprietes.png", caption="La formule dans les préférences de la compétition : Monter, Descendre, Ajouter, Retirer.") }}
+
 Les boutons **Monter** et **Descendre** déplacent la phase sélectionnée. Un tour de poules se déplace avec sa composition. Seules les phases qui n'ont pas encore été jouées bougent ; l'appel reste en premier et le classement général en dernier.
 
 ## Préférences d'une phase
