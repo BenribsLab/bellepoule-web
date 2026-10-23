@@ -42,7 +42,15 @@ RequestHeader set X-Forwarded-Proto "https"
 
 (use 8091 instead of 8090 for the main domain). Required modules: `proxy`, `proxy_http`, `headers`.
 
-## Club keys
+## Accounts and administration
+
+Set `BP_ADMIN_EMAIL` in `.env` to your address, then sign up on the application with that address: the account is approved at once and opens the **Administration** screen.
+
+Each club then requests access with **Create an account** (e-mail, password, club). The administrator approves the request by attaching it to a new or existing club, and can disable, delete or promote an account at any time.
+
+Once signed in, everyone can create named API keys in **My account** for the desktop software or a third-party application: they give access to the same competitions as the account.
+
+## Club keys (without an account)
 
 The administration key (`BP_ADMIN_KEY`) creates each club's key:
 

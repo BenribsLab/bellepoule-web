@@ -148,6 +148,60 @@ pub struct Me {
     pub name: String,
 }
 
+/// Compte connecté (absent quand on utilise une clé d'API).
+#[derive(Clone, Debug, PartialEq, Deserialize)]
+pub struct UserInfo {
+    pub id: String,
+    pub email: String,
+    pub name: String,
+    pub club_name: String,
+    pub status: String,
+    pub admin: bool,
+    pub client: Option<String>,
+    pub client_name: Option<String>,
+    pub created: String,
+    pub last_login: Option<String>,
+}
+
+#[derive(Clone, Debug, PartialEq, Deserialize)]
+pub struct LoggedIn {
+    pub token: String,
+    pub user: UserInfo,
+}
+
+#[derive(Clone, Debug, PartialEq, Deserialize)]
+pub struct KeyInfo {
+    pub id: String,
+    pub name: String,
+    pub created: String,
+}
+
+#[derive(Clone, Debug, PartialEq, Deserialize)]
+pub struct CreatedKey {
+    pub id: String,
+    pub name: String,
+    pub key: String,
+}
+
+#[derive(Clone, Debug, PartialEq, Deserialize)]
+pub struct ClubInfo {
+    pub id: String,
+    pub name: String,
+    pub created: String,
+    pub contests: usize,
+    pub users: usize,
+}
+
+/// Date lisible d'un horodatage du serveur (secondes depuis 1970).
+pub fn date_label(stamp: &str) -> String {
+    let Ok(secs) = stamp.parse::<f64>() else { return stamp.to_string() };
+    let d = js_sys::Date::new(&wasm_bindgen::JsValue::from_f64(secs * 1000.0));
+    let opts = js_sys::Object::new();
+    let _ = js_sys::Reflect::set(&opts, &"dateStyle".into(), &"medium".into());
+    let _ = js_sys::Reflect::set(&opts, &"timeStyle".into(), &"short".into());
+    d.to_locale_string("fr-FR", &opts).as_string().unwrap_or_default()
+}
+
 #[derive(Clone, Debug, PartialEq, Deserialize)]
 pub struct ContestSummary {
     pub id: String,

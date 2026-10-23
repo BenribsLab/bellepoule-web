@@ -5,20 +5,22 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{% block title %}{{ config.title }}{% endblock title %}</title>
   <meta name="description" content="{% block description %}{{ config.description }}{% endblock description %}">
-  <link rel="icon" href="{{ get_url(path='logo.svg') }}" type="image/svg+xml">
+  <meta name="theme-color" content="#0c1724">
+  <link rel="icon" href="{{ get_url(path='favicon.png', cachebust=true) }}" type="image/png">
+  <link rel="apple-touch-icon" href="{{ get_url(path='apple-touch-icon.png') }}">
   <link rel="stylesheet" href="{{ get_url(path='style.css', cachebust=true) }}">
 </head>
-<body>
+<body class="{% block body_class %}{% endblock body_class %}">
   {% set home = get_url(path="@/_index.md", lang=lang) %}
   {% set docs = get_url(path="@/docs/_index.md", lang=lang) %}
   {% set download = get_url(path="@/telecharger.md", lang=lang) %}
   <header class="topbar">
     <div class="wrap topbar-inner">
-      <a class="brand" href="{{ home }}"><img src="{{ get_url(path='logo.svg') }}" alt="" width="30" height="30"> ManageComp</a>
+      <a class="brand" href="{{ home }}"><img src="{{ get_url(path='header.png', cachebust=true) }}" alt="ManageComp" width="524" height="160"></a>
       <nav class="nav">
         <a href="{{ docs }}">{{ trans(key="docs", lang=lang) }}</a>
         <a href="{{ download }}">{{ trans(key="download", lang=lang) }}</a>
-        <a class="cta" href="{{ config.extra.app_url }}">{{ trans(key="app", lang=lang) }}</a>
+        <a href="{{ config.extra.source_url }}">{{ trans(key="edit_source", lang=lang) }}</a>
       </nav>
       <div class="langs" title="{{ trans(key='language', lang=lang) }}">
         {% block languages %}
@@ -27,19 +29,31 @@
           {% endfor %}
         {% endblock languages %}
       </div>
+      <a class="btn small" href="{{ config.extra.app_url }}">{{ trans(key="open_app", lang=lang) }}</a>
     </div>
   </header>
 
   <main>{% block content %}{% endblock content %}</main>
 
   <footer class="footer">
-    <div class="wrap">
-      <p>{{ trans(key="footer_free", lang=lang) }}</p>
-      <p>{{ trans(key="footer_credit", lang=lang) }}
-        <a href="{{ config.extra.bellepoule_url }}">BellePoule</a> ·
-        <a href="{{ get_url(path='@/docs/licence.md', lang=lang) }}">{{ trans(key="footer_credits_link", lang=lang) }}</a> ·
+    <div class="wrap footer-grid">
+      <div class="footer-brand">
+        <a class="brand" href="{{ home }}"><img src="{{ get_url(path='header.png', cachebust=true) }}" alt="ManageComp" width="524" height="160"></a>
+        <p>{{ trans(key="footer_free", lang=lang) }}</p>
+        <p>{{ trans(key="footer_credit", lang=lang) }}</p>
+      </div>
+      <div class="footer-links">
+        <strong>{{ trans(key="product", lang=lang) }}</strong>
+        <a href="{{ download }}">{{ trans(key="download", lang=lang) }}</a>
+        <a href="{{ config.extra.app_url }}">{{ trans(key="app", lang=lang) }}</a>
+        <a href="{{ docs }}">{{ trans(key="docs", lang=lang) }}</a>
+      </div>
+      <div class="footer-links">
+        <strong>{{ trans(key="project", lang=lang) }}</strong>
         <a href="{{ config.extra.source_url }}">{{ trans(key="edit_source", lang=lang) }}</a>
-      </p>
+        <a href="{{ get_url(path='@/docs/licence.md', lang=lang) }}">{{ trans(key="footer_credits_link", lang=lang) }}</a>
+        <a href="{{ config.extra.bellepoule_url }}">BellePoule</a>
+      </div>
     </div>
   </footer>
 </body>

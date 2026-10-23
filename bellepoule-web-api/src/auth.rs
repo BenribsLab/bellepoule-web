@@ -2,7 +2,11 @@
 //!
 //! - Chaque requête porte sa clé dans l'en-tête `X-Api-Key` (ou
 //!   `Authorization: Bearer <clé>`). Le client n'accède qu'à ses compétitions.
-//! - La clé d'administration (`BP_ADMIN_KEY`) crée et retire les clients.
+//! - Un club peut aussi avoir des clés nommées (logiciel de bureau,
+//!   applications tierces), créées par ses comptes ([`crate::accounts`]).
+//! - Une session (connexion par e-mail et mot de passe) donne le même accès.
+//! - La clé d'administration (`BP_ADMIN_KEY`) ou un compte administrateur
+//!   crée et retire les clients.
 //! - Les clés ne sont jamais enregistrées en clair : seulement leur empreinte
 //!   SHA-256 (`clients.json` dans le dossier de données).
 
@@ -29,6 +33,17 @@ pub struct ClientRecord {
     pub name: String,
     pub key_hash: String,
     pub created: String,
+    #[serde(default)]
+    pub keys: Vec<KeyRecord>,
+}
+
+/// Clé nommée d'un club (empreinte seulement).
+#[derive(Clone, Serialize, Deserialize)]
+pub struct KeyRecord {
+    pub id: String,
+    pub name: String,
+    pub hash: String,
+    pub created: String,
 }
 
 pub fn hash_key(key: &str) -> String {
@@ -45,19 +60,18 @@ fn same(a: &str, b: &str) -> bool {
     a.len() == b.len() && a.bytes().zip(b.bytes()).fold(0u8, |acc, (x, y)| acc | (x ^ y)) == 0
 }
 
-fn presented_key(parts: &Parts) -> Option<String> {
-    if let Some(v) = parts.headers.get("x-api-key").and_then(|v| v.to_str().ok()) {
+pub(crate) fn presented_key(headers: &axum::http::HeaderMap) -> Option<String> {
+    if let Some(v) = headers.get("x-api-key").and_then(|v| v.to_str().ok()) {
         return Some(v.trim().to_string());
     }
-    parts
-        .headers
+    headers
         .get(axum::http::header::AUTHORIZATION)
         .and_then(|v| v.to_str().ok())
         .and_then(|v| v.strip_prefix("Bearer "))
         .map(|v| v.trim().to_string())
 }
 
-fn unauthorized() -> ApiError {
+pub(crate) fn unauthorized() -> ApiError {
     ApiError(StatusCode::UNAUTHORIZED, "clé d'API absente ou invalide".into())
 }
 
@@ -65,10 +79,14 @@ impl FromRequestParts<Shared> for Client {
     type Rejection = ApiError;
 
     async fn from_request_parts(parts: &mut Parts, state: &Shared) -> Result<Self, Self::Rejection> {
-        let key = presented_key(parts).filter(|k| !k.is_empty()).ok_or_else(unauthorized)?;
+        let key = presented_key(&parts.headers).filter(|k| !k.is_empty()).ok_or_else(unauthorized)?;
         let hash = hash_key(&key);
-        let store = state.lock().await;
-        store.client_by_hash(&hash).ok_or_else(unauthorized)
+        let mut store = state.lock().await;
+        if let Some(client) = store.client_by_hash(&hash) {
+            return Ok(client);
+        }
+        let user = crate::accounts::session_user(&mut store, &hash).ok_or_else(unauthorized)?;
+        user.client.as_deref().and_then(|id| store.client(id)).ok_or_else(unauthorized)
     }
 }
 
@@ -78,12 +96,19 @@ pub struct Admin;
 impl FromRequestParts<Shared> for Admin {
     type Rejection = ApiError;
 
-    async fn from_request_parts(parts: &mut Parts, _state: &Shared) -> Result<Self, Self::Rejection> {
+    async fn from_request_parts(parts: &mut Parts, state: &Shared) -> Result<Self, Self::Rejection> {
+        // Compte administrateur connecté.
+        if let Some(key) = presented_key(&parts.headers) {
+            let mut store = state.lock().await;
+            if crate::accounts::session_user(&mut store, &hash_key(&key)).is_some_and(|u| u.admin) {
+                return Ok(Admin);
+            }
+        }
         let expected = std::env::var("BP_ADMIN_KEY").ok().filter(|k| k.len() >= 32);
         let Some(expected) = expected else {
             return Err(ApiError(StatusCode::FORBIDDEN, "administration désactivée : définir BP_ADMIN_KEY (32 caractères au moins)".into()));
         };
-        let key = presented_key(parts).ok_or_else(unauthorized)?;
+        let key = presented_key(&parts.headers).ok_or_else(unauthorized)?;
         if same(&key, &expected) {
             Ok(Admin)
         } else {
@@ -127,6 +152,7 @@ pub struct ClientInfo {
     name: String,
     created: String,
     contests: usize,
+    users: usize,
 }
 
 pub async fn list_clients(_: Admin, State(store): State<Shared>) -> Json<Vec<ClientInfo>> {
@@ -140,6 +166,7 @@ pub async fn list_clients(_: Admin, State(store): State<Shared>) -> Json<Vec<Cli
                 name: c.name.clone(),
                 created: c.created.clone(),
                 contests: store.count_for(&c.id),
+                users: store.users.iter().filter(|u| u.client.as_deref() == Some(c.id.as_str())).count(),
             })
             .collect(),
     )

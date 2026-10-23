@@ -41,7 +41,15 @@ RequestHeader set X-Forwarded-Proto "https"
 
 (remplacer 8090 par 8091 pour le domaine principal). Modules nécessaires : `proxy`, `proxy_http`, `headers`.
 
-## Clés des clubs
+## Comptes et administration
+
+Renseignez `BP_ADMIN_EMAIL` dans `.env` avec votre adresse, puis inscrivez-vous sur l'application avec cette adresse : le compte est validé d'office et donne accès à l'écran **Administration**.
+
+Chaque club demande ensuite son accès avec **Créer un compte** (e-mail, mot de passe, club). L'administrateur valide la demande en la rattachant à un nouveau club ou à un club existant, et peut à tout moment désactiver un compte, le supprimer ou le nommer administrateur.
+
+Une fois connecté, chacun peut créer dans **Mon compte** des clés d'API nommées pour le logiciel de bureau ou une application tierce : elles donnent accès aux mêmes compétitions que le compte.
+
+## Clés des clubs (sans compte)
 
 La clé d'administration (`BP_ADMIN_KEY`) permet de créer la clé de chaque club :
 

@@ -24,6 +24,7 @@ services:
       BP_LANGUAGE: fr
       # Clé d'administration (création des clés des clubs) : fichier .env
       BP_ADMIN_KEY: ${BP_ADMIN_KEY:-}
+      BP_ADMIN_EMAIL: ${BP_ADMIN_EMAIL:-}
     volumes:
       - bellepoule-data:/data
     tmpfs:

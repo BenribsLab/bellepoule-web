@@ -25,6 +25,14 @@ fn paths(name: &str) -> &'static str {
         "lock" => r#"<rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/>"#,
         "key" => r#"<circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M17 6l3 3M14 9l2 2"/>"#,
         "blade" => r#"<path d="M4 20L18 6M15 4l5 5M4 20l-1 1M6 15l3 3"/>"#,
+        "shield" => r#"<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6l8-3z"/><path d="M9 12l2 2 4-4"/>"#,
+        "mail" => r#"<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/>"#,
+        "user" => r#"<circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/>"#,
+        "copy" => r#"<rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h10a1 1 0 0 1 1 1v1"/>"#,
+        "clock" => r#"<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>"#,
+        "building" => r#"<path d="M4 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16M16 9h2a2 2 0 0 1 2 2v10M8 7h4M8 11h4M8 15h4M3 21h18"/>"#,
+        "activity" => r#"<path d="M3 12h4l3-8 4 16 3-8h4"/>"#,
+        "x" => r#"<path d="M6 6l12 12M18 6L6 18"/>"#,
         _ => "",
     }
 }
@@ -39,9 +47,14 @@ pub fn Icon(name: &'static str) -> impl IntoView {
     view! { <span class="icon" inner_html=svg></span> }
 }
 
-/// Logo ManageComp : deux lames croisées sur fond dégradé.
+/// Logo ManageComp (arbre de tableau).
 #[component]
 pub fn Logo() -> impl IntoView {
-    let svg = r##"<svg viewBox="0 0 64 64" aria-hidden="true"><defs><linearGradient id="mc-g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#4f7dff"/><stop offset="1" stop-color="#1638b8"/></linearGradient></defs><rect width="64" height="64" rx="16" fill="url(#mc-g)"/><path d="M17 47L46 18M47 47L18 18" stroke="#fff" stroke-width="4.5" stroke-linecap="round"/><path d="M13 43l8 8M43 51l8-8" stroke="#ffd447" stroke-width="5" stroke-linecap="round"/></svg>"##;
-    view! { <span class="logo" inner_html=svg></span> }
+    view! { <img class="logo" src="/logo.png" alt="" width="256" height="256" /> }
+}
+
+/// Logo et titre « ManageComp ».
+#[component]
+pub fn Header() -> impl IntoView {
+    view! { <img class="brand-header" src="/header.png" alt="ManageComp" width="524" height="160" /> }
 }

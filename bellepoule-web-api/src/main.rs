@@ -5,8 +5,10 @@
 //! - `BP_RESOURCES` : ressources de BellePoule (`/app/resources` par défaut) ;
 //! - `BP_LANGUAGE` : langue des libellés (`fr` par défaut) ;
 //! - `BP_ADDRESS` : adresse d'écoute (`0.0.0.0:8080` par défaut) ;
-//! - `BP_ADMIN_KEY` : clé d'administration (création des clés des clients).
+//! - `BP_ADMIN_KEY` : clé d'administration (création des clés des clients) ;
+//! - `BP_ADMIN_EMAIL` : adresse du premier administrateur (compte validé dès son inscription).
 
+mod accounts;
 mod api;
 mod auth;
 mod checkin;

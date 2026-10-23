@@ -10,24 +10,26 @@
 {% endblock languages %}
 
 {% block content %}
-<div class="wrap docs">
+<div class="wrap docs{% if page.toc | length > 1 %} with-toc{% endif %}">
   {% set current_path = page.path %}
   {% include "docs-sidebar.html" %}
   <article class="prose">
+    <p class="crumbs"><a href="{{ get_url(path='@/docs/_index.md', lang=lang) }}">{{ trans(key="docs", lang=lang) }}</a> / {{ page.title }}</p>
     <h1>{{ page.title }}</h1>
-    {% if page.toc | length > 1 %}
-      <nav class="toc">
-        <strong>{{ trans(key="on_this_page", lang=lang) }}</strong>
-        <ul>
-          {% for h in page.toc %}<li><a href="{{ h.permalink | safe }}">{{ h.title }}</a></li>{% endfor %}
-        </ul>
-      </nav>
-    {% endif %}
+    {% if page.description %}<p class="lead">{{ page.description }}</p>{% endif %}
     {{ page.content | safe }}
     <nav class="pager">
-      {% if page.lower %}<a href="{{ page.lower.permalink }}">← {{ page.lower.title }}</a>{% else %}<span></span>{% endif %}
-      {% if page.higher %}<a href="{{ page.higher.permalink }}">{{ page.higher.title }} →</a>{% endif %}
+      {% if page.lower %}<a href="{{ page.lower.permalink }}"><small>← {{ trans(key="previous", lang=lang) }}</small>{{ page.lower.title }}</a>{% else %}<span></span>{% endif %}
+      {% if page.higher %}<a class="next" href="{{ page.higher.permalink }}"><small>{{ trans(key="next", lang=lang) }} →</small>{{ page.higher.title }}</a>{% endif %}
     </nav>
   </article>
+  {% if page.toc | length > 1 %}
+    <nav class="toc">
+      <strong>{{ trans(key="on_this_page", lang=lang) }}</strong>
+      <ul>
+        {% for h in page.toc %}<li><a href="{{ h.permalink | safe }}">{{ h.title }}</a></li>{% endfor %}
+      </ul>
+    </nav>
+  {% endif %}
 </div>
 {% endblock content %}

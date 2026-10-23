@@ -9,7 +9,7 @@ use axum::{Json, Router};
 use tokio::sync::Mutex;
 
 use crate::store::Store;
-use crate::{auth, checkin, contests, organisation, schedule, smartpoule, stages};
+use crate::{accounts, auth, checkin, contests, organisation, schedule, smartpoule, stages};
 
 pub type Shared = Arc<Mutex<Store>>;
 
@@ -22,6 +22,18 @@ pub fn router(store: Shared) -> Router {
         .route("/api/admin/clients", get(auth::list_clients).post(auth::create_client))
         .route("/api/admin/clients/{id}", delete(auth::remove_client))
         .route("/api/admin/clients/{id}/key", post(auth::renew_key))
+        // Comptes : inscription, connexion, clés du club ; administration
+        .route("/api/auth/register", post(accounts::register))
+        .route("/api/auth/login", post(accounts::login))
+        .route("/api/auth/logout", post(accounts::logout))
+        .route("/api/auth/me", get(accounts::me))
+        .route("/api/auth/password", put(accounts::change_password))
+        .route("/api/account/keys", get(accounts::list_keys).post(accounts::create_key))
+        .route("/api/account/keys/{id}", delete(accounts::remove_key))
+        .route("/api/admin/users", get(accounts::list_users))
+        .route("/api/admin/users/{id}", put(accounts::update_user).delete(accounts::remove_user))
+        .route("/api/admin/users/{id}/approve", post(accounts::approve))
+        .route("/api/admin/stats", get(accounts::stats))
         // Compétitions
         .route("/api/contests", get(contests::list).post(contests::create))
         .route("/api/contests/import", post(contests::import))
@@ -68,6 +80,7 @@ pub fn router(store: Shared) -> Router {
 }
 
 /// Erreur renvoyée en JSON : `{ "error": "…" }`.
+#[derive(Debug)]
 pub struct ApiError(pub StatusCode, pub String);
 
 impl IntoResponse for ApiError {

@@ -18,6 +18,7 @@
     <div class="cards">
       {% for p in section.pages %}
         <a class="card" href="{{ p.permalink }}">
+          <span class="card-num">{{ loop.index }}</span>
           <strong>{{ p.title }}</strong>
           <span>{{ p.description }}</span>
         </a>

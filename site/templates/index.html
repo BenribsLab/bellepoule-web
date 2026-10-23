@@ -1,4 +1,7 @@
 {% extends "base.html" %}
+{% import "macros.html" as m %}
+
+{% block body_class %}home{% endblock body_class %}
 
 {% block languages %}
   {% for code in ["fr", "en"] %}
@@ -7,26 +10,86 @@
 {% endblock languages %}
 
 {% block content %}
+{% set download = get_url(path='@/telecharger.md', lang=lang) %}
+{% set docs = get_url(path='@/docs/_index.md', lang=lang) %}
 <section class="hero">
-  <div class="wrap">
-    <h1>{{ section.extra.headline }}</h1>
-    <p class="lead">{{ section.extra.lead }}</p>
-    <p class="actions">
-      <a class="button" href="{{ get_url(path='@/telecharger.md', lang=lang) }}">{{ trans(key="download", lang=lang) }}</a>
-      <a class="button light" href="{{ config.extra.app_url }}">{{ trans(key="app", lang=lang) }}</a>
-      <a class="button light" href="{{ get_url(path='@/docs/_index.md', lang=lang) }}">{{ trans(key="docs", lang=lang) }}</a>
-    </p>
+  <div class="hero-glow"></div>
+  <div class="wrap hero-grid">
+    <div class="hero-text">
+      <span class="eyebrow">{{ m::icon(name="heart") }} {{ trans(key="hero_badge", lang=lang) }}</span>
+      <h1>{{ section.extra.headline }}</h1>
+      <p class="lead">{{ section.extra.lead }}</p>
+      <p class="actions">
+        <a class="btn big" href="{{ download }}">{{ m::icon(name="download") }} {{ trans(key="download", lang=lang) }}</a>
+        <a class="btn big glass" href="{{ config.extra.app_url }}">{{ m::icon(name="cloud") }} {{ trans(key="app", lang=lang) }}</a>
+      </p>
+      <p class="hero-note"><a href="{{ docs }}">{{ trans(key="read_docs", lang=lang) }} {{ m::icon(name="arrow") }}</a></p>
+    </div>
+    <div class="hero-shots">
+      <figure class="window">
+        <div class="window-bar"><i></i><i></i><i></i></div>
+        <img src="{{ get_url(path='docs/poules-saisie.png', cachebust=true) }}" alt="" width="1400" height="900">
+      </figure>
+      <figure class="device">
+        <img src="{{ get_url(path='docs/arbitre-match.png', cachebust=true) }}" alt="" width="492" height="1000">
+      </figure>
+    </div>
   </div>
 </section>
-<section class="wrap features">
-  {% for f in section.extra.features %}
-    <article class="feature">
-      <h3>{{ f.title }}</h3>
-      <p>{{ f.text }}</p>
-    </article>
-  {% endfor %}
+
+<section class="strip">
+  <div class="wrap strip-inner">
+    {% for item in section.extra.works_with %}<span>{{ m::icon(name="check") }} {{ item }}</span>{% endfor %}
+  </div>
 </section>
-<section class="wrap prose">
-  {{ section.content | safe }}
+
+<section class="wrap block">
+  <header class="block-head">
+    <h2>{{ section.extra.features_title }}</h2>
+    <p>{{ section.extra.features_lead }}</p>
+  </header>
+  <div class="features">
+    {% for f in section.extra.features %}
+      <article class="feature">
+        <span class="feature-icon">{{ m::icon(name=f.icon) }}</span>
+        <h3>{{ f.title }}</h3>
+        <p>{{ f.text }}</p>
+      </article>
+    {% endfor %}
+  </div>
+</section>
+
+{% for s in section.extra.showcase %}
+<section class="wrap showcase{% if loop.index is even %} reverse{% endif %}">
+  <div class="showcase-text">
+    <span class="eyebrow soft">{{ s.eyebrow }}</span>
+    <h2>{{ s.title }}</h2>
+    <p>{{ s.text }}</p>
+    <a class="more" href="{{ get_url(path=s.link, lang=lang) }}">{{ trans(key="read_more", lang=lang) }} {{ m::icon(name="arrow") }}</a>
+  </div>
+  <figure class="showcase-shot {{ s.frame }}">
+    {% if s.frame == "window" %}<div class="window-bar"><i></i><i></i><i></i></div>{% endif %}
+    <img src="{{ get_url(path='docs/' ~ s.image, cachebust=true) }}" alt="{{ s.title }}" loading="lazy">
+  </figure>
+</section>
+{% endfor %}
+
+<section class="wrap block">
+  <div class="story prose">
+    {{ section.content | safe }}
+  </div>
+</section>
+
+<section class="cta">
+  <div class="wrap cta-inner">
+    <div>
+      <h2>{{ trans(key="cta_title", lang=lang) }}</h2>
+      <p>{{ trans(key="cta_text", lang=lang) }}</p>
+    </div>
+    <p class="actions">
+      <a class="btn big light" href="{{ download }}">{{ m::icon(name="download") }} {{ trans(key="download", lang=lang) }}</a>
+      <a class="btn big glass" href="{{ config.extra.app_url }}">{{ trans(key="open_app", lang=lang) }} {{ m::icon(name="arrow") }}</a>
+    </p>
+  </div>
 </section>
 {% endblock content %}

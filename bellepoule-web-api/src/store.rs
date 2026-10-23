@@ -1,7 +1,8 @@
 //! Données du serveur : les clients (clés d'API) et leurs compétitions.
 //!
 //! ```text
-//! <data>/clients.json                     clients et empreintes de leurs clés
+//! <data>/clients.json                     clients (clubs) et empreintes de leurs clés
+//! <data>/users.json                       comptes (e-mail, mot de passe haché, club)
 //! <data>/clients/<client>/<id>.cotcot     compétitions d'un client (format BellePoule)
 //! ```
 //! Un client ne voit que les compétitions de son dossier.
@@ -11,7 +12,8 @@ use std::path::PathBuf;
 
 use bp_core::contest::Contest;
 
-use crate::auth::{Client, ClientRecord};
+use crate::accounts::{Session, UserRecord};
+use crate::auth::{Client, ClientRecord, KeyRecord};
 
 pub struct Store {
     pub(crate) dir: PathBuf,
@@ -24,6 +26,12 @@ pub struct Store {
     pub(crate) relays: std::collections::HashMap<String, crate::smartpoule::Relay>,
     /// Scores en direct (téléphones → écrans LivePoule) : club → piste → état.
     pub(crate) live: std::collections::HashMap<String, std::collections::HashMap<u32, crate::smartpoule::LiveBoard>>,
+    /// Comptes utilisateurs.
+    pub(crate) users: Vec<UserRecord>,
+    /// Sessions ouvertes (empreinte du jeton → session), perdues au redémarrage.
+    pub(crate) sessions: std::collections::HashMap<String, Session>,
+    /// Échecs de connexion récents par e-mail : (nombre, premier échec).
+    pub(crate) failures: std::collections::HashMap<String, (u32, std::time::Instant)>,
 }
 
 impl Store {
@@ -31,6 +39,11 @@ impl Store {
     pub fn open(dir: PathBuf) -> std::io::Result<Store> {
         std::fs::create_dir_all(dir.join("clients"))?;
         let clients: Vec<ClientRecord> = match std::fs::read_to_string(dir.join("clients.json")) {
+            Ok(text) => serde_json::from_str(&text).map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?,
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => Vec::new(),
+            Err(e) => return Err(e),
+        };
+        let users: Vec<UserRecord> = match std::fs::read_to_string(dir.join("users.json")) {
             Ok(text) => serde_json::from_str(&text).map_err(|e| std::io::Error::new(std::io::ErrorKind::InvalidData, e))?,
             Err(e) if e.kind() == std::io::ErrorKind::NotFound => Vec::new(),
             Err(e) => return Err(e),
@@ -54,8 +67,18 @@ impl Store {
                 }
             }
         }
-        tracing::info!("{} client(s), {} compétition(s) chargés depuis {}", clients.len(), contests.len(), dir.display());
-        Ok(Store { dir, clients, contests, organisations: Default::default(), relays: Default::default(), live: Default::default() })
+        tracing::info!("{} client(s), {} compte(s), {} compétition(s) chargés depuis {}", clients.len(), users.len(), contests.len(), dir.display());
+        Ok(Store {
+            dir,
+            clients,
+            contests,
+            organisations: Default::default(),
+            relays: Default::default(),
+            live: Default::default(),
+            users,
+            sessions: Default::default(),
+            failures: Default::default(),
+        })
     }
 
     // ------------------------------------------------------------- clients
@@ -64,14 +87,23 @@ impl Store {
         &self.clients
     }
 
+    /// Le club d'une clé d'API (clé principale ou clé nommée).
     pub fn client_by_hash(&self, hash: &str) -> Option<Client> {
-        self.clients.iter().find(|c| c.key_hash == hash).map(|c| Client { id: c.id.clone(), name: c.name.clone() })
+        self.clients
+            .iter()
+            .find(|c| c.key_hash == hash || c.keys.iter().any(|k| k.hash == hash))
+            .map(|c| Client { id: c.id.clone(), name: c.name.clone() })
+    }
+
+    pub fn client(&self, id: &str) -> Option<Client> {
+        self.clients.iter().find(|c| c.id == id).map(|c| Client { id: c.id.clone(), name: c.name.clone() })
     }
 
     pub fn count_for(&self, client: &str) -> usize {
         self.contests.keys().filter(|(c, _)| c == client).count()
     }
 
+    /// Nouveau club ; `key_hash` vide : sans clé principale (club d'un compte).
     pub fn add_client(&mut self, name: &str, key_hash: &str) -> std::io::Result<String> {
         let id = uuid::Uuid::new_v4().simple().to_string();
         self.clients.push(ClientRecord {
@@ -79,6 +111,7 @@ impl Store {
             name: name.to_string(),
             key_hash: key_hash.to_string(),
             created: chrono_now(),
+            keys: Vec::new(),
         });
         std::fs::create_dir_all(self.dir.join("clients").join(&id))?;
         self.save_clients()?;
@@ -102,6 +135,37 @@ impl Store {
         self.contests.retain(|(c, _), _| c != id);
         self.save_clients()?;
         Ok(true)
+    }
+
+    /// Clés nommées d'un club.
+    pub fn keys(&self, client: &str) -> Vec<KeyRecord> {
+        self.clients.iter().find(|c| c.id == client).map(|c| c.keys.clone()).unwrap_or_default()
+    }
+
+    pub fn add_key(&mut self, client: &str, name: &str, hash: &str) -> std::io::Result<Option<KeyRecord>> {
+        let Some(c) = self.clients.iter_mut().find(|c| c.id == client) else { return Ok(None) };
+        let key = KeyRecord { id: uuid::Uuid::new_v4().simple().to_string(), name: name.to_string(), hash: hash.to_string(), created: chrono_now() };
+        c.keys.push(key.clone());
+        self.save_clients()?;
+        Ok(Some(key))
+    }
+
+    pub fn remove_key(&mut self, client: &str, key: &str) -> std::io::Result<bool> {
+        let Some(c) = self.clients.iter_mut().find(|c| c.id == client) else { return Ok(false) };
+        let before = c.keys.len();
+        c.keys.retain(|k| k.id != key);
+        if c.keys.len() == before {
+            return Ok(false);
+        }
+        self.save_clients()?;
+        Ok(true)
+    }
+
+    pub(crate) fn save_users(&self) -> std::io::Result<()> {
+        let path = self.dir.join("users.json");
+        let tmp = path.with_extension("json.tmp");
+        std::fs::write(&tmp, serde_json::to_string_pretty(&self.users).unwrap_or_default())?;
+        std::fs::rename(tmp, path)
     }
 
     fn save_clients(&self) -> std::io::Result<()> {
@@ -169,8 +233,8 @@ impl Store {
     }
 }
 
-/// Date et heure courantes (UTC), pour l'information.
-fn chrono_now() -> String {
+/// Date et heure courantes (secondes depuis 1970, UTC).
+pub(crate) fn chrono_now() -> String {
     let secs = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0);
     format!("{secs}")
 }
