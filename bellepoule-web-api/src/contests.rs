@@ -1,7 +1,7 @@
 //! Compétitions : liste, création, propriétés (mêmes listes que
 //! l'application de bureau), import et export.
 
-use axum::extract::{Path, State};
+use axum::extract::{Path, Query, State};
 use axum::http::{header, StatusCode};
 use axum::response::{IntoResponse, Response};
 use axum::Json;
@@ -117,6 +117,9 @@ pub struct Properties {
     pub team_size: Option<u32>,
     #[serde(default)]
     pub substitutes: Option<u32>,
+    /// Points de la compétition (préférences « Points »).
+    #[serde(default)]
+    pub points: Option<bp_core::points::PointsSettings>,
 }
 
 fn properties_of(c: &Contest) -> Properties {
@@ -135,6 +138,7 @@ fn properties_of(c: &Contest) -> Properties {
         team_event: c.settings.team_event,
         team_size: Some(c.settings.team_size),
         substitutes: Some(c.settings.substitutes),
+        points: Some(c.points.clone()),
     }
 }
 
@@ -181,6 +185,12 @@ fn apply(c: &mut Contest, p: &Properties) -> Result<(), ApiError> {
     }
     if let (Some(size), Some(subs)) = (p.team_size, p.substitutes) {
         c.set_team_size(size, subs);
+    }
+    if let Some(points) = &p.points {
+        if let Some(e) = points.formula_error() {
+            return Err(bad_request(e));
+        }
+        c.points = points.clone();
     }
     c.apply_properties(None);
     Ok(())
@@ -252,6 +262,12 @@ pub async fn remove(State(store): State<Shared>, client: Client, Path(id): Path<
     }
 }
 
+/// Modèle CSV d'import des tireurs (colonnes attendues).
+pub async fn csv_template(_client: Client) -> Response {
+    let disposition = "attachment; filename=\"modele-tireurs.csv\"".to_string();
+    ([(header::CONTENT_TYPE, "text/csv; charset=utf-8".to_string()), (header::CONTENT_DISPOSITION, disposition)], bp_core::formats::csv::template()).into_response()
+}
+
 /// Le fichier BellePoule de la compétition (compatible avec l'application).
 pub async fn download(State(store): State<Shared>, client: Client, Path(id): Path<String>) -> Result<Response, ApiError> {
     let mut store = store.lock().await;
@@ -264,7 +280,19 @@ pub async fn download(State(store): State<Shared>, client: Client, Path(id): Pat
 }
 
 /// Exports : `html` (résultats complets), `html-final` (classement final seul), `fff` (classement FFF), `frd` (AskFred).
-pub async fn export(State(store): State<Shared>, client: Client, Path((id, format)): Path<(String, String)>) -> Result<Response, ApiError> {
+#[derive(Deserialize, Default)]
+pub struct ExportQuery {
+    /// Export FFF : place de départ (décalage des places), 1 par défaut.
+    #[serde(default)]
+    first_place: Option<u32>,
+}
+
+pub async fn export(
+    State(store): State<Shared>,
+    client: Client,
+    Path((id, format)): Path<(String, String)>,
+    Query(q): Query<ExportQuery>,
+) -> Result<Response, ApiError> {
     let mut store = store.lock().await;
     let c = store.get_mut(&client, &id).ok_or_else(not_found)?;
     let base = c.default_file_name().trim_end_matches(".cotcot").to_string();
@@ -274,7 +302,7 @@ pub async fn export(State(store): State<Shared>, client: Client, Path((id, forma
             (c.dump_to_html_scope(youth, format == "html-final").into_bytes(), "text/html; charset=utf-8", "html")
         }
         "fff" => (
-            c.export_final_classification_fff(0).ok_or_else(|| bad_request("pas de classement général"))?,
+            c.export_final_classification_fff(q.first_place.unwrap_or(1).saturating_sub(1)).ok_or_else(|| bad_request("pas de classement général"))?,
             "text/plain; charset=utf-8",
             "fff",
         ),

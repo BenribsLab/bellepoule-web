@@ -47,6 +47,7 @@ pub fn kind_code(kind: StageKind) -> &'static str {
         StageKind::Splitting => "splitting",
         StageKind::GeneralClassification => "classification",
         StageKind::YouthTraining => "youth",
+        StageKind::DivisionRound => "divisions",
     }
 }
 
@@ -106,11 +107,19 @@ pub struct NextOptions {
 pub async fn next(State(store): State<Shared>, client: Client, Path(id): Path<String>, options: Option<Json<NextOptions>>) -> Result<Json<ScheduleView>, ApiError> {
     let add_barrage = options.map(|o| o.add_barrage).unwrap_or(false);
     let mut store = store.lock().await;
+    let mut created: Vec<bp_core::contest::Contest> = Vec::new();
     let result = store
         .update(&client, &id, |c| {
             let before = view(c);
             if !before.can_next {
                 return Err(bad_request(before.error.unwrap_or_else(|| "la phase en cours n'est pas terminée".into())));
+            }
+            // Point de scission : une nouvelle compétition par division.
+            let index = c.schedule.current_index();
+            if c.schedule.current().is_some_and(|s| s.kind() == StageKind::Splitting) {
+                for division in c.split_divisions(index) {
+                    created.push(c.duplicate_split(index, division, None).map_err(|e| bad_request(e.to_string()))?);
+                }
             }
             c.with_schedule(|s, ctx| {
                 let exceedance = s.lock_current(ctx);
@@ -123,7 +132,11 @@ pub async fn next(State(store): State<Shared>, client: Client, Path(id): Path<St
         })
         .ok_or_else(not_found)?
         .map_err(internal)?;
-    Ok(Json(result?))
+    let result = result?;
+    for contest in created {
+        store.insert(&client, contest).map_err(internal)?;
+    }
+    Ok(Json(result))
 }
 
 pub async fn previous(State(store): State<Shared>, client: Client, Path(id): Path<String>) -> Result<Json<ScheduleView>, ApiError> {
@@ -159,6 +172,7 @@ pub async fn add_stage(State(store): State<Shared>, client: Client, Path(id): Pa
         "table" => StageKind::TableSupervisor,
         "splitting" => StageKind::Splitting,
         "youth" => StageKind::YouthTraining,
+        "divisions" => StageKind::DivisionRound,
         other => return Err(bad_request(format!("phase inconnue : {other}"))),
     };
     let mut store = store.lock().await;

@@ -711,3 +711,22 @@ td.actions button + button { margin-left: 0.3rem; }
 .pools-grid > *, .pool.card, .org-col { min-width: 0; overflow-x: auto; }
 .contest-hero, .stepper-bar { min-width: 0; }
 .hero-main { flex: 1 1 320px; }
+
+/* Point de scission */
+.split-settings { display: grid; gap: 0.6rem; padding: 0.6rem 0 0.2rem; }
+.split-row { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
+.split-row input[type="number"], .split-settings input[type="number"] { width: 5.5rem; }
+table.list tr.moved td { background: #f3f8fe; }
+
+/* Garde-fou des catégories */
+table.list td.cat-up { background: #fff3d6; color: #9a5b00; font-weight: 600; }
+table.list td.cat-up2 { background: #f1e8ff; color: #6b35c9; font-weight: 600; }
+table.list td.cat-check { background: #fdecec; color: #b42318; font-weight: 600; }
+.ref-double { flex-direction: column; gap: 4px; margin: 6px 0; }
+td.move-up { color: #15803d; font-weight: 700; }
+td.move-down { color: #b42318; font-weight: 700; }
+.help-text { white-space: pre-line; }
+.points-settings { display: grid; gap: 0.5rem; }
+.pillow-list { max-height: 55vh; overflow: auto; display: grid; gap: 4px; }
+.place-input { width: 4.5rem; }
+.b-label.b-found { outline: 3px solid var(--accent); outline-offset: 2px; background: var(--accent-soft); border-radius: 4px; z-index: 2; }

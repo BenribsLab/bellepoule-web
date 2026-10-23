@@ -143,6 +143,8 @@ pub struct PoolRound {
     /// Entraînement des jeunes : nombre de poules de chaque groupe (les
     /// groupes sont donnés par l'attribut `youth_group` des tireurs).
     pub youth_groups: Option<Vec<u32>>,
+    /// Nom des groupes de poules : « D » pour les poules de division.
+    pub group_prefix: Option<String>,
 }
 
 /// Attributs exclus des listes d'affichage (`CreateExcludingList`).
@@ -294,6 +296,7 @@ impl PoolRound {
             distribution_dirty: false,
             cross_output: false,
             youth_groups: None,
+            group_prefix: None,
         }
     }
 
@@ -458,6 +461,12 @@ impl PoolRound {
         !(latecomer || self.original_pool(player) == Some(self.pools[pool].number()))
     }
 
+    /// Tour de poules d'un entraînement des jeunes (les poules de division
+    /// ont aussi des groupes, mais pas de tableau par groupe ni de feuilles).
+    pub fn is_youth(&self) -> bool {
+        self.youth_groups.is_some() && self.group_prefix.is_none()
+    }
+
     /// La poule a la taille prévue par la formule (`is_balanced`).
     pub fn pool_is_balanced(&self, index: usize) -> bool {
         if self.youth_groups.is_some() {
@@ -617,7 +626,7 @@ impl PoolRound {
             let first = self.pools.len();
             for local in 0..k {
                 let mut pool = self.new_pool(number);
-                pool.set_group(*group, local as u32 + 1);
+                pool.set_group_named(*group, local as u32 + 1, self.group_prefix.as_deref());
                 self.pools.push(pool);
                 number += 1;
             }
@@ -667,7 +676,7 @@ impl PoolRound {
                     1
                 }
             };
-            pool.set_group(g, n);
+            pool.set_group_named(g, n, self.group_prefix.as_deref());
         }
     }
 
@@ -1175,6 +1184,15 @@ impl PoolRound {
             Some(result) => result.iter().map(|p| (*p, get_uint(players, *p, "rank", so).unwrap_or(0))).collect(),
             None => self.compute_classification(players).1,
         };
+        let mut entries = entries;
+        // Poules de division : la D1 d'abord, puis la D2… (rangs à la suite).
+        if self.group_prefix.is_some() {
+            let group = |p: PlayerRef| self.pool_of(p).and_then(|i| self.pools.get(i)).and_then(|pl| pl.group()).unwrap_or(u32::MAX);
+            entries.sort_by_key(|(p, rank)| (group(*p), *rank));
+            for (i, e) in entries.iter_mut().enumerate() {
+                e.1 = i as u32 + 1;
+            }
+        }
         entries
             .into_iter()
             .map(|(p, rank)| RankEntry { player: p, rank, status: pool::status_char(players, p, so).unwrap_or('Q') })
@@ -1288,6 +1306,9 @@ impl PoolRound {
         if let Some(g) = &self.youth_groups {
             w.attr("GroupesJeunes", &g.iter().map(|n| n.to_string()).collect::<Vec<_>>().join(","));
         }
+        if let Some(p) = &self.group_prefix {
+            w.attr("PrefixeGroupes", p);
+        }
         if let Some(s) = &self.swapping {
             w.attr("Decalage", s);
         }
@@ -1364,6 +1385,7 @@ impl PoolRound {
         self.youth_groups = node
             .attribute("GroupesJeunes")
             .map(|v| v.split(',').filter_map(|n| n.trim().parse::<u32>().ok()).collect());
+        self.group_prefix = node.attribute("PrefixeGroupes").map(str::to_string);
         self.swapping = node.attribute("Decalage").map(str::to_string);
         self.parse_swapping();
     }

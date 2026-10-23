@@ -541,7 +541,7 @@ impl Contest {
     pub fn youth_pool_stage(&self) -> Option<usize> {
         (0..self.schedule.len()).find(|i| {
             self.schedule.stage(*i).and_then(|s| s.as_any().downcast_ref::<PoolSupervisorStage>()).is_some_and(|s| {
-                s.shared_round().lock().map(|r| r.youth_groups.is_some()).unwrap_or(false)
+                s.shared_round().lock().map(|r| r.is_youth()).unwrap_or(false)
             })
         })
     }

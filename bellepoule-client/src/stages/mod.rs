@@ -3,10 +3,12 @@
 //! qui renvoie la vue à jour.
 
 mod allocator;
+mod divisions;
 mod groups;
 mod lists;
 mod pools;
 mod sheets;
+mod splitting;
 mod table;
 mod youth;
 mod relay_sheets;
@@ -119,7 +121,8 @@ pub fn StageView(id: String, index: usize, kind: String, on_change: Callback<()>
             "pool_supervisor" => view! { <pools::Pools ctx=ctx /> }.into_any(),
             "table" => view! { <table::Table ctx=ctx /> }.into_any(),
             "barrage" => view! { <lists::Barrage ctx=ctx /> }.into_any(),
-            "splitting" => view! { <lists::Splitting ctx=ctx /> }.into_any(),
+            "splitting" => view! { <splitting::Splitting ctx=ctx /> }.into_any(),
+            "divisions" => view! { <divisions::Divisions ctx=ctx /> }.into_any(),
             "classification" => view! { <lists::Classification ctx=ctx contest=contest.get_value() /> }.into_any(),
             _ => view! { <p class="muted">"Rien à afficher pour cette phase."</p> }.into_any(),
         }}

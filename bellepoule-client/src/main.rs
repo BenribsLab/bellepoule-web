@@ -6,6 +6,7 @@ mod account;
 mod admin;
 mod api;
 mod arbitre;
+mod categories;
 mod checkin;
 mod contest;
 mod home;
@@ -13,6 +14,7 @@ mod icons;
 mod live;
 mod organisation;
 mod properties;
+mod season;
 mod stages;
 
 use leptos::prelude::*;
@@ -39,6 +41,8 @@ pub enum Route {
     Organisation,
     Account,
     Admin,
+    Season,
+    Categories,
 }
 
 fn route_from_hash() -> Route {
@@ -49,6 +53,8 @@ fn route_from_hash() -> Route {
             "organisation" => Route::Organisation,
             "compte" => Route::Account,
             "admin" => Route::Admin,
+            "saison" => Route::Season,
+            "categories" => Route::Categories,
             _ => Route::Home,
         },
     }
@@ -62,6 +68,8 @@ pub fn navigate(route: &Route) {
         Route::Organisation => "#/organisation".to_string(),
         Route::Account => "#/compte".to_string(),
         Route::Admin => "#/admin".to_string(),
+        Route::Season => "#/saison".to_string(),
+        Route::Categories => "#/categories".to_string(),
     };
     if let Some(w) = web_sys::window() {
         let _ = w.location().set_hash(&hash);
@@ -168,6 +176,12 @@ fn App() -> impl IntoView {
                         <a href="#/organisation" class:active=move || route.get() == Route::Organisation>
                             <icons::Icon name="grid" />"Organisation"
                         </a>
+                        <a href="#/saison" class:active=move || route.get() == Route::Season>
+                            <icons::Icon name="activity" />"Classement de saison"
+                        </a>
+                        <a href="#/categories" class:active=move || route.get() == Route::Categories>
+                            <icons::Icon name="users" />"Catégories"
+                        </a>
                         <Show when=move || user.get().is_some()>
                             <a href="#/compte" class:active=move || route.get() == Route::Account>
                                 <icons::Icon name="key" />"Mon compte"
@@ -202,6 +216,8 @@ fn App() -> impl IntoView {
                                 Route::Home => view! { <home::Home /> }.into_any(),
                                 Route::Contest(id) => view! { <contest::ContestPage id=id /> }.into_any(),
                                 Route::Organisation => view! { <organisation::Organisation /> }.into_any(),
+                                Route::Season => view! { <season::SeasonPage /> }.into_any(),
+                                Route::Categories => view! { <categories::CategoriesPage /> }.into_any(),
                                 Route::Account => match user.get() {
                                     Some(u) => view! { <account::AccountPage user=u club=me.get().map(|m| m.name).unwrap_or_default() /> }.into_any(),
                                     None => view! { <p class="muted">"Écran réservé aux comptes (connexion par e-mail)."</p> }.into_any(),

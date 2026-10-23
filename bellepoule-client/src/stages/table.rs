@@ -58,6 +58,10 @@ pub fn Table(ctx: StageCtx) -> impl IntoView {
                                     }
                                 })}
                             <span class="spacer"></span>
+                            <label class="inline" title="Numéro du match à afficher dans le tableau : tapez 3 pour aller au match 1-16.3">
+                                "Aller au match n° "
+                                <input type="text" class="place-input" placeholder="n°" on:change=move |ev| goto_match(&event_target_value(&ev)) />
+                            </label>
                             <button class="light" class:active=move || !show_ranking.get() on:click=move |_| show_ranking.set(false)>"Tableau"</button>
                             <button class="light" class:active=move || show_ranking.get() on:click=move |_| show_ranking.set(true)>"Classement"</button>
                             {if b(&d, "team") { view! { <super::relay_sheets::RelaySheetsButton ctx=ctx /> }.into_any() } else { view! { <super::sheets::MatchSheetsButton ctx=ctx /> }.into_any() }}
@@ -233,4 +237,33 @@ fn Bracket(ctx: StageCtx, drawing: Value, max: u64, locked: bool) -> impl IntoVi
             </div>
         </div>
     }
+}
+
+/// Fait défiler le tableau jusqu'au match dont le nom finit par « .n »
+/// (« 1-16.3 ») et le met en évidence.
+fn goto_match(number: &str) {
+    let number = number.trim();
+    if number.is_empty() {
+        return;
+    }
+    let Some(doc) = web_sys::window().and_then(|w| w.document()) else { return };
+    let Ok(labels) = doc.query_selector_all(".b-label") else { return };
+    for i in 0..labels.length() {
+        let Some(node) = labels.item(i) else { continue };
+        let Ok(el) = wasm_bindgen::JsCast::dyn_into::<web_sys::Element>(node) else { continue };
+        let name = el.query_selector("span").ok().flatten().and_then(|s| s.text_content()).unwrap_or_default();
+        if name.rsplit('.').next() == Some(number) {
+            el.scroll_into_view_with_bool(false);
+            let _ = el.class_list().add_1("b-found");
+            let keep = el.clone();
+            let clear = wasm_bindgen::closure::Closure::once_into_js(move || {
+                let _ = keep.class_list().remove_1("b-found");
+            });
+            if let Some(w) = web_sys::window() {
+                let _ = w.set_timeout_with_callback_and_timeout_and_arguments_0(wasm_bindgen::JsCast::unchecked_ref(&clear), 2500);
+            }
+            return;
+        }
+    }
+    crate::alert(&format!("Aucun match n° {number} dans le tableau affiché."));
 }

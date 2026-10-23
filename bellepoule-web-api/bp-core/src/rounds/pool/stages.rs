@@ -330,6 +330,15 @@ impl Stage for PoolSupervisorStage {
         }
         round.lock_supervisor(ctx.players);
         round.set_supervisor_result(ctx.players);
+        // Poules de division : rangs à la suite, la D1 d'abord (classement général).
+        if round.group_prefix.is_some() {
+            let owner = round.supervisor_owner();
+            for e in round.supervisor_classification(ctx.players) {
+                if let Some(p) = ctx.players.get_mut(e.player) {
+                    p.set_uint(&crate::player::AttrId::local("rank", owner), e.rank);
+                }
+            }
+        }
         self.base.quota_exceedance = round.quota_exceedance;
     }
 

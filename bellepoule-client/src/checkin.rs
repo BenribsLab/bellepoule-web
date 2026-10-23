@@ -50,6 +50,32 @@ pub fn Checkin(id: String, on_change: Callback<()>) -> impl IntoView {
         });
     };
 
+    let ranking_input = NodeRef::<leptos::html::Input>::new();
+    let import_ranking = move |_| {
+        let Some(el) = ranking_input.get() else { return };
+        let id = id.get_value();
+        spawn_local(async move {
+            if let Some((name, bytes)) = read_file(&el).await {
+                let path = format!("/api/contests/{id}/checkin/ranking?name={}", js_sys::encode_uri_component(&name));
+                match api::upload::<CheckinView>(&path, bytes).await {
+                    Ok(v) => {
+                        view_data.set(Some(v));
+                        on_change.run(());
+                    }
+                    Err(e) => alert(&e.message),
+                }
+            }
+            el.set_value("");
+        });
+    };
+    let template = move |_| {
+        spawn_local(async move {
+            if let Err(e) = api::download("/api/csv-template", "modele-tireurs.csv").await {
+                alert(&e.message);
+            }
+        });
+    };
+
     let input = NodeRef::<leptos::html::Input>::new();
     let import = move |_| {
         let Some(el) = input.get() else { return };
@@ -95,6 +121,11 @@ pub fn Checkin(id: String, on_change: Callback<()>) -> impl IntoView {
                                     "Importer (.fff, .csv)"
                                     <input type="file" accept=".fff,.FFF,.csv,.txt" class="hidden" node_ref=input on:change=import />
                                 </label>
+                                <label class="button light" title="Classement d'entrée des tireurs inscrits (fichier de classement FFF ou texte)">
+                                    "Importer un classement"
+                                    <input type="file" accept=".fff,.FFF,.txt,.csv,.xml" class="hidden" node_ref=ranking_input on:change=import_ranking />
+                                </label>
+                                <button class="ghost" title="Colonnes attendues pour l'import CSV" on:click=template>"Modèle CSV"</button>
                                 <button on:click=move |_| sheet.set(Some(None))>"Ajouter un tireur"</button>
                             </Show>
                             <Show when=move || locked>
@@ -125,7 +156,7 @@ pub fn Checkin(id: String, on_change: Callback<()>) -> impl IntoView {
                                                         on:change=move |ev| set_attending(vec![reference], event_target_checked(&ev))
                                                     />
                                                 </td>
-                                                {f.cells.iter().map(|c| view! { <td>{c.clone()}</td> }).collect_view()}
+                                                {f.cells.iter().map(|c| view! { <td class=category_class(c)>{c.clone()}</td> }).collect_view()}
                                             </tr>
                                         }
                                     })
@@ -224,7 +255,6 @@ fn FencerSheet(
     let mut first_text = true;
     let rows = fields
         .into_iter()
-        .filter(|f| f.code != "team")
         .map(|f| {
             let signal = values.with_value(|v| v[&f.code]);
             let control = match f.kind.as_str() {
@@ -330,5 +360,19 @@ fn FencerSheet(
                 </div>
             </form>
         </div>
+    }
+}
+
+/// Garde-fou des catégories (colonne « Catégorie générale ») : ▲ surclassé,
+/// ▲▲ double surclassement, ⚠ à vérifier.
+fn category_class(text: &str) -> &'static str {
+    if text.contains('⚠') {
+        "cat-check"
+    } else if text.contains("▲▲") {
+        "cat-up2"
+    } else if text.contains('▲') {
+        "cat-up"
+    } else {
+        ""
     }
 }

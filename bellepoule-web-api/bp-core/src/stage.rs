@@ -32,10 +32,12 @@ pub enum StageKind {
     GeneralClassification,
     /// « Youth training » — `EntrainementJeunes` (extension du portage Rust).
     YouthTraining,
+    /// « Division pools » — `PoulesDeDivision` (extension : montées et descentes).
+    DivisionRound,
 }
 
 impl StageKind {
-    pub const ALL: [StageKind; 8] = [
+    pub const ALL: [StageKind; 9] = [
         StageKind::Checkin,
         StageKind::PoolAllocator,
         StageKind::PoolSupervisor,
@@ -43,6 +45,7 @@ impl StageKind {
         StageKind::Barrage,
         StageKind::Splitting,
         StageKind::YouthTraining,
+        StageKind::DivisionRound,
         StageKind::GeneralClassification,
     ];
 
@@ -57,6 +60,7 @@ impl StageKind {
             StageKind::Splitting => "PointDeScission",
             StageKind::GeneralClassification => "ClassementGeneral",
             StageKind::YouthTraining => "EntrainementJeunes",
+            StageKind::DivisionRound => "PoulesDeDivision",
         }
     }
 
@@ -71,6 +75,7 @@ impl StageKind {
             StageKind::Splitting => "Splitting",
             StageKind::GeneralClassification => "General classification",
             StageKind::YouthTraining => "Youth training",
+            StageKind::DivisionRound => "Division pools",
         }
     }
 
@@ -81,7 +86,7 @@ impl StageKind {
     pub fn rights(self) -> StageRights {
         match self {
             StageKind::Checkin | StageKind::Barrage => StageRights { editable: true, removable: false },
-            StageKind::PoolSupervisor | StageKind::TableSupervisor | StageKind::Splitting | StageKind::YouthTraining => {
+            StageKind::PoolSupervisor | StageKind::TableSupervisor | StageKind::Splitting | StageKind::YouthTraining | StageKind::DivisionRound => {
                 StageRights { editable: true, removable: true }
             }
             StageKind::PoolAllocator | StageKind::GeneralClassification => StageRights::default(),

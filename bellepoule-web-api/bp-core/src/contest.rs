@@ -91,6 +91,8 @@ pub struct Contest {
     /// Titre long (`TitreLong`).
     pub name: String,
     pub organizer: String,
+    /// Points de la compétition (préférences, partie « Points »).
+    pub points: crate::points::PointsSettings,
     /// Origine du fichier : `AskFred…` pour un import, sinon `None`.
     pub source: Option<String>,
     pub location: String,
@@ -160,6 +162,7 @@ impl Contest {
             fie_id: None,
             name,
             organizer,
+            points: crate::points::PointsSettings::default(),
             source: None,
             location,
             label: String::new(),
@@ -496,6 +499,7 @@ impl Contest {
         self.settings.substitutes = xml::attr_u32(root, "RemplacantsParEquipe", self.settings.substitutes).min(10);
         self.settings.default_classification = xml::attr_u32(root, "ClassementDefautEquipe", self.settings.default_classification);
         self.settings.manual_classification = xml::attr_bool(root, "ClassementManuel", self.settings.manual_classification);
+        self.points = root.attribute("Points").and_then(|v| serde_json::from_str::<crate::points::PointsSettings>(v).ok()).map(|p| p.upgraded()).unwrap_or_default();
     }
 
     /// `LoadFencerFile` : nouvelle compétition à partir d'une liste de
@@ -609,6 +613,9 @@ impl Contest {
         }
         w.attr_fmt("ClassementDefautEquipe", self.settings.default_classification);
         w.attr_fmt("ClassementManuel", self.settings.manual_classification as u32);
+        if self.points != crate::points::PointsSettings::default() {
+            w.attr("Points", &serde_json::to_string(&self.points).unwrap_or_default());
+        }
         w.attr("Lieu", &self.location);
         w.attr("Label", &self.label);
 
@@ -684,6 +691,7 @@ impl Contest {
         c.fie_id = self.fie_id.clone();
         c.name = self.name.clone();
         c.organizer = self.organizer.clone();
+        c.points = self.points.clone();
         c.source = self.source.clone();
         c.web_site = self.web_site.clone();
         c.location = self.location.clone();
@@ -707,14 +715,33 @@ impl Contest {
         c
     }
 
-    /// `Splitting::OnLocked` : copie des seuls participants cochés, avec les
-    /// positions de départ de la scission et les membres des équipes.
-    pub fn duplicate_split(&self, index: usize, config: Option<&mut UserConfig>) -> Result<Contest> {
+    /// `Splitting::OnLocked` : copie des participants d'une division (1 =
+    /// première), avec les positions de départ de la scission et les membres
+    /// des équipes. La compétition prend le nom de la division.
+    pub fn duplicate_split(&self, index: usize, division: u32, config: Option<&mut UserConfig>) -> Result<Contest> {
         let splitting = self.schedule.stage(index)
             .and_then(|s| s.as_any().downcast_ref::<crate::rounds::splitting::Splitting>())
             .ok_or_else(|| Error::Format("la phase choisie n'est pas un point de scission".into()))?;
-        let mut target = self.duplicate(Some(&crate::stage::Stage::base(splitting).name), config);
-        for (reference, rank) in splitting.exported_players(&self.players) {
+        let label = if splitting.config.mode == crate::rounds::splitting::SplitMode::Manual
+            && splitting.config.divisions.len() <= 1
+            && splitting.config.divisions.first().is_none_or(|d| d.name == "Division 2")
+        {
+            // Une seule division, sans nom choisi : le nom de la phase (comme BellePoule).
+            crate::stage::Stage::base(splitting).name.clone()
+        } else {
+            splitting.division_name(division)
+        };
+        let mut target = self.duplicate(Some(&label), config);
+        // Division par catégories : la compétition créée prend la catégorie
+        // (la plus âgée s'il y en a plusieurs ; les autres sont surclassés).
+        if let Some(code) = splitting.division_category(division) {
+            target.category.parse_xml(&code);
+        }
+        // Nom : celui de la compétition, suivi de la division.
+        if !label.trim().is_empty() {
+            target.name = if self.name.trim().is_empty() { label.clone() } else { format!("{} - {}", self.name.trim(), label.trim()) };
+        }
+        for (reference, rank) in splitting.exported_players(&self.players, division) {
             let Some(player) = self.players.get(reference) else { continue };
             let mut copy = split_player(player);
             copy.set_uint(&crate::player::AttrId::global("ranking"), rank);
@@ -740,6 +767,36 @@ impl Contest {
         });
         target.dirty = true;
         Ok(target)
+    }
+
+    /// Points de chaque tireur au classement général (préférences « Points »
+    /// activées et compétition classée) : (tireur, place, points).
+    pub fn final_points(&self) -> Vec<(PlayerRef, u32, f64)> {
+        if !self.points.enabled {
+            return Vec::new();
+        }
+        let Some(gc) = self.schedule.stages().find_map(|s| s.as_any().downcast_ref::<crate::rounds::classification::GeneralClassificationStage>()) else {
+            return Vec::new();
+        };
+        let ranked: Vec<(PlayerRef, u32)> = gc
+            .result()
+            .iter()
+            .filter_map(|r| {
+                let place = self.players.get(*r)?.get(&crate::player::AttrId::global("final_rank"))?.as_uint();
+                (place > 0).then_some((*r, place))
+            })
+            .collect();
+        let participants = ranked.len() as u32;
+        ranked.into_iter().filter_map(|(r, place)| Some((r, place, self.points.points(participants, place)?))).collect()
+    }
+
+    /// Divisions utilisées au point de scission `index` (1 = première).
+    pub fn split_divisions(&self, index: usize) -> Vec<u32> {
+        self.schedule
+            .stage(index)
+            .and_then(|s| s.as_any().downcast_ref::<crate::rounds::splitting::Splitting>())
+            .map(|s| s.divisions_in_use(&self.players))
+            .unwrap_or_default()
     }
 
     /// Un libellé est conseillé pour la publication sur GREG.

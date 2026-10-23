@@ -32,6 +32,8 @@ pub struct Store {
     pub(crate) sessions: std::collections::HashMap<String, Session>,
     /// Échecs de connexion récents par e-mail : (nombre, premier échec).
     pub(crate) failures: std::collections::HashMap<String, (u32, std::time::Instant)>,
+    /// Modèle de catégories générales de chaque club (relu à la demande).
+    categories: std::cell::RefCell<std::collections::HashMap<String, bp_core::categories::CategoryModel>>,
 }
 
 impl Store {
@@ -78,6 +80,7 @@ impl Store {
             users,
             sessions: Default::default(),
             failures: Default::default(),
+            categories: Default::default(),
         })
     }
 
@@ -177,16 +180,43 @@ impl Store {
 
     // -------------------------------------------------------- compétitions
 
+    // ------------------------------------------------ catégories générales
+
+    pub fn categories_path(&self, client: &Client) -> PathBuf {
+        self.dir.join("clients").join(&client.id).join("categories.json")
+    }
+
+    /// Le modèle de catégories du club devient le modèle actif du calcul
+    /// (appelé à chaque accès aux compétitions du club, sous le verrou).
+    fn activate_categories(&self, client: &Client) {
+        let model = self
+            .categories
+            .borrow_mut()
+            .entry(client.id.clone())
+            .or_insert_with(|| bp_core::categories::CategoryStore::load(&self.categories_path(client)).current())
+            .clone();
+        bp_core::categories::set_active(model);
+    }
+
+    /// Modèles enregistrés du club changés : le modèle actif est relu.
+    pub fn categories_changed(&self, client: &Client) {
+        self.categories.borrow_mut().remove(&client.id);
+        self.activate_categories(client);
+    }
+
     pub fn list<'a>(&'a self, client: &'a Client) -> impl Iterator<Item = (&'a String, &'a Contest)> {
+        self.activate_categories(client);
         self.contests.iter().filter(move |((c, _), _)| *c == client.id).map(|((_, id), contest)| (id, contest))
     }
 
     pub fn get(&self, client: &Client, id: &str) -> Option<&Contest> {
+        self.activate_categories(client);
         self.contests.get(&(client.id.clone(), id.to_string()))
     }
 
     /// Accès en écriture sans enregistrement (lectures qui recalculent).
     pub fn get_mut(&mut self, client: &Client, id: &str) -> Option<&mut Contest> {
+        self.activate_categories(client);
         self.contests.get_mut(&(client.id.clone(), id.to_string()))
     }
 
@@ -200,6 +230,7 @@ impl Store {
 
     /// Modifie une compétition puis l'enregistre.
     pub fn update<R>(&mut self, client: &Client, id: &str, f: impl FnOnce(&mut Contest) -> R) -> Option<std::io::Result<R>> {
+        self.activate_categories(client);
         let contest = self.contests.get_mut(&(client.id.clone(), id.to_string()))?;
         let result = f(contest);
         Some(self.save(client, id).map(|()| result))

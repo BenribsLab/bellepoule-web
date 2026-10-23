@@ -18,7 +18,9 @@ ManageComp propose les formules de poules possibles (nombre et taille). Les tire
 
 Cliquez une case de la grille et tapez le score : `5` ou `V` pour le vainqueur, le nombre de touches pour le perdant.
 
-Si le match s'arrête à la fin du temps sans que le vainqueur ait atteint le score maximum, tapez `W` suivi de ses touches : `W3` pour une victoire 3 à 2. La grille affiche alors `V3`. Le menu de chaque tireur indique son statut : qualifié, abandon, exclu, forfait. Ce menu ne change qu'au clic (la molette fait défiler la page).
+Si le match s'arrête à la fin du temps sans que le vainqueur ait atteint le score maximum, tapez `W` suivi de ses touches : `W3` pour une victoire 3 à 2. La grille affiche alors `V3`.
+
+**Double défaite** (temps de la poule écoulé) : saisissez le même score pour les deux tireurs, `0` et `0` si le match n'a pas commencé, ou `3` et `3` en cas d'égalité. Raccourci : `D` (0-0) ou `D3` (3-3) dans l'une des deux cases. Le match est terminé, sans vainqueur ; les touches comptent dans les indices. Sur le téléphone de l'arbitre, un bouton « Double défaite » apparaît en cas d'égalité. Le menu de chaque tireur indique son statut : qualifié, abandon, exclu, forfait. Ce menu ne change qu'au clic (la molette fait défiler la page).
 
 Les arbitres peuvent aussi saisir leurs matchs sur leur téléphone ([Arbitres sur téléphone](@/docs/arbitre.md)).
 

@@ -94,28 +94,6 @@ fn BarrageBout(ctx: StageCtx, bout: Value, locked: bool) -> impl IntoView {
     }
 }
 
-#[component]
-pub fn Splitting(ctx: StageCtx) -> impl IntoView {
-    let toggle = Callback::new(move |(player, value): (u64, bool)| ctx.act.run(json!({ "player": player, "value": value })));
-    view! {
-        {move || {
-            ctx.data
-                .get()
-                .map(|v| {
-                    let d = v["data"].clone();
-                    view! {
-                        <div class="stage-bar">
-                            <span class="muted">"Cochez les tireurs à extraire dans une nouvelle compétition."</span>
-                            <span class="spacer"></span>
-                            <PrintButton />
-                        </div>
-                        <ListTable list=d["list"].clone() on_toggle=toggle locked=b(&d, "locked") />
-                    }
-                })
-        }}
-    }
-}
-
 /// Classement de chaque groupe, puis de tous les groupes mélangés.
 pub(super) fn youth_sections(results: Vec<Value>) -> impl IntoView {
     let mut groups: Vec<u64> = results.iter().map(|r| u(r, "group")).collect();
@@ -193,11 +171,13 @@ fn youth_ranking_print(results: Vec<Value>) -> Value {
 #[component]
 pub fn Classification(ctx: StageCtx, contest: String) -> impl IntoView {
     let contest = StoredValue::new(contest);
+    let first_place = RwSignal::new(String::from("1"));
     let export = move |format: &'static str| {
         let id = contest.get_value();
+        let place = first_place.get_untracked().trim().parse::<u32>().unwrap_or(1).max(1);
         spawn_local(async move {
             let extension = format.split('-').next().unwrap_or(format);
-            if let Err(e) = api::download(&format!("/api/contests/{id}/export/{format}"), &format!("classement.{extension}")).await {
+            if let Err(e) = api::download(&format!("/api/contests/{id}/export/{format}?first_place={place}"), &format!("classement.{extension}")).await {
                 alert(&e.message);
             }
         });
@@ -207,6 +187,10 @@ pub fn Classification(ctx: StageCtx, contest: String) -> impl IntoView {
             <span class="spacer"></span>
             <button class="light" title="Le classement final seul" on:click=move |_| export("html-final")>"HTML : classement final"</button>
             <button class="light" title="Poules, tableaux et classement final" on:click=move |_| export("html")>"HTML : résultats complets"</button>
+            <label class="inline" title="Décalage des places de l'export FFF : place du premier de cette compétition (ex. 17 pour un tableau B)">
+                "FFF à partir de la place "
+                <input type="number" min="1" class="place-input" prop:value=move || first_place.get() on:input=move |ev| first_place.set(event_target_value(&ev)) />
+            </label>
             <button class="light" on:click=move |_| export("fff")>"Export FFF"</button>
             <button class="light" on:click=move |_| export("frd")>"Export AskFred"</button>
             {move || {

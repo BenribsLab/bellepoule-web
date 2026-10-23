@@ -8,6 +8,8 @@ use super::{arr, b, s, u, PrintButton, StageCtx};
 
 #[component]
 pub fn Allocator(ctx: StageCtx) -> impl IntoView {
+    // Fenêtre des retardataires (vrai) ou des absents (faux).
+    let pillow = RwSignal::new(None::<bool>);
     view! {
         {move || {
             ctx.data
@@ -16,6 +18,7 @@ pub fn Allocator(ctx: StageCtx) -> impl IntoView {
                     let d = v["data"].clone();
                     let locked = b(&d, "locked");
                     let youth = b(&d, "youth");
+                    let divisions = b(&d, "divisions");
                     let selected = d.get("selected").and_then(Value::as_u64);
                     let best = d.get("best").and_then(Value::as_u64);
                     let criteria: Vec<String> = arr(&d, "swapping").iter().filter_map(|x| x.as_str().map(str::to_string)).collect();
@@ -38,7 +41,7 @@ pub fn Allocator(ctx: StageCtx) -> impl IntoView {
                             <label class="inline">
                                 "Formule "
                                 <select
-                                    disabled=locked || youth
+                                    disabled=locked || youth || divisions
                                     on:change=move |ev| {
                                         let index: u64 = event_target_value(&ev).parse().unwrap_or(0);
                                         ctx.act.run(json!({ "action": "config", "index": index }));
@@ -59,6 +62,11 @@ pub fn Allocator(ctx: StageCtx) -> impl IntoView {
                                 </select>
                             </label>
                             {youth.then(|| view! { <span class="muted">"Poules fixées par les groupes de l'entraînement des jeunes."</span> })}
+                            {divisions.then(|| view! { <span class="muted">"Poules composées division par division."</span> })}
+                            {b(&d, "pillows").then(|| view! {
+                                <button class="light" title="Ajouter aux poules un tireur arrivé en retard" on:click=move |_| pillow.set(Some(true))>"Retardataire…"</button>
+                                <button class="light" title="Retirer des poules un tireur absent" on:click=move |_| pillow.set(Some(false))>"Absent…"</button>
+                            })}
                             <span class="spacer"></span>
                             <span class:stage-error=has_errors>
                                 {format!("Décalage ({} erreur(s)) :", u(&d, "swapping_errors"))}
@@ -157,6 +165,45 @@ pub fn Allocator(ctx: StageCtx) -> impl IntoView {
                             // Entraînement des jeunes : on imprime toujours le groupe complet.
                             {if youth { view! { <super::groups::GroupSheetsButton ctx=ctx /> }.into_any() } else { view! { <PrintButton /> }.into_any() }}
                         </div>
+                        {
+                            let presence = arr(&d, "presence");
+                            move || pillow.get().map(|latecomer| {
+                                let list: Vec<Value> = presence.iter().filter(|f| b(f, "attending") != latecomer).cloned().collect();
+                                view! {
+                                    <div class="modal-backdrop" on:click=move |_| pillow.set(None)>
+                                        <div class="modal" on:click=|ev| ev.stop_propagation()>
+                                            <h3>{if latecomer { "Retardataires" } else { "Absents" }}</h3>
+                                            <p class="muted small">{if latecomer {
+                                                "Le tireur choisi est marqué présent et placé dans une poule."
+                                            } else {
+                                                "Le tireur choisi est marqué absent et retiré de sa poule."
+                                            }}</p>
+                                            {if list.is_empty() {
+                                                view! { <p class="muted">"Personne à afficher."</p> }.into_any()
+                                            } else {
+                                                view! {
+                                                    <ul class="plain pillow-list">
+                                                        {list.into_iter().map(|f| {
+                                                            let reference = u(&f, "reference");
+                                                            view! {
+                                                                <li class="row">
+                                                                    <span class="grow">{s(&f, "name")}</span>
+                                                                    <button class="small" on:click=move |_| {
+                                                                        ctx.act.run(json!({ "action": "presence", "player": reference, "attending": latecomer }));
+                                                                        pillow.set(None);
+                                                                    }>{if latecomer { "Ajouter aux poules" } else { "Marquer absent" }}</button>
+                                                                </li>
+                                                            }
+                                                        }).collect_view()}
+                                                    </ul>
+                                                }.into_any()
+                                            }}
+                                            <div class="actions"><button class="light" on:click=move |_| pillow.set(None)>"Fermer"</button></div>
+                                        </div>
+                                    </div>
+                                }
+                            })
+                        }
                         <div class="pools-grid">
                             {arr(&d, "pools").into_iter().map(|p| view! { <PoolCard ctx=ctx pool=p columns=columns.clone() locked=locked /> }).collect_view()}
                         </div>

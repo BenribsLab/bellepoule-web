@@ -11,10 +11,13 @@
 mod accounts;
 mod api;
 mod auth;
+mod categories;
 mod checkin;
 mod contests;
+mod formulas;
 mod organisation;
 mod schedule;
+mod season;
 mod smartpoule;
 mod stages;
 mod store;

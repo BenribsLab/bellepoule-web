@@ -37,18 +37,24 @@ pub struct CheckinView {
 fn checkin_view(c: &Contest) -> Option<CheckinView> {
     let checkin = c.schedule.checkin()?;
     let owner = checkin.base().owner();
+    let category = c.category.xml_image();
     let codes: Vec<String> = checkin.filter.layout().iter().map(|l| l.code_name.clone()).filter(|c| c != "attending").collect();
     let fencers = checkin
         .fencers(&c.players)
         .into_iter()
         .filter_map(|r| {
             let p = c.players.get(r)?;
-            Some(FencerRow { reference: r, attending: p.attending(), cells: codes.iter().map(|code| view::cell(p, code, owner)).collect() })
+            let mut cells: Vec<String> = codes.iter().map(|code| view::cell(p, code, owner)).collect();
+            // Catégorie générale calculée, avec le garde-fou (▲ surclassé, ▲▲, ⚠).
+            cells.push(bp_core::categories::general_category_label(p.str_attr("birth_date"), &category));
+            Some(FencerRow { reference: r, attending: p.attending(), cells })
         })
         .collect();
     let tally = checkin.tally(&c.players, c.settings.team_event);
+    let mut columns = view::columns(&codes);
+    columns.push(view::Column { code: "general_category".into(), title: "Catégorie générale".into() });
     Some(CheckinView {
-        columns: view::columns(&codes),
+        columns,
         fencers,
         presents: tally.presents(),
         absents: tally.absents(),
@@ -67,7 +73,30 @@ pub async fn form(State(store): State<Shared>, client: Client, Path(id): Path<St
     let store = store.lock().await;
     let c = store.get(&client, &id).ok_or_else(not_found)?;
     let checkin = c.schedule.checkin().ok_or_else(not_found)?;
-    Ok(Json(view::form_fields(checkin.filter.attr_list())))
+    let mut fields = view::form_fields(checkin.filter.attr_list());
+    // Équipe : seulement par équipes, avec les équipes déjà inscrites.
+    if c.settings.team_event {
+        let teams = checkin.team_names(&c.players);
+        match fields.iter_mut().find(|f| f.code == "team") {
+            Some(f) => {
+                f.kind = "combo";
+                f.choices = teams.into_iter().map(|n| Choice { value: n.clone(), label: n }).collect();
+            }
+            None => fields.insert(
+                0,
+                FormField {
+                    code: "team".into(),
+                    title: bp_core::i18n::tr("team"),
+                    kind: "combo",
+                    choices: teams.into_iter().map(|n| Choice { value: n.clone(), label: n }).collect(),
+                    singular: false,
+                },
+            ),
+        }
+    } else {
+        fields.retain(|f| f.code != "team");
+    }
+    Ok(Json(fields))
 }
 
 #[derive(Deserialize)]
@@ -76,11 +105,47 @@ pub struct ChoicesQuery {
     country: Option<String>,
 }
 
-pub async fn choices(Path((_id, code)): Path<(String, String)>, _client: Client, Query(q): Query<ChoicesQuery>) -> Json<Vec<Choice>> {
+pub async fn choices(State(store): State<Shared>, Path((id, code)): Path<(String, String)>, client: Client, Query(q): Query<ChoicesQuery>) -> Json<Vec<Choice>> {
+    // Équipes : celles déjà inscrites dans la compétition.
+    if code == "team" {
+        let store = store.lock().await;
+        let names = store
+            .get(&client, &id)
+            .and_then(|c| c.schedule.checkin().map(|ch| ch.team_names(&c.players)))
+            .unwrap_or_default();
+        return Json(names.into_iter().map(|n| Choice { value: n.clone(), label: n }).collect());
+    }
     Json(match q.country.filter(|c| !c.is_empty()) {
         Some(country) => view::country_choices(&code, &country),
         None => view::discrete_choices(&code),
     })
+}
+
+/// Import d'un classement (fichier FFF ou texte) : classement d'entrée des
+/// tireurs inscrits.
+pub async fn import_ranking(
+    State(store): State<Shared>,
+    client: Client,
+    Path(id): Path<String>,
+    Query(q): Query<ImportQuery>,
+    body: axum::body::Bytes,
+) -> Result<Json<CheckinView>, ApiError> {
+    let extension = std::path::Path::new(&q.name).extension().and_then(|e| e.to_str()).unwrap_or("txt").to_ascii_lowercase();
+    let tmp = std::env::temp_dir().join(format!("bp-ranking-{}.{extension}", uuid::Uuid::new_v4().simple()));
+    std::fs::write(&tmp, &body).map_err(internal)?;
+    let importer = bp_core::rounds::checkin::rank_importer::RankImporter::load(&tmp);
+    let _ = std::fs::remove_file(&tmp);
+    let importer = importer.map_err(|e| bad_request(e.to_string()))?;
+    let mut store = store.lock().await;
+    store
+        .update(&client, &id, |c| {
+            check_open(c)?;
+            c.with_schedule(|s, ctx| s.checkin_mut().map(|ch| ch.import_ranking(ctx, &importer))).ok_or_else(not_found)?;
+            checkin_view(c).ok_or_else(not_found)
+        })
+        .ok_or_else(not_found)?
+        .map_err(internal)?
+        .map(Json)
 }
 
 /// Valeurs saisies : code de l'attribut → texte.

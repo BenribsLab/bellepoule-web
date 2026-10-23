@@ -265,8 +265,17 @@ impl Pool {
     /// Entraînement des jeunes : rattache la poule au groupe `group`, dont
     /// elle est la poule `local` (« Groupe 2 · Poule n° 01 »).
     pub fn set_group(&mut self, group: u32, local: u32) {
+        self.set_group_named(group, local, None);
+    }
+
+    /// Groupe de la poule ; `prefix` : « D » pour les divisions (« D1 · … »),
+    /// sinon « Groupe 1 · … ».
+    pub fn set_group_named(&mut self, group: u32, local: u32, prefix: Option<&str>) {
         self.group = Some(group);
-        self.name = format!("{} {} · {}", tr("Group"), group, pool_name(local));
+        self.name = match prefix {
+            Some(p) => format!("{p}{group} · {}", pool_name(local)),
+            None => format!("{} {} · {}", tr("Group"), group, pool_name(local)),
+        };
     }
 
     pub fn group(&self) -> Option<u32> {
@@ -682,6 +691,7 @@ impl Pool {
                 let pa = self.sorted_fencer_list[a - 1];
                 let pb = self.sorted_fencer_list[b - 1];
                 let mut bout = Match::with_opponents(pa, pb, self.max_score);
+                bout.allow_double_defeat = true;
                 bout.number = i as u32 + 1;
                 bout.name = format!("M{}", i + 1);
                 self.matches.push(PoolMatch { bout, rest_error });

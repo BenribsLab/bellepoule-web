@@ -100,6 +100,7 @@ fn stage_view(c: &mut Contest, index: usize) -> Result<Value, ApiError> {
     let code = kind_code(kind);
     let mut body = match code {
         "youth" => youth_view(c, index),
+        "divisions" => divisions_view(c, index),
         "pool_allocator" => allocator_view(c, index),
         "pool_supervisor" => pools_view(c, index),
         "table" => table_view(c, index),
@@ -334,7 +335,18 @@ fn allocator_view(c: &mut Contest, index: usize) -> Option<Value> {
         "configs": configs,
         "selected": round.selected_config(),
         "best": round.best_config(),
-        "youth": round.youth_groups.is_some(),
+        "youth": round.is_youth(),
+        "divisions": round.group_prefix.is_some(),
+        // Retardataires et absents : présents (pour « absent ») et absents (pour « retardataire »).
+        "pillows": !locked && round.pillows_allowed(),
+        "presence": c.schedule.checkin().map(|ch| ch.players().iter().filter_map(|r| {
+            let p = c.players.get(*r)?;
+            (p.class == bp_core::player::PlayerClass::Fencer).then(|| json!({
+                "reference": r,
+                "name": format!("{} {}", p.str_attr("name").unwrap_or_default(), p.str_attr("first_name").unwrap_or_default()).trim().to_string(),
+                "attending": p.attending(),
+            }))
+        }).collect::<Vec<_>>()).unwrap_or_default(),
         "pools": pools,
         "swapping": round.swapping_criteria(),
         "swapping_errors": round.swapper().moved(),
@@ -393,6 +405,37 @@ fn allocator_action(c: &mut Contest, index: usize, a: &Value) -> Result<(), ApiE
                 let extras: Vec<&str> = extras.iter().map(String::as_str).collect();
                 r.set_swapping_criteria(p, &regular, &extras);
             })?;
+        }
+        // Retardataire (`attending` vrai) ou absent après la composition.
+        "presence" => {
+            use bp_core::rounds::pool::round::PillowKind;
+            let player = n("player") as PlayerRef;
+            let attending = a.get("attending").and_then(Value::as_bool).unwrap_or(true);
+            let kind = if attending { PillowKind::Latecomer } else { PillowKind::Absent };
+            let accepted = with_round(c, index, |r, p| {
+                if !r.pillows_allowed() {
+                    return Err(bad_request("retardataires et absents : seulement au premier tour, avant le verrouillage"));
+                }
+                let (mut round, mut players) = (r.clone(), p.clone());
+                let nb_pools = round.nb_pools() as u32;
+                if !round.on_attendee_toggled(&mut players, kind, player, attending, nb_pools) {
+                    return Err(bad_request("la formule de poules ne permet pas ce changement"));
+                }
+                *r = round;
+                *p = players;
+                Ok(())
+            })?;
+            accepted?;
+            c.with_schedule(|schedule, ctx| {
+                if let Some(checkin) = schedule.checkin_mut() {
+                    checkin.on_attendees_toggled(ctx, &[player]);
+                }
+                schedule.apply_renumbering(ctx);
+                if let Some(allocator) = schedule.stage(index).and_then(|s| s.as_any().downcast_ref::<PoolAllocatorStage>()) {
+                    allocator.round().check_distribution(ctx.players);
+                }
+                schedule.refresh_general_classification(ctx);
+            });
         }
         other => return Err(bad_request(format!("action inconnue : {other}"))),
     }
@@ -471,7 +514,8 @@ fn pools_view(c: &mut Contest, index: usize) -> Option<Value> {
         "nb_qualified": round.nb_qualified(),
         "balanced": round.seeding_is_balanced(),
         "round_name": round.name,
-        "youth": round.youth_groups.is_some(),
+        "youth": round.is_youth(),
+        "divisions": round.group_prefix.is_some(),
         "classification": ranked_list(&c.players, &codes, &entries(&combined), round.supervisor_owner()),
         "current_classification": ranked_list(&c.players, &codes, &entries(&current), round.current_round_owner()),
         "locked": locked,
@@ -730,6 +774,57 @@ fn barrage_view(c: &mut Contest, index: usize) -> Option<Value> {
     }))
 }
 
+/// Poules de division : réglages, division et mouvement de chaque tireur.
+fn divisions_view(c: &mut Contest, index: usize) -> Option<Value> {
+    use bp_core::rounds::divisions::{DivisionRound, Move};
+    let d = c.schedule.stage(index)?.as_any().downcast_ref::<DivisionRound>()?;
+    let owner = d.base().owner();
+    let codes: Vec<String> = d.base().filter.clone();
+    let refs: Vec<(PlayerRef, bool)> = d.base().attendees.iter().map(|r| (*r, false)).collect();
+    let l = list(&c.players, &codes, &refs, owner);
+    let fencers: serde_json::Map<String, Value> = d
+        .base()
+        .attendees
+        .iter()
+        .map(|r| {
+            let movement = match d.movement(*r) {
+                Move::Up => "up",
+                Move::Down => "down",
+                Move::Stays => "stays",
+                Move::New => "",
+            };
+            (r.to_string(), json!({ "division": d.division_of(*r), "origin": d.origin_of(*r), "movement": movement }))
+        })
+        .collect();
+    let sizes: Vec<usize> = (1..=d.settings.divisions).map(|n| d.members(n).len()).collect();
+    Some(json!({ "list": l, "locked": d.base().locked, "settings": d.settings, "fencers": fencers, "sizes": sizes }))
+}
+
+/// `settings` (réglages) ou `division` (`players`, `division`).
+fn divisions_action(c: &mut Contest, index: usize, a: &Value) -> Result<(), ApiError> {
+    use bp_core::rounds::divisions::{DivisionRound, DivisionSettings};
+    let stage = c.schedule.stage_mut(index).ok_or_else(not_found)?;
+    if stage.base().locked {
+        return Err(bad_request("la phase est terminée : « Tour précédent » pour la modifier"));
+    }
+    let d = stage.as_any_mut().downcast_mut::<DivisionRound>().ok_or_else(not_found)?;
+    match a.get("action").and_then(Value::as_str).unwrap_or("") {
+        "settings" => {
+            let settings: DivisionSettings =
+                serde_json::from_value(a.get("settings").cloned().unwrap_or(Value::Null)).map_err(|e| bad_request(format!("réglages invalides : {e}")))?;
+            d.set_settings(settings);
+        }
+        "division" => {
+            let division = a.get("division").and_then(Value::as_u64).unwrap_or(1) as u32;
+            for r in a.get("players").and_then(Value::as_array).into_iter().flatten().filter_map(Value::as_u64) {
+                d.set_division(r as PlayerRef, division);
+            }
+        }
+        other => return Err(bad_request(format!("action inconnue : {other}"))),
+    }
+    Ok(())
+}
+
 fn splitting_view(c: &mut Contest, index: usize) -> Option<Value> {
     let s = c.schedule.stage(index)?.as_any().downcast_ref::<Splitting>()?;
     let owner = s.base().owner();
@@ -737,16 +832,37 @@ fn splitting_view(c: &mut Contest, index: usize) -> Option<Value> {
     let refs: Vec<(PlayerRef, bool)> = s.base().attendees.iter().map(|r| (*r, false)).collect();
     let mut l = list(&c.players, &codes, &refs, owner);
     for row in l.rows.iter_mut() {
-        row.checked = Some(c.players.get(row.reference).and_then(|p| p.attr("exported")).map(|v| v.as_bool()).unwrap_or(false));
+        row.checked = Some(s.division_of(&c.players, row.reference) > 0);
     }
-    Some(json!({ "list": l, "locked": s.base().locked }))
+    // Division de chaque tireur (0 = il reste) et noms des divisions.
+    let assignments: serde_json::Map<String, Value> =
+        s.base().attendees.iter().map(|r| (r.to_string(), json!(s.division_of(&c.players, *r)))).collect();
+    let names: Vec<String> = (1..=s.config.divisions.len() as u32).map(|d| s.division_name(d)).collect();
+    Some(json!({
+        "list": l,
+        "locked": s.base().locked,
+        "label": s.base().name,
+        "config": s.config,
+        "divisions": names,
+        "assignments": assignments,
+    }))
 }
 
 fn general_list(c: &mut Contest, index: usize) -> Option<ListView> {
     let stage = c.schedule.stage(index)?.as_any().downcast_ref::<GeneralClassificationStage>()?;
     let codes = stage.filter.selected_codes();
     let refs: Vec<(PlayerRef, bool)> = stage.result().iter().map(|r| (*r, false)).collect();
-    Some(list(&c.players, &codes, &refs, stage.base().owner()))
+    let mut view = list(&c.players, &codes, &refs, stage.base().owner());
+    // Points de la compétition (préférences « Points »).
+    if c.points.enabled {
+        let points = c.final_points();
+        view.columns.push(Column { code: "points".into(), title: "Points".into() });
+        for row in view.rows.iter_mut() {
+            let p = points.iter().find(|(r, _, _)| *r == row.reference).map(|(_, _, p)| bp_core::points::image(*p));
+            row.cells.push(p.unwrap_or_default());
+        }
+    }
+    Some(view)
 }
 
 fn classification_view(c: &mut Contest, index: usize) -> Option<Value> {
@@ -768,6 +884,44 @@ fn barrage_score(c: &mut Contest, index: usize, a: &Value) -> Result<(), ApiErro
         }
         let b = stage.as_any_mut().downcast_mut::<Barrage>().ok_or_else(not_found)?;
         b.set_score(ctx, bout, fencer, &value);
+        Ok(())
+    })
+}
+
+/// Point de scission : `config` (réglages des divisions), `division`
+/// (`players`, `division` : 0 = ils restent) ou case cochée (première division).
+fn splitting_action(c: &mut Contest, index: usize, a: &Value) -> Result<(), ApiError> {
+    let action = a.get("action").and_then(Value::as_str).unwrap_or("");
+    c.with_schedule(|schedule, ctx| {
+        let stage = schedule.stage_mut(index).ok_or_else(not_found)?;
+        if stage.base().locked {
+            return Err(bad_request("la phase est terminée : « Tour précédent » pour la modifier"));
+        }
+        let s = stage.as_any_mut().downcast_mut::<Splitting>().ok_or_else(not_found)?;
+        match action {
+            // Libellé (GREG) ; N1/N2 et Tableau A/B préparent deux divisions.
+            "label" => s.set_label(ctx, a.get("label").and_then(Value::as_str).unwrap_or("")),
+            "config" => {
+                let config: bp_core::rounds::splitting::SplitConfig =
+                    serde_json::from_value(a.get("config").cloned().unwrap_or(Value::Null)).map_err(|e| bad_request(format!("réglages invalides : {e}")))?;
+                s.set_config(ctx, config);
+            }
+            "division" => {
+                let division = a.get("division").and_then(Value::as_u64).unwrap_or(0) as u32;
+                let players: Vec<PlayerRef> = a
+                    .get("players")
+                    .and_then(Value::as_array)
+                    .map(|v| v.iter().filter_map(|x| x.as_u64().map(|n| n as PlayerRef)).collect())
+                    .unwrap_or_default();
+                for r in players {
+                    s.set_division(ctx, r, division);
+                }
+            }
+            _ => {
+                let r = a.get("player").and_then(Value::as_u64).unwrap_or(0) as PlayerRef;
+                s.set_exported(ctx, r, a.get("value").and_then(Value::as_bool).unwrap_or(false));
+            }
+        }
         Ok(())
     })
 }
@@ -811,11 +965,13 @@ pub async fn stage_action(
 
             match kind_code(kind) {
                 "youth" => youth_action(c, index, &body)?,
+                "divisions" => divisions_action(c, index, &body)?,
                 "pool_allocator" => allocator_action(c, index, &body)?,
                 "pool_supervisor" => pools_action(c, index, &body)?,
                 "table" => table_action(c, index, &body)?,
                 "barrage" if body.get("action").and_then(Value::as_str) == Some("score") => barrage_score(c, index, &body)?,
-                "barrage" | "splitting" => toggle_action(c, index, &body)?,
+                "splitting" => splitting_action(c, index, &body)?,
+                "barrage" => toggle_action(c, index, &body)?,
                 other => return Err(bad_request(format!("pas d'action pour la phase « {other} »"))),
             }
             stage_view(c, index)

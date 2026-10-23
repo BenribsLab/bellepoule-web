@@ -538,6 +538,8 @@ fn parse_score(text: &str, max: u32) -> u32 {
 
 #[component]
 fn SingleMatch(who: Who, token: String, sheet: Value, bout: Value) -> impl IntoView {
+    // Match de poule : la double défaite est possible (temps de la poule écoulé).
+    let pool = token.starts_with("p~");
     let index = u(&bout, "index");
     let max = u(&sheet, "max_score").max(1) as u32;
     let timing = sheet.get("timing").cloned().unwrap_or(Value::Null);
@@ -682,10 +684,16 @@ fn SingleMatch(who: Who, token: String, sheet: Value, bout: Value) -> impl IntoV
         let (who, token, key, names) = ctx.get_value();
         let sc = scores.get_untracked();
         let Some(w) = current_winner() else {
-            status.set("Égalité : touchez « Vainqueur » sous le tireur gagnant.".into());
+            status.set(if pool {
+                "Égalité : touchez « Vainqueur » sous le tireur gagnant, ou « Double défaite ».".into()
+            } else {
+                "Égalité : touchez « Vainqueur » sous le tireur gagnant.".into()
+            });
             return;
         };
-        if !ask(&format!("Envoyer ce score ?\n\n{} : {}\n{} : {}\n\nVainqueur : {}", names[0], sc[0], names[1], sc[1], names[w as usize])) {
+        // w = 2 : double défaite (poule), sans vainqueur.
+        let result = if w == 2 { "Double défaite".to_string() } else { format!("Vainqueur : {}", names[w as usize]) };
+        if !ask(&format!("Envoyer ce score ?\n\n{} : {}\n{} : {}\n\n{result}", names[0], sc[0], names[1], sc[1])) {
             return;
         }
         clock.pause();
@@ -762,6 +770,16 @@ fn SingleMatch(who: Who, token: String, sheet: Value, bout: Value) -> impl IntoV
             </div>
         </Show>
         <div class="ref-board">{panel(0)}{panel(1)}</div>
+        {pool.then(|| view! {
+            <Show when=move || { let sc = scores.get(); sc[0] == sc[1] }>
+                <div class="ref-row ref-center ref-double">
+                    <button class="ref-light" class:chosen=move || winner.get() == Some(2) on:click=move |_| winner.set(Some(2))>
+                        "Double défaite"
+                    </button>
+                    <span class="ref-muted ref-small">"Temps de la poule écoulé : aucun vainqueur."</span>
+                </div>
+            </Show>
+        })}
         <div class="ref-row ref-center">
             <button class="ref-light" on:click=move |_| { green.update(|g| *g = 1 - *g); persist(); }>"⇄ Inverser rouge / vert"</button>
             <button class="ref-light" on:click=move |_| undo_card()>"Annuler le dernier carton"</button>

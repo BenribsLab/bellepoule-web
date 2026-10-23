@@ -219,6 +219,9 @@ pub struct Match {
     pub officiating: Option<crate::officiating::Officiating>,
     /// Rencontre par équipes : journal des relais (attribut `Relais`).
     pub relay: Option<crate::relay::RelayLog>,
+    /// Match de poule : la double défaite est possible (temps de la poule
+    /// écoulé : 0-0 si le match n'a pas commencé, X-X en cas d'égalité).
+    pub allow_double_defeat: bool,
 }
 
 impl Match {
@@ -236,6 +239,7 @@ impl Match {
             duration_span: 1,
             officiating: None,
             relay: None,
+            allow_double_defeat: false,
         }
     }
 
@@ -308,7 +312,32 @@ impl Match {
         if self.opponents.iter().any(|o| !o.score.is_valid(m)) {
             return true;
         }
+        if self.is_double_defeat() {
+            return false;
+        }
         !self.opponents[0].score.is_consistent_with(&self.opponents[1].score, m)
+    }
+
+    /// Double défaite : deux défaites au même score (match de poule
+    /// seulement), sans vainqueur.
+    pub fn is_double_defeat(&self) -> bool {
+        let [a, b] = &self.opponents;
+        self.allow_double_defeat
+            && a.score.status() == ScoreStatus::Defeat
+            && b.score.status() == ScoreStatus::Defeat
+            && a.score.get() == b.score.get()
+            && a.score.get() < self.max_score
+    }
+
+    /// Saisit une double défaite au score donné (0 si le match n'a pas commencé).
+    pub fn set_double_defeat(&mut self, touches: u32) {
+        if !self.allow_double_defeat {
+            return;
+        }
+        let touches = touches.min(self.max_score.saturating_sub(1));
+        for o in &mut self.opponents {
+            o.score.set(touches, false, self.max_score);
+        }
     }
 
     pub fn is_over(&self) -> bool {
@@ -363,6 +392,14 @@ impl Match {
         let Some(i) = self.position_of(fencer) else { return false };
         if !value.is_ascii() { return false; }
         let max = self.max_score;
+        // Poule : « D » (0-0) ou « D3 » (3-3) = double défaite.
+        if self.allow_double_defeat && value.as_bytes().first().is_some_and(|c| c.eq_ignore_ascii_case(&b'd')) {
+            let rest = &value[1..];
+            if rest.chars().all(|c| c.is_ascii_digit()) {
+                self.set_double_defeat(rest.parse().unwrap_or(0));
+                return true;
+            }
+        }
         if value.len() == 1 && value.eq_ignore_ascii_case("v") {
             self.opponents[i].score.set(max, true, max);
             return true;
@@ -504,6 +541,27 @@ mod tests {
         assert!(m.is_over());
         assert_eq!(m.winner(), Some(1));
         assert_eq!(m.looser(), Some(2));
+    }
+
+    #[test]
+    fn double_defeat_only_in_pools() {
+        let mut m = Match::with_opponents(1, 2, 5);
+        m.set_score_str(1, "2");
+        m.set_score_str(2, "2");
+        assert!(m.has_error(), "tableau ou barrage : il faut un vainqueur");
+        m.allow_double_defeat = true;
+        assert!(m.is_over() && m.is_double_defeat());
+        assert_eq!(m.winner(), None);
+        assert_eq!(m.looser(), None);
+        let mut m = Match::with_opponents(1, 2, 5);
+        m.allow_double_defeat = true;
+        assert!(m.set_score_str(2, "D"));
+        assert!(m.is_double_defeat() && m.score_at(0).get() == 0);
+        assert!(m.set_score_str(1, "d3"));
+        assert_eq!((m.score_at(0).get(), m.score_at(1).get()), (3, 3));
+        m.set_score_str(1, "5");
+        m.set_score_str(2, "5");
+        assert!(m.has_error(), "5-5 n'est pas une double défaite");
     }
 
     #[test]

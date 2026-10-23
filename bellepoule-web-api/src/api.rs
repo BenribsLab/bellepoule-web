@@ -9,7 +9,7 @@ use axum::{Json, Router};
 use tokio::sync::Mutex;
 
 use crate::store::Store;
-use crate::{accounts, auth, checkin, contests, organisation, schedule, smartpoule, stages};
+use crate::{accounts, auth, categories, checkin, contests, formulas, organisation, schedule, season, smartpoule, stages};
 
 pub type Shared = Arc<Mutex<Store>>;
 
@@ -53,6 +53,14 @@ pub fn router(store: Shared) -> Router {
         .route("/api/contests/{id}/stages/{index}/group_sheets", get(stages::group_sheets))
         .route("/api/contests/{id}/stages/{index}/match_sheets", get(stages::match_sheets))
         .route("/api/contests/{id}/stages/{index}/relay_sheets", get(stages::relay_sheets))
+        // Catégories générales du club
+        .route("/api/categories", get(categories::get).put(categories::save).delete(categories::remove))
+        .route("/api/categories/active", post(categories::activate))
+        // Formules de points du club
+        .route("/api/points/formulas", get(formulas::list).post(formulas::save).delete(formulas::remove))
+        // Classement de saison du club
+        .route("/api/season", get(season::get))
+        .route("/api/season/corrections", post(season::correct))
         // Organisation (pistes, arbitres, planning)
         .route("/api/organisation", get(organisation::get).post(organisation::action))
         .route("/api/organisation/import", post(organisation::import))
@@ -76,6 +84,8 @@ pub fn router(store: Shared) -> Router {
         .route("/api/contests/{id}/checkin/fencers/{reference}", delete(checkin::remove_fencer))
         .route("/api/contests/{id}/checkin/attending", put(checkin::set_attending))
         .route("/api/contests/{id}/checkin/import", post(checkin::import))
+        .route("/api/contests/{id}/checkin/ranking", post(checkin::import_ranking))
+        .route("/api/csv-template", get(contests::csv_template))
         .with_state(store)
 }
 

@@ -105,10 +105,11 @@ impl Tournament {
         self.manage(contest)
     }
 
-    /// Prépare la compétition créée au franchissement d'un point de scission.
-    /// Cette méthode n'avance pas la source : l'interface verrouille ensuite
-    /// la phase et affiche l'onglet de la nouvelle compétition.
-    pub fn split_current_contest(&mut self, source: ContestId) -> Result<ContestId> {
+    /// Prépare les compétitions créées au franchissement d'un point de
+    /// scission : une par division utilisée. Cette méthode n'avance pas la
+    /// source : l'interface verrouille ensuite la phase et affiche les onglets
+    /// des nouvelles compétitions.
+    pub fn split_current_contest(&mut self, source: ContestId) -> Result<Vec<ContestId>> {
         let at = self.contests.iter().position(|(id, _)| *id == source)
             .ok_or_else(|| Error::Format("compétition source introuvable".into()))?;
         let source = &self.contests[at].1;
@@ -116,8 +117,13 @@ impl Tournament {
         if source.schedule.current().is_none_or(|s| s.base().locked) {
             return Err(Error::Format("le point de scission n'est pas modifiable".into()));
         }
-        let target = source.duplicate_split(index, Some(&mut self.config))?;
-        Ok(self.manage(target))
+        let divisions = source.split_divisions(index);
+        let mut targets = Vec::new();
+        for division in divisions {
+            let source = &self.contests[at].1;
+            targets.push(source.duplicate_split(index, division, Some(&mut self.config))?);
+        }
+        Ok(targets.into_iter().map(|t| self.manage(t)).collect())
     }
 
     /// `OnContestDeleted`.

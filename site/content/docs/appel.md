@@ -38,3 +38,13 @@ ManageComp vérifie :
 ## Fermer l'appel
 
 **Tour suivant** ferme l'appel : les présents passent à la phase suivante de la formule.
+
+## Catégorie générale
+
+La colonne **Catégorie générale** est calculée d'après la date de naissance de chaque tireur (jamais saisie), avec le modèle de l'onglet **Catégories** des préférences : catégories de la FFE fournies (M5 à M20, Seniors, V1 à V4), bascule de la saison au 1er septembre. Le modèle peut être modifié (noms, années de naissance, ajout de catégories, date de bascule), enregistré sous un autre nom et rechargé.
+
+Par rapport à la catégorie de la compétition, un repère de couleur signale, sans rien bloquer :
+
+- **▲** (orange) : tireur surclassé d'une catégorie ;
+- **▲▲** (violet) : double surclassement ;
+- **⚠** (rouge) : à vérifier (trop âgé pour une compétition de jeunes, trop jeune, ou date de naissance absente).

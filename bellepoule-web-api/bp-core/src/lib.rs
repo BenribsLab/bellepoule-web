@@ -5,6 +5,9 @@
 
 pub mod attribute;
 pub mod bout;
+pub mod categories;
+pub mod points;
+pub mod season;
 pub mod officiating;
 pub mod relay;
 pub mod relay_sheet;

@@ -127,7 +127,12 @@ impl Schedule {
     /// (le fournisseur d'entrée éventuel est inséré juste avant).
     pub fn add_kind(&mut self, ctx: &mut StageContext, kind: StageKind, after: Option<usize>) -> usize {
         let stage = self.create_stage(kind);
-        self.add_stage(ctx, stage, after)
+        let at = self.add_stage(ctx, stage, after);
+        // Poules de division : le tour de poules de ces divisions suit.
+        if kind == StageKind::DivisionRound && !self.loading {
+            self.add_kind(ctx, StageKind::PoolSupervisor, Some(at));
+        }
+        at
     }
 
     /// `AddStage` : insère la phase après `after` (à la fin par défaut).
@@ -361,10 +366,28 @@ impl Schedule {
         }
         self.plug_stage(ctx, next);
         self.retrieve_attendees(ctx, next);
+        self.prepare_divisions(next);
         self.apply_youth_training(next);
         self.stages[next].garnish(ctx);
         self.set_current(next);
         self.refresh_general_classification(ctx);
+    }
+
+    /// Poules de division : la répartition du tour de division précédent
+    /// (montées et descentes), sinon la répartition de départ.
+    fn prepare_divisions(&mut self, index: usize) {
+        use crate::rounds::divisions::DivisionRound;
+        if !self.stages[index].as_any().is::<DivisionRound>() {
+            return;
+        }
+        let previous = self.stages[..index]
+            .iter()
+            .rev()
+            .find_map(|s| s.as_any().downcast_ref::<DivisionRound>())
+            .map(|d| d.assignment().clone());
+        if let Some(round) = self.stages[index].as_any_mut().downcast_mut::<DivisionRound>() {
+            round.prepare(previous.as_ref());
+        }
     }
 
     /// Entraînement des jeunes (extension) : une phase de poules ou de
@@ -372,23 +395,34 @@ impl Schedule {
     /// groupe (poules de chaque groupe, sortie croisée, places tirées).
     fn apply_youth_training(&mut self, index: usize) {
         use crate::rounds::youth::{PoolMode, YouthTraining};
-        let youth = self.stages[..index]
-            .iter()
-            .rev()
-            .find_map(|s| s.as_any().downcast_ref::<YouthTraining>())
+        use crate::rounds::divisions::DivisionRound;
+        // La phase de groupes la plus proche : entraînement des jeunes ou poules de division.
+        let grouping = self.stages[..index].iter().rev().find(|s| s.as_any().is::<YouthTraining>() || s.as_any().is::<DivisionRound>());
+        let youth = grouping
+            .and_then(|s| s.as_any().downcast_ref::<YouthTraining>())
             .map(|y| (y.settings.clone(), y.locked_layout()));
+        let divisions = grouping.and_then(|s| s.as_any().downcast_ref::<DivisionRound>()).map(|d| d.settings.clone());
         let stage = &mut self.stages[index];
         if let Some(allocator) = stage.as_any().downcast_ref::<crate::rounds::pool::PoolAllocatorStage>() {
             let mut round = allocator.round();
-            match &youth {
-                Some((settings, layout)) => {
+            match (&youth, &divisions) {
+                (Some((settings, layout)), _) => {
                     round.youth_groups = Some(layout.iter().map(|l| l.nb_pools).collect());
                     round.cross_output = true;
+                    round.group_prefix = None;
                     round.set_youth_seeding(settings.pool_mode == PoolMode::Snake, &settings.swapping);
                 }
-                None => {
+                // Poules de division : les poules de chaque division, classement D1 d'abord.
+                (None, Some(settings)) => {
+                    round.youth_groups = Some(vec![settings.pools.max(1); settings.divisions.max(1) as usize]);
+                    round.cross_output = true;
+                    round.group_prefix = Some("D".into());
+                    round.set_youth_seeding(true, &settings.swapping);
+                }
+                (None, None) => {
                     round.youth_groups = None;
                     round.cross_output = false;
+                    round.group_prefix = None;
                 }
             }
         } else if let Some(table) = stage.as_any_mut().downcast_mut::<crate::rounds::table::supervisor::TableSupervisor>() {
@@ -639,10 +673,13 @@ impl Schedule {
         }
         if let Some(node) = node {
             self.stages[index].load(ctx, node)?;
-            // Le classement général et l'entraînement des jeunes n'enregistrent
-            // pas leurs participants : ce sont les qualifiés de la phase d'avant.
+            // Le classement général, l'entraînement des jeunes et le point de
+            // scission n'enregistrent pas leurs participants : ce sont les
+            // qualifiés de la phase d'avant.
             let derived = self.stages[index].as_any().is::<GeneralClassificationStage>()
-                || self.stages[index].as_any().is::<crate::rounds::youth::YouthTraining>();
+                || self.stages[index].as_any().is::<crate::rounds::youth::YouthTraining>()
+                || self.stages[index].as_any().is::<crate::rounds::splitting::Splitting>()
+                || self.stages[index].as_any().is::<crate::rounds::divisions::DivisionRound>();
             if derived && index > 0 && self.stages[index - 1].base().locked {
                 self.retrieve_attendees(ctx, index);
             }

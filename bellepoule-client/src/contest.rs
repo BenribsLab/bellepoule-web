@@ -312,6 +312,7 @@ fn FormulaDialog(id: String, schedule: RwSignal<Option<ScheduleView>>, on_close:
                         <option value="pool_supervisor">"Tour de poules"</option>
                         <option value="splitting">"Point de scission"</option>
                         <option value="youth">"Entraînement des jeunes"</option>
+                        <option value="divisions">"Poules de division"</option>
                     </select>
                     " après "
                     <select on:change=move |ev| after.set(event_target_value(&ev))>

@@ -82,6 +82,22 @@ pub async fn send<B: Serialize, T: DeserializeOwned>(method: &str, path: &str, b
     read(resp).await
 }
 
+/// Envoi sans réponse attendue (204).
+pub async fn post_empty<B: Serialize>(path: &str, body: &B) -> Result<(), ApiError> {
+    send_empty("POST", path, body).await
+}
+
+/// Envoi (`POST`, `PUT`) sans réponse attendue (204).
+pub async fn send_empty<B: Serialize>(method: &str, path: &str, body: &B) -> Result<(), ApiError> {
+    let builder = if method == "PUT" { Request::put(path) } else { Request::post(path) };
+    let resp = with_key(builder).json(body).map_err(err)?.send().await.map_err(err)?;
+    if resp.ok() {
+        Ok(())
+    } else {
+        read::<serde_json::Value>(resp).await.map(|_| ())
+    }
+}
+
 pub async fn delete(path: &str) -> Result<(), ApiError> {
     let resp = with_key(Request::delete(path)).send().await.map_err(err)?;
     if resp.ok() {
@@ -240,6 +256,10 @@ pub struct Properties {
     pub team_size: Option<u32>,
     #[serde(default)]
     pub substitutes: Option<u32>,
+    /// Points (préférences « Points ») : `enabled`, `weight`, `place_bonus`,
+    /// `top_bonus`, `formula`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub points: Option<serde_json::Value>,
 }
 
 #[derive(Clone, Debug, Serialize)]

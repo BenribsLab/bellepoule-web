@@ -39,3 +39,13 @@ ManageComp checks:
 ## Close the check-in
 
 **Next round** closes the check-in: present fencers go on to the next phase of the formula.
+
+## General category
+
+The **General category** column is computed from each fencer's birth date (never typed in), with the model of the **Categories** tab in the preferences: FFE categories provided (M5 to M20, Seniors, V1 to V4), season switching on 1 September. The model can be changed (names, birth years, new categories, switch date), saved under another name and loaded again.
+
+Compared with the competition's category, a colour marker shows, without blocking anything:
+
+- **▲** (orange): fencer one category above their age;
+- **▲▲** (purple): two categories above;
+- **⚠** (red): to check (too old for a youth competition, too young, or no birth date).

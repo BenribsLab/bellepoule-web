@@ -19,7 +19,9 @@ ManageComp suggests the possible pool formulas (number and size). Fencers are sp
 
 Click a cell of the grid and type the score: `5` or `V` for the winner, the number of touches for the loser.
 
-If the bout stops at the end of time before the winner reaches the maximum score, type `W` followed by their touches: `W3` for a 3–2 win. The grid then shows `V3`. Each fencer's menu shows their status: qualified, withdrawn, excluded, forfeit. This menu only changes on click (the mouse wheel scrolls the page).
+If the bout stops at the end of time before the winner reaches the maximum score, type `W` followed by their touches: `W3` for a 3–2 win. The grid then shows `V3`.
+
+**Double defeat** (pool time over): enter the same score for both fencers, `0` and `0` if the bout did not start, or `3` and `3` for a tie. Shortcut: `D` (0-0) or `D3` (3-3) in either cell. The bout is over with no winner; the touches count in the indicators. On the referee's phone, a "Double defeat" button appears on a tie. Each fencer's menu shows their status: qualified, withdrawn, excluded, forfeit. This menu only changes on click (the mouse wheel scrolls the page).
 
 Referees can also enter their bouts on their phone ([Referees on their phone](@/docs/arbitre.md)).
 
