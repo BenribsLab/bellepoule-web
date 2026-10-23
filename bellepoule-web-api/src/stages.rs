@@ -381,10 +381,17 @@ fn allocator_action(c: &mut Contest, index: usize, a: &Value) -> Result<(), ApiE
                 .and_then(Value::as_array)
                 .map(|v| v.iter().filter_map(|x| x.as_str().map(str::to_string)).collect())
                 .unwrap_or_default();
-            let extra = a.get("extra").and_then(Value::as_str).map(str::to_string);
+            // `extras` : critères supplémentaires dans l'ordre (`extra` : un seul, ancien format).
+            let mut extras: Vec<String> = a
+                .get("extras")
+                .and_then(Value::as_array)
+                .map(|v| v.iter().filter_map(|x| x.as_str().map(str::to_string)).collect())
+                .unwrap_or_default();
+            extras.extend(a.get("extra").and_then(Value::as_str).map(str::to_string));
             with_round(c, index, |r, p| {
                 let regular: Vec<&str> = regular.iter().map(String::as_str).collect();
-                r.set_swapping_criteria(p, &regular, extra.as_deref());
+                let extras: Vec<&str> = extras.iter().map(String::as_str).collect();
+                r.set_swapping_criteria(p, &regular, &extras);
             })?;
         }
         other => return Err(bad_request(format!("action inconnue : {other}"))),

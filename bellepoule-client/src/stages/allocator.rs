@@ -22,12 +22,13 @@ pub fn Allocator(ctx: StageCtx) -> impl IntoView {
                     let columns = arr(&d, "columns");
                     let regular: Vec<String> = arr(&d, "regular_choices").iter().map(|c| s(c, "code")).collect();
                     let extra: Vec<Value> = arr(&d, "extra_choices");
-                    let extra_on = criteria.iter().find(|c| !regular.contains(c)).cloned();
+                    // Critères supplémentaires choisis, dans leur ordre de priorité.
+                    let extras_on: Vec<String> = criteria.iter().filter(|c| !regular.contains(c)).cloned().collect();
                     let send_swapping = {
                         let regular = regular.clone();
-                        move |regular_on: Vec<String>, extra: Option<String>| {
+                        move |regular_on: Vec<String>, extras: Vec<String>| {
                             let regular_on: Vec<String> = regular_on.into_iter().filter(|c| regular.contains(c)).collect();
-                            ctx.act.run(json!({ "action": "swapping", "regular": regular_on, "extra": extra }));
+                            ctx.act.run(json!({ "action": "swapping", "regular": regular_on, "extras": extras }));
                         }
                     };
                     let send_swapping = StoredValue::new(send_swapping);
@@ -68,7 +69,7 @@ pub fn Allocator(ctx: StageCtx) -> impl IntoView {
                                     let code = s(&c, "code");
                                     let on = criteria.contains(&code);
                                     let all = criteria.clone();
-                                    let extra_on = extra_on.clone();
+                                    let extras_on = extras_on.clone();
                                     view! {
                                         <label class="check">
                                             <input
@@ -81,7 +82,7 @@ pub fn Allocator(ctx: StageCtx) -> impl IntoView {
                                                     if event_target_checked(&ev) {
                                                         list.push(code.clone());
                                                     }
-                                                    send_swapping.with_value(|f| f(list, extra_on.clone()));
+                                                    send_swapping.with_value(|f| f(list, extras_on.clone()));
                                                 }
                                             />
                                             {s(&c, "label")}
@@ -89,24 +90,68 @@ pub fn Allocator(ctx: StageCtx) -> impl IntoView {
                                     }
                                 })
                                 .collect_view()}
+                            // Un menu par critère supplémentaire (avec ×), puis un menu pour en ajouter un autre.
+                            {extras_on
+                                .iter()
+                                .enumerate()
+                                .map(|(i, current)| {
+                                    let (all, extras_change, extras_remove) = (criteria.clone(), extras_on.clone(), extras_on.clone());
+                                    let all2 = all.clone();
+                                    view! {
+                                        <span class="extra-criterion">
+                                            <select
+                                                disabled=locked
+                                                on:change=move |ev| {
+                                                    let mut list = extras_change.clone();
+                                                    list[i] = event_target_value(&ev);
+                                                    send_swapping.with_value(|f| f(all.clone(), list));
+                                                }
+                                            >
+                                                {extra
+                                                    .iter()
+                                                    .map(|c| {
+                                                        let code = s(c, "code");
+                                                        let on = &code == current;
+                                                        view! { <option value=code selected=on>{s(c, "label")}</option> }
+                                                    })
+                                                    .collect_view()}
+                                            </select>
+                                            <button
+                                                class="ghost icon-only small"
+                                                title="Retirer ce critère"
+                                                disabled=locked
+                                                on:click=move |_| {
+                                                    let mut list = extras_remove.clone();
+                                                    list.remove(i);
+                                                    send_swapping.with_value(|f| f(all2.clone(), list));
+                                                }
+                                            >
+                                                "×"
+                                            </button>
+                                        </span>
+                                    }
+                                })
+                                .collect_view()}
                             <select
                                 disabled=locked
                                 on:change={
                                     let all = criteria.clone();
+                                    let extras_on = extras_on.clone();
                                     move |ev| {
                                         let value = event_target_value(&ev);
-                                        send_swapping.with_value(|f| f(all.clone(), (!value.is_empty()).then_some(value)));
+                                        if !value.is_empty() {
+                                            let mut list = extras_on.clone();
+                                            list.push(value);
+                                            send_swapping.with_value(|f| f(all.clone(), list));
+                                        }
                                     }
                                 }
                             >
-                                <option value="">"(autre critère)"</option>
+                                <option value="" selected=true>{if extras_on.is_empty() { "(autre critère)" } else { "+ autre critère" }}</option>
                                 {extra
-                                    .into_iter()
-                                    .map(|c| {
-                                        let code = s(&c, "code");
-                                        let on = extra_on.as_deref() == Some(code.as_str());
-                                        view! { <option value=code selected=on>{s(&c, "label")}</option> }
-                                    })
+                                    .iter()
+                                    .filter(|c| !extras_on.contains(&s(c, "code")))
+                                    .map(|c| view! { <option value=s(c, "code")>{s(c, "label")}</option> })
                                     .collect_view()}
                             </select>
                             // Entraînement des jeunes : on imprime toujours le groupe complet.

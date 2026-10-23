@@ -227,6 +227,13 @@ pub fn ContestPage(id: String) -> impl IntoView {
     }
 }
 
+/// Phases montrées dans la formule, comme dans le logiciel de bureau : la
+/// composition des poules suit toujours son tour de poules et le classement
+/// général termine la compétition, ni l'une ni l'autre ne se règlent ici.
+fn in_formula(st: &api::StageInfo) -> bool {
+    st.kind != "pool_allocator" && st.kind != "classification"
+}
+
 /// Formule : phases de la compétition, ajout, retrait et ordre (« Préférences » de l'application).
 #[component]
 fn FormulaDialog(id: String, schedule: RwSignal<Option<ScheduleView>>, on_close: Callback<()>) -> impl IntoView {
@@ -276,12 +283,14 @@ fn FormulaDialog(id: String, schedule: RwSignal<Option<ScheduleView>>, on_close:
                                 .map(|s| {
                                     s.stages
                                         .iter()
-                                        .map(|st| {
+                                        .filter(|st| in_formula(st))
+                                        .enumerate()
+                                        .map(|(n, st)| {
                                             let index = st.index;
                                             let label = if st.name.is_empty() { st.class_name.clone() } else { format!("{} — {}", st.class_name, st.name) };
                                             view! {
                                                 <tr>
-                                                    <td class="number">{index + 1}</td>
+                                                    <td class="number">{n + 1}</td>
                                                     <td>{label}{if st.locked { " 🔒" } else { "" }}{if index == s.current { " (en cours)" } else { "" }}</td>
                                                     <td class="actions">
                                                         {st.can_up.then(|| view! { <button class="small" title="Monter" on:click=move |_| shift(index, true)>"▲"</button> })}
@@ -313,7 +322,9 @@ fn FormulaDialog(id: String, schedule: RwSignal<Option<ScheduleView>>, on_close:
                                 .map(|s| {
                                     s.stages
                                         .iter()
-                                        .map(|st| view! { <option value=st.index.to_string()>{format!("{}. {}", st.index + 1, st.class_name)}</option> })
+                                        .filter(|st| in_formula(st))
+                                        .enumerate()
+                                        .map(|(n, st)| view! { <option value=st.index.to_string()>{format!("{}. {}", n + 1, st.class_name)}</option> })
                                         .collect_view()
                                 })
                         }}

@@ -746,23 +746,27 @@ impl PoolRound {
 
     /// Critères de séparation (`OnSwappingToggled`) : `regular` parmi
     /// `regular_swapping_criteria()` (pris dans l'ordre du registre),
-    /// `extra` parmi `extra_swapping_criteria()` (prioritaire).
-    pub fn set_swapping_criteria(&mut self, players: &mut PlayerStore, regular: &[&str], extra: Option<&str>) {
+    /// `extras` parmi `extra_swapping_criteria()` (prioritaires, dans l'ordre
+    /// donné ; les doublons sont ignorés).
+    pub fn set_swapping_criteria(&mut self, players: &mut PlayerStore, regular: &[&str], extras: &[&str]) {
+        let available = extra_swapping_criteria();
         let mut list: Vec<String> = Vec::new();
-        let mut image = String::from("/");
+        for e in extras {
+            if available.contains(e) && !list.iter().any(|c| c == e) {
+                list.push(e.to_string());
+            }
+        }
+        let extra_count = list.len();
         for code in regular_swapping_criteria() {
             if regular.contains(&code) {
                 list.push(code.to_string());
-                image.push_str(code);
-                image.push('/');
             }
         }
-        if let Some(e) = extra {
-            if extra_swapping_criteria().contains(&e) {
-                list.insert(0, e.to_string());
-                image.push_str(e);
-                image.push('/');
-            }
+        // Image : réguliers puis supplémentaires (relue par `parse_swapping`).
+        let mut image = String::from("/");
+        for code in list[extra_count..].iter().chain(list[..extra_count].iter()) {
+            image.push_str(code);
+            image.push('/');
         }
         self.swapping_criteria = list;
         self.swapping = Some(image);
@@ -774,13 +778,17 @@ impl PoolRound {
         let Some(s) = self.swapping.clone() else { return };
         let regular = regular_swapping_criteria();
         let extra = extra_swapping_criteria();
+        let mut extras: Vec<String> = Vec::new();
         for token in s.split('/').filter(|t| !t.is_empty()) {
             if regular.contains(&token) {
                 self.swapping_criteria.push(token.to_string());
-            } else if extra.contains(&token) {
-                self.swapping_criteria.insert(0, token.to_string());
+            } else if extra.contains(&token) && !extras.iter().any(|e| e == token) {
+                extras.push(token.to_string());
             }
         }
+        // Les critères supplémentaires passent en premier, dans leur ordre.
+        extras.append(&mut self.swapping_criteria);
+        self.swapping_criteria = extras;
     }
 
     fn pools_distribution(&self) -> Vec<Vec<PlayerRef>> {
@@ -1507,5 +1515,21 @@ impl PoolRound {
             p.delete_matches(players);
         }
         self.managed = false;
+    }
+}
+
+#[cfg(test)]
+mod swapping_tests {
+    use super::*;
+
+    #[test]
+    fn several_extra_criteria_are_kept_in_order() {
+        let extra = extra_swapping_criteria();
+        let regular = regular_swapping_criteria();
+        assert!(extra.len() >= 2 && !regular.is_empty());
+        let mut round = PoolRound::new();
+        round.swapping = Some(format!("/{}/{}/{}/", regular[0], extra[1], extra[0]));
+        round.parse_swapping();
+        assert_eq!(round.swapping_criteria(), [extra[1].to_string(), extra[0].to_string(), regular[0].to_string()]);
     }
 }
