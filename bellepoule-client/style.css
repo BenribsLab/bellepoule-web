@@ -78,8 +78,8 @@ h1, h2, h3 { letter-spacing: -0.02em; }
 .avatar { width: 34px; height: 34px; border-radius: 50%; display: grid; place-items: center; font-weight: 800; color: #fff; background: linear-gradient(135deg, var(--violet), var(--accent)); flex: none; }
 .side-user-name { flex: 1; min-width: 0; font-weight: 600; font-size: 0.9rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .content { min-width: 0; display: flex; flex-direction: column; }
-main { width: 100%; max-width: 1320px; margin: 0 auto; padding: 1.6rem 1.8rem 1rem; flex: 1; }
-.page { display: grid; gap: 1.1rem; animation: rise 0.45s var(--ease) both; }
+main { width: 100%; max-width: 1680px; margin: 0 auto; padding: 1.6rem 1.8rem 1rem; flex: 1; min-width: 0; }
+.page { display: grid; grid-template-columns: minmax(0, 1fr); gap: 1.1rem; animation: rise 0.45s var(--ease) both; }
 
 @media (max-width: 900px) {
   .shell { display: block; }
@@ -703,3 +703,11 @@ td.actions { white-space: nowrap; }
 td.actions button + button { margin-left: 0.3rem; }
 .skeleton-block { height: 160px; background: linear-gradient(100deg, #eef2f9 30%, #f8faff 50%, #eef2f9 70%); background-size: 300% 100%; animation: shimmer 1.4s linear infinite; }
 .extra-criterion { display: inline-flex; align-items: center; gap: 2px; }
+
+/* Tout tient dans la fenêtre : un bloc plus large que l'écran défile dans
+   son propre cadre au lieu d'élargir la page. */
+.page > *, .stage-in, .stage-in > * { min-width: 0; max-width: 100%; }
+.stage { overflow-x: auto; }
+.pools-grid > *, .pool.card, .org-col { min-width: 0; overflow-x: auto; }
+.contest-hero, .stepper-bar { min-width: 0; }
+.hero-main { flex: 1 1 320px; }
