@@ -240,6 +240,16 @@ fn in_formula(st: &api::StageInfo) -> bool {
 #[component]
 fn FormulaDialog(id: String, schedule: RwSignal<Option<ScheduleView>>, on_close: Callback<()>) -> impl IntoView {
     let id = StoredValue::new(id);
+    // Phase dont les réglages sont affichés (clic sur la ligne, comme le logiciel).
+    let selected = RwSignal::new(None::<usize>);
+    let reload = Callback::new(move |_| {
+        let id = id.get_value();
+        spawn_local(async move {
+            if let Ok(s) = api::get::<ScheduleView>(&format!("/api/contests/{id}/schedule")).await {
+                schedule.set(Some(s));
+            }
+        });
+    });
     let kind = RwSignal::new("table".to_string());
     let after = RwSignal::new(String::new());
     let add = move |_| {
@@ -291,7 +301,8 @@ fn FormulaDialog(id: String, schedule: RwSignal<Option<ScheduleView>>, on_close:
                                             let index = st.index;
                                             let label = if st.name.is_empty() { st.class_name.clone() } else { format!("{} — {}", st.class_name, st.name) };
                                             view! {
-                                                <tr>
+                                                <tr class="clickable" class:selected=move || selected.get() == Some(index) title="Réglages de la phase"
+                                                    on:click=move |_| selected.set(if selected.get_untracked() == Some(index) { None } else { Some(index) })>
                                                     <td class="number">{n + 1}</td>
                                                     <td>{label}{if st.locked { " 🔒" } else { "" }}{if index == s.current { " (en cours)" } else { "" }}</td>
                                                     <td class="actions">
@@ -307,6 +318,17 @@ fn FormulaDialog(id: String, schedule: RwSignal<Option<ScheduleView>>, on_close:
                         }}
                     </tbody>
                 </table>
+                // Réglages de la phase choisie (avant même qu'elle commence).
+                {move || selected.get().and_then(|i| schedule.get().and_then(|s| s.stages.iter().find(|st| st.index == i).cloned())).map(|st| {
+                    let label = if st.name.is_empty() { st.class_name.clone() } else { format!("{} — {}", st.class_name, st.name) };
+                    view! {
+                        <div class="stage-settings">
+                            <h3>{format!("Réglages : {label}")}</h3>
+                            <crate::stages::StageSettings id=id.get_value() index=st.index kind=st.kind.clone() on_change=reload />
+                        </div>
+                    }
+                })}
+                <p class="muted small">"Cliquez sur une phase pour la régler, même si elle n'a pas encore commencé."</p>
                 <div class="settings-row">
                     "Ajouter "
                     <select on:change=move |ev| kind.set(event_target_value(&ev))>

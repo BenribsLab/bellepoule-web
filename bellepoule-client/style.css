@@ -856,3 +856,10 @@ code.pin { font-size: 1.05rem; font-weight: 700; letter-spacing: 0.15em; }
 .competition-tabs { display: flex; gap: 4px; flex-wrap: wrap; margin: 4px 0 8px; }
 .competition-tab { background: var(--surface); color: var(--text); border: 1px solid var(--border); border-top: 4px solid var(--c, var(--accent)); border-radius: 10px 10px 4px 4px; padding: 6px 10px; font-weight: 600; font-size: 0.85rem; cursor: pointer; }
 .competition-tab.active { background: color-mix(in srgb, var(--c, var(--accent)) 22%, var(--surface)); border-color: var(--c, var(--accent)); }
+
+/* Formule : réglages d'une phase */
+tr.clickable { cursor: pointer; }
+tr.clickable:hover { background: var(--surface-2); }
+tr.clickable.selected { background: var(--accent-soft); }
+.stage-settings { border: 1px solid var(--border); border-radius: 14px; padding: 0.6rem 0.9rem; margin: 0.6rem 0; background: var(--surface-2); }
+.stage-settings h3 { margin: 0 0 0.5rem; font-size: 1rem; }

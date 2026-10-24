@@ -120,7 +120,7 @@ fn SplitTable(ctx: StageCtx, list: Value, names: Vec<String>, assignments: Value
 
 /// Réglages des divisions (comme dans la formule du logiciel de bureau).
 #[component]
-fn DivisionsSettings(ctx: StageCtx, config: Value, locked: bool) -> impl IntoView {
+pub(crate) fn DivisionsSettings(ctx: StageCtx, config: Value, locked: bool) -> impl IntoView {
     let config = RwSignal::new(config);
     let send = move || ctx.act.run(json!({ "action": "config", "config": config.get_untracked() }));
     let edit = move |f: Box<dyn FnOnce(&mut Value)>| {

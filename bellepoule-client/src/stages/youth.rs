@@ -150,7 +150,7 @@ fn Group(ctx: StageCtx, group: Value, locked: bool) -> impl IntoView {
 
 /// Réglages de la phase (les mêmes que dans les préférences de l'application).
 #[component]
-fn Settings(ctx: StageCtx, settings: Value, choices: Vec<Value>, locked: bool) -> impl IntoView {
+pub(crate) fn Settings(ctx: StageCtx, settings: Value, choices: Vec<Value>, locked: bool) -> impl IntoView {
     let open = RwSignal::new(false);
     let st = settings.clone();
     let send = move |changes: Value| {

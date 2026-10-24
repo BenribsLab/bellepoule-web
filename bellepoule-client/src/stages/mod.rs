@@ -129,6 +129,67 @@ pub fn StageView(id: String, index: usize, kind: String, on_change: Callback<()>
     }
 }
 
+/// Réglages d'une phase, comme les préférences de la formule du logiciel :
+/// accessibles avant que la phase commence (formule complète dès le départ).
+#[component]
+pub fn StageSettings(id: String, index: usize, kind: String, on_change: Callback<()>) -> impl IntoView {
+    let data = RwSignal::new(None::<Value>);
+    let focus = RwSignal::new(None::<String>);
+    let path = StoredValue::new(format!("/api/contests/{id}/stages/{index}"));
+    {
+        let path = path.get_value();
+        spawn_local(async move {
+            match api::get::<Value>(&path).await {
+                Ok(v) => data.set(Some(v)),
+                Err(e) => alert(&e.message),
+            }
+        });
+    }
+    let act = Callback::new(move |body: Value| {
+        let path = path.get_value();
+        spawn_local(async move {
+            match api::send::<_, Value>("POST", &path, &body).await {
+                Ok(v) => {
+                    data.set(Some(v));
+                    on_change.run(());
+                }
+                Err(e) => {
+                    alert(&e.message);
+                    if let Ok(v) = api::get::<Value>(&path).await {
+                        data.set(Some(v));
+                    }
+                }
+            }
+        });
+    });
+    let ctx = StageCtx { data, act, focus, path };
+    let has_timing = matches!(kind.as_str(), "pool_supervisor" | "table" | "barrage" | "youth" | "divisions");
+    view! {
+        {has_timing.then(|| view! { <BoutTimingSettings ctx=ctx /> })}
+        {move || ctx.data.get().map(|v| {
+            let d = v["data"].clone();
+            let locked = b(&d, "locked");
+            match kind.as_str() {
+                "pool_supervisor" => view! { <pools::PoolSettings ctx=ctx d=d.clone() locked=locked /> }.into_any(),
+                "table" => view! { <table::TableSettings ctx=ctx d=d.clone() locked=locked /> }.into_any(),
+                "splitting" => view! {
+                    <div class="stage-bar">
+                        <label class="inline">
+                            "Libellé (utilisé par GREG) "
+                            <input type="text" disabled=locked prop:value=s(&d, "label")
+                                on:change=move |ev| ctx.act.run(serde_json::json!({ "action": "label", "label": event_target_value(&ev) })) />
+                        </label>
+                    </div>
+                    <splitting::DivisionsSettings ctx=ctx config=d["config"].clone() locked=locked />
+                }.into_any(),
+                "youth" => view! { <youth::Settings ctx=ctx settings=d["settings"].clone() choices=arr(&d, "swapping_choices") locked=locked /> }.into_any(),
+                "divisions" => view! { <divisions::Settings ctx=ctx settings=d["settings"].clone() locked=locked /> }.into_any(),
+                _ => view! { <p class="muted">"Pas de réglages pour cette phase."</p> }.into_any(),
+            }
+        })}
+    }
+}
+
 /// Bouton « Imprimer » (impression du navigateur, mise en page `@media print`).
 #[component]
 pub fn PrintButton() -> impl IntoView {

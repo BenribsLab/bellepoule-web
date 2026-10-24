@@ -80,7 +80,7 @@ pub fn Pools(ctx: StageCtx) -> impl IntoView {
 }
 
 #[component]
-fn PoolSettings(ctx: StageCtx, d: Value, locked: bool) -> impl IntoView {
+pub(crate) fn PoolSettings(ctx: StageCtx, d: Value, locked: bool) -> impl IntoView {
     let name = RwSignal::new(s(&d, "round_name"));
     let max = RwSignal::new(u(&d, "max_score").to_string());
     let qualified = RwSignal::new(d.get("nb_qualified").and_then(Value::as_u64).map(|q| q.to_string()).unwrap_or_default());

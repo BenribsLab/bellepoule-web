@@ -79,7 +79,7 @@ fn DivisionTable(ctx: StageCtx, list: Value, fencers: Value, count: u64, locked:
 
 /// Réglages (comme dans la formule du logiciel de bureau).
 #[component]
-fn Settings(ctx: StageCtx, settings: Value, locked: bool) -> impl IntoView {
+pub(crate) fn Settings(ctx: StageCtx, settings: Value, locked: bool) -> impl IntoView {
     let settings = RwSignal::new(settings);
     let set = move |key: &'static str, value: Value| {
         settings.update(|s| s[key] = value);

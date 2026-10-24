@@ -87,7 +87,7 @@ pub fn Table(ctx: StageCtx) -> impl IntoView {
 }
 
 #[component]
-fn TableSettings(ctx: StageCtx, d: Value, locked: bool) -> impl IntoView {
+pub(crate) fn TableSettings(ctx: StageCtx, d: Value, locked: bool) -> impl IntoView {
     let max = RwSignal::new(u(&d, "max_score").to_string());
     let fenced = RwSignal::new(s(&d, "fenced_places"));
     let save = move |_| {
