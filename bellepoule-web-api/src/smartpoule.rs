@@ -437,12 +437,19 @@ pub async fn security(State(store): State<Shared>, client: Client) -> Result<Jso
     let mut store = store.lock().await;
     store.ensure_relay(&client.id);
     let now = now_secs();
+    // Feuille d'une compétition de la version web hors de l'organisation :
+    // son signalement ne concerne pas la journée en cours.
+    let (web, organised) = store.organised_net_ids(&client);
+    let concerned = |token: &str| match token.split('~').nth(1).and_then(|n| n.parse::<u32>().ok()) {
+        Some(net) => !web.contains(&net) || organised.contains(&net),
+        None => true,
+    };
     let relay = store.relays.entry(client.id.clone()).or_default();
-    let alerts: Vec<Value> = relay.guards.iter().filter(|(_, g)| g.locked).map(|(t, g)| json!({ "token": t, "name": g.name, "since": g.since })).collect();
+    let alerts: Vec<Value> = relay.guards.iter().filter(|(t, g)| g.locked && concerned(t)).map(|(t, g)| json!({ "token": t, "name": g.name, "since": g.since })).collect();
     let paused: Vec<Value> = relay
         .guards
         .iter()
-        .filter(|(_, g)| !g.locked && g.blocked_until > now)
+        .filter(|(t, g)| !g.locked && g.blocked_until > now && concerned(t))
         .map(|(t, g)| json!({ "token": t, "name": g.name, "minutes": (g.blocked_until - now).div_ceil(60) }))
         .collect();
     let mut phones: HashMap<u32, (String, usize)> = HashMap::new();
@@ -451,7 +458,7 @@ pub async fn security(State(store): State<Shared>, client: Client) -> Result<Jso
     }
     let phones: Vec<Value> = phones.into_iter().map(|(r, (name, n))| json!({ "referee": r, "name": name, "count": n })).collect();
     // Signalements : en cours d'abord, puis les derniers traités.
-    let mut reports: Vec<&Report> = relay.reports.iter().collect();
+    let mut reports: Vec<&Report> = relay.reports.iter().filter(|r| concerned(&r.token)).collect();
     reports.sort_by_key(|r| (r.done, std::cmp::Reverse(r.id)));
     let open = reports.iter().filter(|r| !r.done).count();
     let reports: Vec<Value> = reports.into_iter().take(open + 10).map(Report::json).collect();

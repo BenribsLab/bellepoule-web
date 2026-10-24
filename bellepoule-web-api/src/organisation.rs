@@ -3,7 +3,7 @@
 //! la vue intégrée du logiciel de bureau.
 //!
 //! Synchronisation (`Store::sync_organisation`, appelée à chaque requête) :
-//! les colis des compétitions en cours (`Contest::parcels`) alimentent la
+//! les colis des compétitions organisées (`Contest::parcels`) alimentent la
 //! salle ; les feuilles de route et les arbitres qu'elle produit sont
 //! appliqués aux compétitions, qui sont enregistrées.
 //!
@@ -36,6 +36,9 @@ pub struct Organisation {
     inputs: HashMap<(String, u32), Message>,
     pub referees: bool,
     pub pistes: bool,
+    /// Compétitions organisées (comme les onglets ouverts du logiciel) ;
+    /// `None` : celles de la date la plus récente.
+    pub contests: Option<Vec<String>>,
     dir: PathBuf,
 }
 
@@ -57,7 +60,8 @@ impl Organisation {
             .unwrap_or_else(|| marshaller::wifi::new_key256());
         hall.referees.cryptor_key = Some(key);
         let flag = |k: &str| settings.get(k).and_then(Value::as_bool).unwrap_or(true);
-        let o = Organisation { hall, inputs: HashMap::new(), referees: flag("referees"), pistes: flag("pistes"), dir };
+        let contests = settings.get("contests").and_then(Value::as_array).map(|l| l.iter().filter_map(|v| v.as_str().map(str::to_string)).collect());
+        let o = Organisation { hall, inputs: HashMap::new(), referees: flag("referees"), pistes: flag("pistes"), contests, dir };
         o.save_settings();
         o
     }
@@ -68,6 +72,7 @@ impl Organisation {
             "referees": self.referees,
             "pistes": self.pistes,
             "key": self.hall.referees.cryptor_key,
+            "contests": self.contests,
         });
         let _ = std::fs::write(self.dir.join("settings.json"), serde_json::to_string_pretty(&v).unwrap_or_default());
     }
@@ -92,14 +97,89 @@ impl Store {
         self.organisations.entry(client.id.clone()).or_insert_with(|| Organisation::load(dir))
     }
 
-    /// Transmet à la salle les colis des compétitions en cours, puis
+    /// Compétitions en cours du club (non terminées) : identifiant et date.
+    fn running_contests(&self, client: &Client) -> Vec<(String, (u32, u32, u32))> {
+        self.contests
+            .iter()
+            .filter(|((c, _), contest)| c == &client.id && !contest.schedule.is_over())
+            .map(|((_, id), contest)| (id.clone(), (contest.year, contest.month, contest.day)))
+            .collect()
+    }
+
+    /// Compétitions organisées : celles choisies (encore en cours), sinon
+    /// celles de la date la plus récente.
+    pub fn organised_contests(&mut self, client: &Client) -> Vec<String> {
+        let running = self.running_contests(client);
+        match self.organisation(client).contests.clone() {
+            Some(list) => list.into_iter().filter(|id| running.iter().any(|(r, _)| r == id)).collect(),
+            None => {
+                let latest = running.iter().map(|(_, d)| *d).max();
+                running.into_iter().filter(|(_, d)| Some(*d) == latest).map(|(id, _)| id).collect()
+            }
+        }
+    }
+
+    /// Nouvelle compétition : l'organisation passe aux compétitions de la
+    /// même date (une autre journée n'y reste pas).
+    pub fn organise_with(&mut self, client: &Client, id: &str) {
+        let running = self.running_contests(client);
+        let Some(date) = running.iter().find(|(r, _)| r == id).map(|(_, d)| *d) else { return };
+        let list: Vec<String> = running.into_iter().filter(|(_, d)| *d == date).map(|(r, _)| r).collect();
+        let org = self.organisation(client);
+        org.contests = Some(list);
+        org.save_settings();
+    }
+
+    /// Identifiants réseau des compétitions de la version web : toutes, et
+    /// celles qui sont organisées (filtre des signalements des arbitres).
+    pub fn organised_net_ids(&mut self, client: &Client) -> (Vec<u32>, Vec<u32>) {
+        let organised = self.organised_contests(client);
+        let mut all = Vec::new();
+        let mut chosen = Vec::new();
+        for ((c, id), contest) in self.contests.iter() {
+            if c != &client.id {
+                continue;
+            }
+            all.push(contest.net_id);
+            if organised.contains(id) {
+                chosen.push(contest.net_id);
+            }
+        }
+        (all, chosen)
+    }
+
+    /// Compétitions en cours, pour le choix des compétitions organisées.
+    fn organisation_choices(&mut self, client: &Client) -> Value {
+        let organised = self.organised_contests(client);
+        let mut list: Vec<Value> = self
+            .contests
+            .iter()
+            .filter(|((c, _), contest)| c == &client.id && !contest.schedule.is_over())
+            .map(|((_, id), c)| {
+                json!({
+                    "id": id,
+                    "name": c.name,
+                    "detail": ([c.weapon.label(), c.gender_label(), c.category.display_image()].into_iter().filter(|s| !s.is_empty()).collect::<Vec<_>>().join(" · ")),
+                    "date": c.date_image(),
+                    "sort": format!("{:04}{:02}{:02}", c.year, c.month, c.day),
+                    "color": c.color,
+                    "selected": organised.contains(id),
+                })
+            })
+            .collect();
+        list.sort_by(|a, b| b["sort"].as_str().cmp(&a["sort"].as_str()));
+        json!(list)
+    }
+
+    /// Transmet à la salle les colis des compétitions organisées, puis
     /// applique aux compétitions ce que la salle a produit.
     pub fn sync_organisation(&mut self, client: &Client) {
         self.organisation(client);
-        // Colis voulus (compétitions non terminées)
+        let organised = self.organised_contests(client);
+        // Colis voulus (compétitions organisées)
         let mut wanted = Vec::new();
-        for ((c, _), contest) in self.contests.iter() {
-            if c != &client.id || contest.schedule.is_over() {
+        for ((c, id), contest) in self.contests.iter() {
+            if c != &client.id || contest.schedule.is_over() || !organised.contains(id) {
                 continue;
             }
             for parcel in contest.parcels() {
@@ -409,7 +489,9 @@ fn view(org: &Organisation) -> Value {
 pub async fn get(State(store): State<Shared>, client: Client) -> Result<Json<Value>, ApiError> {
     let mut store = store.lock().await;
     store.sync_organisation(&client);
-    Ok(Json(view(store.organisation(&client))))
+    let mut v = view(store.organisation(&client));
+    v["contests"] = store.organisation_choices(&client);
+    Ok(Json(v))
 }
 
 // ------------------------------------------------------------------ actions
@@ -447,6 +529,11 @@ pub async fn action(State(store): State<Shared>, client: Client, Json(a): Json<V
     let hall = &mut org.hall;
     match str_of(&a, "action") {
         // Options
+        // Compétitions organisées (cochées), comme les onglets ouverts du logiciel.
+        "contests" => {
+            org.contests = Some(a.get("ids").and_then(Value::as_array).map(|l| l.iter().filter_map(|v| v.as_str().map(str::to_string)).collect()).unwrap_or_default());
+            org.save_settings();
+        }
         "features" => {
             org.referees = a.get("referees").and_then(Value::as_bool).unwrap_or(org.referees);
             org.pistes = a.get("pistes").and_then(Value::as_bool).unwrap_or(org.pistes);
@@ -624,7 +711,9 @@ pub async fn action(State(store): State<Shared>, client: Client, Json(a): Json<V
     }
     store.apply_outbox(&client);
     store.sync_organisation(&client);
-    Ok(Json(view(store.organisation(&client))))
+    let mut v = view(store.organisation(&client));
+    v["contests"] = store.organisation_choices(&client);
+    Ok(Json(v))
 }
 
 /// `GET /api/organisation/referee-codes` : QR codes personnels et PIN des
@@ -788,7 +877,9 @@ pub async fn import(
     }
     store.apply_outbox(&client);
     store.sync_organisation(&client);
-    Ok(Json(view(store.organisation(&client))))
+    let mut v = view(store.organisation(&client));
+    v["contests"] = store.organisation_choices(&client);
+    Ok(Json(v))
 }
 
 /// Durée en minutes (affichage).

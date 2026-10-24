@@ -843,3 +843,7 @@ code.pin { font-size: 1.05rem; font-weight: 700; letter-spacing: 0.15em; }
 .publish-qr { width: 120px; flex: none; background: #fff; border-radius: 8px; padding: 4px; }
 .publish-links { display: grid; gap: 0.4rem; min-width: 0; }
 .publish-links a { overflow-wrap: anywhere; font-weight: 600; }
+
+/* Organisation : compétitions organisées */
+.org-contests { display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: center; margin-bottom: 0.6rem; }
+.org-contest-list { display: grid; gap: 0.5rem; max-height: 55vh; overflow: auto; }
