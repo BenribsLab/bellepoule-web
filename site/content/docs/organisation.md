@@ -25,3 +25,7 @@ Pour l'entraînement des jeunes, **Placer un groupe…** place toutes les poules
 ## Arbitres du même club
 
 Affecter un arbitre du même club qu'un tireur affiche un message à confirmer : « Arbitre du même club qu'un tireur… Affecter quand même ? ». Dans la répartition des matchs, un arbitre n'arbitre pas un tireur de son club tant qu'un autre arbitre de la piste est libre.
+
+## Arbitres sur téléphone et signalements
+
+Le bouton **Arbitres sur téléphone** imprime les QR codes personnels et les codes PIN des arbitres. Quand un arbitre signale une absence ou appelle le Directoire technique depuis son téléphone, une **puce rouge** s'allume sur **Organisation**, un son retentit et le signalement s'affiche en haut de la page, avec le bouton **Traité** ([Arbitres sur téléphone](@/docs/arbitre.md)).

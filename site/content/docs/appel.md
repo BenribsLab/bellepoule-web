@@ -7,7 +7,7 @@ description = "Saisir, importer et pointer les tireurs ou les équipes."
 ## Ajouter des tireurs
 
 - **Ajouter** : la fiche du tireur s'ouvre ; la touche Entrée ajoute le tireur depuis n'importe quel champ.
-- **Importer** : fichiers FFF, CSV, XML FIE ou classement.
+- **Importer** : fichiers FFF, CSV, XML FIE ou classement. **Importer un classement** donne leur classement d'entrée aux tireurs déjà inscrits ; **Modèle CSV** télécharge un fichier avec les colonnes attendues.
 - **Coller une copie** : duplique des tireurs (et les membres d'une équipe).
 
 Les colonnes affichées se choisissent dans le menu de la liste. La recherche et les filtres (Tous, Présents, Absents) aident à pointer rapidement.

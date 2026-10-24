@@ -8,7 +8,7 @@ description = "Enter, import and check in fencers or teams."
 ## Add fencers
 
 - **Add**: the fencer form opens; the Enter key adds the fencer from any field.
-- **Import**: FFF, CSV, FIE XML or ranking files.
+- **Import**: FFF, CSV, FIE XML or ranking files. **Import a ranking** gives the fencers already entered their seeding; **CSV template** downloads a file with the expected columns.
 - **Paste a copy**: duplicates fencers (and the members of a team).
 
 Displayed columns are chosen from the list menu. Search and filters (All, Present, Absent) help to check in quickly.

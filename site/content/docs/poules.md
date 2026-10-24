@@ -12,6 +12,8 @@ ManageComp propose les formules de poules possibles (nombre et taille). Les tire
 
 **Valider la composition** crée les matchs ; on peut alors imprimer les feuilles et placer les poules sur les pistes.
 
+Au premier tour, un tireur arrivé en retard ou parti après la composition se gère sans tout recomposer : **Retardataire…** l'ajoute à une poule, **Absent…** le retire (sur la version en ligne comme sur le logiciel).
+
 ## Saisie des scores
 
 {{ figure(src="poules-saisie.png", caption="Une poule : grille des scores, statuts, classement et liste des matchs.") }}
@@ -35,3 +37,9 @@ Le classement de la poule (victoires, indice, touches données) et le classement
 ## Impression
 
 Feuilles de poule pour les arbitres (vierges) ou avec les résultats, une poule ou toutes.
+
+Quand les arbitres sont reliés à leur téléphone, chaque feuille porte un **QR code** : l'arbitre de la poule le scanne puis entre son code PIN pour saisir les matchs ([Arbitres sur téléphone](@/docs/arbitre.md)).
+
+## Remplissage automatique
+
+Si les propriétés de la compétition l'autorisent (**Scores : remplissage automatique**), le bouton **⚠ Remplissage automatique** remplit toutes les poules de scores tirés au hasard, après confirmation : pour tester la suite de la formule. Les scores déjà saisis sont remplacés.

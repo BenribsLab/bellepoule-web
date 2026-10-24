@@ -26,3 +26,7 @@ For youth training, **Place a group…** places all the pools of a group togethe
 ## Referees from the same club
 
 Assigning a referee from the same club as a fencer shows a message to confirm: "Referee from the same club as a fencer… Assign anyway?". When spreading bouts, a referee does not referee a fencer of their club as long as another referee of the piste is free.
+
+## Referees on phones and reports
+
+The **Referees on phones** button prints the referees' personal QR codes and PIN codes. When a referee reports an absence or calls the technical directorate from the phone, a **red badge** lights up on **Organisation**, a sound plays and the report appears at the top of the page, with a **Handled** button ([Referees on their phone](@/docs/arbitre.md)).

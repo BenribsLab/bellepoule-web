@@ -13,6 +13,8 @@ ManageComp suggests the possible pool formulas (number and size). Fencers are sp
 
 **Validating the composition** creates the bouts; sheets can then be printed and pools placed on pistes.
 
+
+In the first round, a fencer who arrives late or leaves after the composition is handled without recomposing everything: **Latecomer…** adds the fencer to a pool, **Absent…** removes the fencer (online as in the software).
 ## Score entry
 
 {{ figure(src="poules-saisie.png", caption="A pool: score grid, statuses, ranking and list of bouts.") }}
@@ -36,3 +38,9 @@ The pool ranking (victories, index, touches scored) and the round ranking update
 ## Printing
 
 Pool sheets for referees (blank) or with results, one pool or all of them.
+
+When referees are connected to their phone, each sheet carries a **QR code**: the pool's referee scans it, then enters the PIN code to enter the bouts ([Referees on their phone](@/docs/arbitre.md)).
+
+## Automatic filling
+
+If the competition properties allow it (**Scores: automatic filling**), the **⚠ Automatic filling** button fills every pool with random scores, after confirmation: to test the rest of the formula. Scores already entered are replaced.

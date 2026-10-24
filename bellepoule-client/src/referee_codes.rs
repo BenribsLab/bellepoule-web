@@ -27,6 +27,13 @@ fn arr(v: &Value, k: &str) -> Vec<Value> {
     v.get(k).and_then(Value::as_array).cloned().unwrap_or_default()
 }
 
+/// Heure locale (« 14:32 ») d'un instant du serveur (secondes depuis 1970).
+fn clock(v: &Value, k: &str) -> String {
+    let Some(secs) = s(v, k).parse::<f64>().ok().filter(|s| *s > 0.0) else { return String::new() };
+    let d = js_sys::Date::new(&wasm_bindgen::JsValue::from_f64(secs * 1000.0));
+    format!("{:02}:{:02}", d.get_hours(), d.get_minutes())
+}
+
 fn set_print_mode(on: bool) {
     if let Some(body) = web_sys::window().and_then(|w| w.document()).and_then(|d| d.body()) {
         let _ = if on { body.class_list().add_1("print-groups") } else { body.class_list().remove_1("print-groups") };
@@ -85,7 +92,7 @@ pub fn SecurityBanner() -> impl IntoView {
                     {reports.into_iter().map(|r| {
                         let id = u(&r, "id");
                         let is_done = r.get("done").and_then(Value::as_bool).unwrap_or(false);
-                        let detail = [s(&r, "sheet"), s(&r, "competition"), format!("signalé par {} à {}", s(&r, "referee"), s(&r, "at"))]
+                        let detail = [s(&r, "sheet"), s(&r, "competition"), format!("signalé par {} à {}", s(&r, "referee"), clock(&r, "at"))]
                             .into_iter().filter(|x| !x.trim().is_empty()).collect::<Vec<_>>().join(" · ");
                         view! {
                             <div class="report" class:done=is_done>
@@ -116,7 +123,7 @@ pub fn SecurityBanner() -> impl IntoView {
                         view! {
                             <div class="row">
                                 <strong>"⚠ Feuille bloquée"</strong>
-                                <span>{format!("{} : trop de codes PIN faux (depuis {}).", s(&a, "name"), s(&a, "since"))}</span>
+                                <span>{format!("{} : trop de codes PIN faux (depuis {}).", s(&a, "name"), clock(&a, "since"))}</span>
                                 <span class="spacer"></span>
                                 <button class="small" on:click=move |_| unlock(token.clone())>"Débloquer"</button>
                             </div>

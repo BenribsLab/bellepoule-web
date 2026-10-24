@@ -632,9 +632,42 @@ pub async fn action(State(store): State<Shared>, client: Client, Json(a): Json<V
 pub async fn referee_codes(State(store): State<Shared>, client: Client) -> Result<Json<Value>, ApiError> {
     let mut store = store.lock().await;
     store.sync_organisation(&client);
+    store.share_referee_keys(&client);
+    // Arbitres venus d'un fichier de compétition (logiciel de bureau) : une
+    // clé leur est donnée s'ils n'en ont pas.
+    let missing: Vec<String> = store
+        .list(&client)
+        .filter(|(_, c)| c.referees.refs().iter().any(|r| c.referee_password(*r).is_none_or(|k| !bp_core::smartpoule::is_referee_key(&k))))
+        .map(|(id, _)| id.clone())
+        .collect();
+    for id in missing {
+        let _ = store.update(&client, &id, |c| c.ensure_referee_keys());
+    }
     let admin = store.smartpoule_admin_key(&client);
+    let mut contest_referees: Vec<Value> = Vec::new();
+    for (_, c) in store.list(&client) {
+        for r in c.referees.refs().to_vec() {
+            let (Some(p), Some(key)) = (c.referees.get(r), c.referee_password(r)) else { continue };
+            if p.name().trim().is_empty() && p.first_name().trim().is_empty() {
+                continue;
+            }
+            // Même personne qu'un arbitre déjà listé (même clé) : une seule ligne.
+            if contest_referees.iter().any(|x| x["reference"] == json!(r) || x["key"] == json!(key)) {
+                continue;
+            }
+            contest_referees.push(json!({
+                "reference": r,
+                "name": p.name(),
+                "first_name": p.first_name(),
+                "club": p.str_attr("club").unwrap_or_default(),
+                "weapon": p.str_attr("weapon").unwrap_or_default(),
+                "pin": bp_core::smartpoule::referee_pin(&key),
+                "key": key,
+            }));
+        }
+    }
     let hall = &store.organisation(&client).hall;
-    let referees: Vec<Value> = hall
+    let mut referees: Vec<Value> = hall
         .referees
         .referees
         .iter()
@@ -652,6 +685,12 @@ pub async fn referee_codes(State(store): State<Shared>, client: Client) -> Resul
             }))
         })
         .collect();
+    for r in contest_referees {
+        if !referees.iter().any(|x| x["reference"] == r["reference"] || x["key"] == r["key"]) {
+            referees.push(r);
+        }
+    }
+    referees.sort_by_key(|r| format!("{} {}", r["name"].as_str().unwrap_or(""), r["first_name"].as_str().unwrap_or("")).to_uppercase());
     Ok(Json(json!({ "club": client.id, "club_name": client.name, "admin_key": admin, "referees": referees })))
 }
 
@@ -662,11 +701,56 @@ pub async fn renew_referee_code(State(store): State<Shared>, client: Client, Jso
     {
         let mut store = store.lock().await;
         store.sync_organisation(&client);
-        store.organisation(&client).hall.renew_referee_key(reference).ok_or_else(|| bad_request("arbitre inconnu"))?;
+        // Arbitre de l'organisation, ou seulement d'une compétition.
+        let key = store.organisation(&client).hall.renew_referee_key(reference).unwrap_or_else(bp_core::smartpoule::new_referee_key);
+        let ids: Vec<String> = store.list(&client).filter(|(_, c)| c.referees.get(reference).is_some()).map(|(id, _)| id.clone()).collect();
+        for id in &ids {
+            let _ = store.update(&client, id, |c| {
+                if let Some(p) = c.referees.get_mut(reference) {
+                    p.set_str(&bp_core::player::AttrId::global("password"), &key);
+                }
+            });
+        }
+        if ids.is_empty() && store.organisation(&client).hall.referee_key(reference).is_none() {
+            return Err(bad_request("arbitre inconnu"));
+        }
+        store.share_referee_keys(&client);
         store.forget_referee_phones(&client.id, reference);
         store.apply_outbox(&client);
     }
     referee_codes(State(store), client).await
+}
+
+impl Store {
+    /// Un arbitre d'une compétition qui porte le nom d'un arbitre de
+    /// l'organisation est la même personne : il prend sa clé (un seul QR
+    /// code personnel, un seul PIN).
+    fn share_referee_keys(&mut self, client: &Client) {
+        let normalize = |n: &str, f: &str| format!("{} {}", n.trim(), f.trim()).to_uppercase();
+        let hall = &self.organisation(client).hall;
+        let keys: HashMap<String, String> = hall
+            .referees
+            .referees
+            .iter()
+            .filter_map(|(r, x)| Some((normalize(&x.player.name(), &x.player.first_name()), hall.referee_key(*r)?)))
+            .filter(|(name, _)| !name.trim().is_empty())
+            .collect();
+        let ids: Vec<String> = self
+            .list(client)
+            .filter(|(_, c)| c.referees.refs().iter().any(|r| c.referees.get(*r).is_some_and(|p| keys.get(&normalize(&p.name(), &p.first_name())).is_some_and(|k| c.referee_password(*r).as_ref() != Some(k)))))
+            .map(|(id, _)| id.clone())
+            .collect();
+        for id in ids {
+            let _ = self.update(client, &id, |c| {
+                for r in c.referees.refs().to_vec() {
+                    let Some(key) = c.referees.get(r).and_then(|p| keys.get(&normalize(&p.name(), &p.first_name()))).cloned() else { continue };
+                    if let Some(p) = c.referees.get_mut(r) {
+                        p.set_str(&bp_core::player::AttrId::global("password"), &key);
+                    }
+                }
+            });
+        }
+    }
 }
 
 #[derive(serde::Deserialize)]

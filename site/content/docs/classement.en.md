@@ -19,7 +19,7 @@ The last phase of the formula sets the competition's final ranking.
 
 | Format | Use |
 |---|---|
-| FFF | results for the French fencing federation |
+| FFF | results for the French fencing federation; **from place** shifts the places (17 for a B table ranking from 17th place) |
 | FIE XML | exchange with other software and the FIE |
 | AskFred | American competitions |
 | HTML | publishing on a website |

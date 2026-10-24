@@ -18,7 +18,7 @@ La dernière phase de la formule établit le classement final de la compétition
 
 | Format | Usage |
 |---|---|
-| FFF | remontée des résultats à la Fédération française d'escrime |
+| FFF | remontée des résultats à la Fédération française d'escrime ; **à partir de la place** décale les places (17 pour un tableau B qui classe à partir de la 17e place) |
 | XML FIE | échange avec les autres logiciels et la FIE |
 | AskFred | compétitions américaines |
 | HTML | publication sur un site web |
