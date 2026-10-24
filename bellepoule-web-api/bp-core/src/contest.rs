@@ -98,6 +98,9 @@ pub struct Contest {
     /// Publication sur ManageComp (compete.managecomp.org) : identifiant
     /// court de la page publique, partagé par le logiciel et la version web.
     pub public_id: Option<String>,
+    /// Événement publié qui regroupe cette épreuve avec d'autres (les
+    /// compétitions ouvertes ensemble), même principe que `public_id`.
+    pub public_event: Option<String>,
     pub location: String,
     /// Libellé qui distingue deux compétitions de même arme/sexe/catégorie.
     pub label: String,
@@ -164,6 +167,7 @@ impl Contest {
             authority: None,
             fie_id: None,
             public_id: None,
+            public_event: None,
             name,
             organizer,
             points: crate::points::PointsSettings::default(),
@@ -499,6 +503,7 @@ impl Contest {
         }
         self.settings.score_stuffing_allowed = xml::attr_bool(root, "ScoreAleatoire", false);
         self.public_id = root.attribute("PublicationManageComp").filter(|v| !v.is_empty()).map(str::to_string);
+        self.public_event = root.attribute("EvenementManageComp").filter(|v| !v.is_empty()).map(str::to_string);
         self.settings.minimum_team_size = xml::attr_u32(root, "TailleMinimaleEquipe", self.settings.minimum_team_size);
         self.settings.team_size = xml::attr_u32(root, "TireursParEquipe", self.settings.team_size).clamp(1, 20);
         self.settings.substitutes = xml::attr_u32(root, "RemplacantsParEquipe", self.settings.substitutes).min(10);
@@ -613,6 +618,9 @@ impl Contest {
         w.attr_fmt("ScoreAleatoire", self.settings.score_stuffing_allowed as u32);
         if let Some(id) = &self.public_id {
             w.attr("PublicationManageComp", id);
+        }
+        if let Some(id) = &self.public_event {
+            w.attr("EvenementManageComp", id);
         }
         w.attr_fmt("TailleMinimaleEquipe", self.settings.minimum_team_size);
         if self.settings.team_event {

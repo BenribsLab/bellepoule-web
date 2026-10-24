@@ -1,5 +1,6 @@
 //! Pages publiques des épreuves (compete.managecomp.org) : accueil (toutes
-//! les épreuves publiées), page d'un club, page d'une épreuve (formule,
+//! les épreuves publiées), page d'un club, page d'un événement (ses
+//! épreuves), page d'une épreuve (formule,
 //! tireurs, poules, tableaux, classement), avec filtres par nom et par club
 //! et l'encadré « Mon tireur » (`compete/app.js`).
 //!
@@ -17,12 +18,12 @@ use bp_core::rounds::pool::PoolSupervisorStage;
 use bp_core::rounds::table::supervisor::TableSupervisor;
 
 use crate::api::Shared;
-use crate::public::{public_base, Publication};
+use crate::public::{public_base, PublicEvent, Publication};
 
 const CSS: &str = include_str!("compete/style.css");
 const JS: &str = include_str!("compete/app.js");
 /// Version des fichiers statiques (adresse changée à chaque modification).
-const ASSETS: &str = "1";
+const ASSETS: &str = "2";
 
 fn esc(s: &str) -> String {
     s.replace('&', "&amp;").replace('<', "&lt;").replace('>', "&gt;").replace('"', "&quot;").replace('\'', "&#39;")
@@ -127,13 +128,47 @@ fn listed(mut list: Vec<Publication>) -> Vec<Publication> {
     list
 }
 
+/// Cartes des événements, puis des épreuves publiées seules, par date.
+fn listing(base: &str, events: &[PublicEvent], publications: &[Publication], with_club: bool) -> String {
+    let mut events: Vec<&PublicEvent> = events.iter().filter(|e| !e.noindex).collect();
+    events.sort_by(|a, b| b.date.cmp(&a.date).then(b.updated.cmp(&a.updated)));
+    let alone = listed(publications.iter().filter(|p| p.event.is_empty() || !events.iter().any(|e| e.id == p.event)).cloned().collect());
+    if events.is_empty() {
+        return cards(base, &alone, with_club);
+    }
+    let mut out = String::from("<div class=\"cards\">");
+    for e in &events {
+        let count = publications.iter().filter(|p| p.event == e.id).count();
+        let search = format!("{} {} {} {} {}", e.name, e.categories, e.club_name, e.location, date_fr(&e.date)).to_lowercase();
+        out.push_str(&format!(
+            "<a class=\"card event-card\" href=\"{base}{}/{}\" data-s=\"{}\"><span class=\"date\">{} · événement</span><strong>{}</strong><span>{}</span><span class=\"muted\">{}</span></a>",
+            esc(&e.club_slug),
+            esc(&e.slug),
+            esc(&search),
+            date_fr(&e.date),
+            esc(&e.name),
+            esc(&format!("{} · {count} épreuve{}", e.categories, if count > 1 { "s" } else { "" })),
+            esc(&[if with_club { e.club_name.clone() } else { String::new() }, e.location.clone()].into_iter().filter(|s| !s.is_empty()).collect::<Vec<_>>().join(" · ")),
+        ));
+    }
+    out.push_str("</div>");
+    if !alone.is_empty() {
+        out.push_str("<h2>Épreuves</h2>");
+        out.push_str(&cards(base, &alone, with_club));
+    }
+    out
+}
+
 /// Accueil : toutes les épreuves publiées (sauf celles cachées).
 pub async fn home(State(store): State<Shared>, headers: HeaderMap) -> Response {
     let base = public_base(&headers);
-    let list = listed(store.lock().await.publications().clone());
+    let (events, list) = {
+        let mut store = store.lock().await;
+        (store.public_events().clone(), store.publications().clone())
+    };
     let body = format!(
         "<main class=\"wrap\"><h1>Compétitions</h1><input class=\"search\" id=\"cards-q\" type=\"search\" placeholder=\"Rechercher une épreuve, un club, une ville…\">{}</main>",
-        cards(&base, &list, true)
+        listing(&base, &events, &list, true)
     );
     html(layout(&base, "Compétitions — ManageComp", false, body))
 }
@@ -141,12 +176,17 @@ pub async fn home(State(store): State<Shared>, headers: HeaderMap) -> Response {
 /// Page d'un club : ses épreuves publiées.
 pub async fn club(State(store): State<Shared>, headers: HeaderMap, Path(club): Path<String>) -> Response {
     let base = public_base(&headers);
-    let list = listed(store.lock().await.publications().iter().filter(|p| p.club_slug == club).cloned().collect());
-    let Some(name) = list.first().map(|p| p.club_name.clone()) else { return not_found() };
+    let (events, list) = {
+        let mut store = store.lock().await;
+        let events: Vec<PublicEvent> = store.public_events().iter().filter(|e| e.club_slug == club).cloned().collect();
+        let list: Vec<Publication> = store.publications().iter().filter(|p| p.club_slug == club).cloned().collect();
+        (events, list)
+    };
+    let Some(name) = list.first().map(|p| p.club_name.clone()).or_else(|| events.first().map(|e| e.club_name.clone())) else { return not_found() };
     let body = format!(
         "<main class=\"wrap\"><p class=\"crumbs\"><a href=\"{base}\">Compétitions</a></p><h1>{}</h1><input class=\"search\" id=\"cards-q\" type=\"search\" placeholder=\"Rechercher une épreuve…\">{}</main>",
         esc(&name),
-        cards(&base, &list, false)
+        listing(&base, &events, &list, false)
     );
     html(layout(&base, &format!("{name} — ManageComp"), false, body))
 }
@@ -154,32 +194,88 @@ pub async fn club(State(store): State<Shared>, headers: HeaderMap, Path(club): P
 /// Lien court du QR code.
 pub async fn short(State(store): State<Shared>, headers: HeaderMap, Path(id): Path<String>) -> Response {
     let base = public_base(&headers);
-    match store.lock().await.publications().iter().find(|p| p.id == id) {
-        Some(p) => Redirect::to(&format!("{base}{}/{}", p.club_slug, p.slug)).into_response(),
+    let mut store = store.lock().await;
+    if let Some(p) = store.publications().iter().find(|p| p.id == id) {
+        return Redirect::to(&format!("{base}{}/{}", p.club_slug, p.slug)).into_response();
+    }
+    match store.public_events().iter().find(|e| e.id == id) {
+        Some(e) => Redirect::to(&format!("{base}{}/{}", e.club_slug, e.slug)).into_response(),
         None => not_found(),
     }
 }
 
 // ------------------------------------------------------------ épreuve
 
+/// Page d'un événement : ses épreuves.
+fn event_group_page(base: &str, e: &PublicEvent, list: &[Publication]) -> String {
+    let mut list: Vec<&Publication> = list.iter().filter(|p| p.event == e.id).collect();
+    list.sort_by(|a, b| a.subtitle.cmp(&b.subtitle));
+    let cards: String = list
+        .iter()
+        .map(|p| {
+            format!(
+                "<a class=\"card\" href=\"{base}{}/{}\"><strong>{}</strong><span>{}</span></a>",
+                esc(&p.club_slug),
+                esc(&p.slug),
+                esc(&p.subtitle),
+                esc(if p.title != e.name { &p.title } else { "" })
+            )
+        })
+        .collect();
+    let meta = [date_fr(&e.date), e.location.clone()].into_iter().filter(|s| !s.is_empty()).collect::<Vec<_>>().join(" · ");
+    format!(
+        "<main class=\"wrap\"><p class=\"crumbs\"><a href=\"{base}\">Compétitions</a> › <a href=\"{base}{cs}\">{club}</a></p>\
+         <h1>{name}</h1><p class=\"sub\">{cats}</p><p class=\"muted\">{meta}</p><h2>Épreuves</h2><div class=\"cards\">{cards}</div></main>",
+        cs = esc(&e.club_slug),
+        club = esc(&e.club_name),
+        name = esc(&e.name),
+        cats = esc(&e.categories),
+        meta = esc(&meta),
+    )
+}
+
+/// Réponse vide si la page n'a pas changé depuis `etag` (actualisation).
+fn unchanged(headers: &HeaderMap, etag: &str) -> bool {
+    headers.get(header::IF_NONE_MATCH).and_then(|v| v.to_str().ok()).is_some_and(|v| v == etag)
+}
+
+fn with_etag(etag: String, body: String) -> Response {
+    ([(header::CACHE_CONTROL, "no-cache".to_string()), (header::ETAG, etag)], Html(body)).into_response()
+}
+
 pub async fn event(State(store): State<Shared>, headers: HeaderMap, Path((club, slug)): Path<(String, String)>) -> Response {
     let base = public_base(&headers);
-    let (p, xml) = {
+    let (p, xml, event) = {
         let mut store = store.lock().await;
+        // Événement : la liste de ses épreuves.
+        if let Some(e) = store.public_events().iter().find(|e| e.club_slug == club && e.slug == slug).cloned() {
+            let list = store.publications().clone();
+            let etag = format!("\"e{}-{}-{ASSETS}\"", e.updated, list.iter().filter(|p| p.event == e.id).map(|p| p.updated).max().unwrap_or(0));
+            if unchanged(&headers, &etag) {
+                return StatusCode::NOT_MODIFIED.into_response();
+            }
+            return with_etag(etag, layout(&base, &e.name, e.noindex, event_group_page(&base, &e, &list)));
+        }
         let Some(p) = store.publications().iter().find(|p| p.club_slug == club && p.slug == slug).cloned() else { return not_found() };
+        let etag = format!("\"p{}-{}-{ASSETS}\"", p.updated, p.names);
+        if unchanged(&headers, &etag) {
+            return StatusCode::NOT_MODIFIED.into_response();
+        }
         let Ok(xml) = std::fs::read_to_string(store.publication_file(&p.id)) else { return not_found() };
-        (p, xml)
+        let event = store.public_events().iter().find(|e| e.id == p.event).cloned();
+        (p, xml, event)
     };
+    let etag = format!("\"p{}-{}-{ASSETS}\"", p.updated, p.names);
     let mut c = Contest::new(None, false);
     if c.load_xml_str(&xml).is_err() {
         return not_found();
     }
     let names = Names { short: p.names == "short" };
-    let body = event_body(&base, &p, &mut c, &names);
-    html(layout(&base, &format!("{} — {}", p.title, p.subtitle), p.noindex, body))
+    let body = event_body(&base, &p, event.as_ref(), &mut c, &names);
+    with_etag(etag, layout(&base, &format!("{} — {}", p.title, p.subtitle), p.noindex, body))
 }
 
-fn event_body(base: &str, p: &Publication, c: &mut Contest, names: &Names) -> String {
+fn event_body(base: &str, p: &Publication, event: Option<&PublicEvent>, c: &mut Contest, names: &Names) -> String {
     let current = c.schedule.current_index();
     let over = c.schedule.is_over();
     let sections: Vec<(&str, &str, String)> = vec![
@@ -204,7 +300,7 @@ fn event_body(base: &str, p: &Publication, c: &mut Contest, names: &Names) -> St
     let meta = [date_fr(&p.date), p.location.clone()].into_iter().filter(|s| !s.is_empty()).collect::<Vec<_>>().join(" · ");
     format!(
         "<main class=\"wrap event\" data-live=\"{live}\" data-updated=\"{updated}\" data-event=\"{id}\">\
-         <p class=\"crumbs\"><a href=\"{base}\">Compétitions</a> › <a href=\"{base}{club_slug}\">{club}</a></p>\
+         <p class=\"crumbs\"><a href=\"{base}\">Compétitions</a> › <a href=\"{base}{club_slug}\">{club}</a>{event_link}</p>\
          <h1>{title}</h1><p class=\"sub\">{sub}</p><p class=\"muted\">{meta} <span id=\"updated\"></span></p>\
          <div class=\"filters\"><input id=\"q\" type=\"search\" placeholder=\"Rechercher un tireur…\" autocomplete=\"off\">\
          <select id=\"club\"><option value=\"\">Tous les clubs</option>{club_options}</select></div>\
@@ -219,6 +315,7 @@ fn event_body(base: &str, p: &Publication, c: &mut Contest, names: &Names) -> St
         sub = esc(&p.subtitle),
         meta = esc(&meta),
         club_options = clubs.iter().map(|c| format!("<option>{}</option>", esc(c))).collect::<String>(),
+        event_link = event.map(|e| format!(" › <a href=\"{base}{}/{}\">{}</a>", esc(&e.club_slug), esc(&e.slug), esc(&e.name))).unwrap_or_default(),
     )
 }
 

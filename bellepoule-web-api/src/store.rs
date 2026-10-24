@@ -36,6 +36,8 @@ pub struct Store {
     categories: std::cell::RefCell<std::collections::HashMap<String, bp_core::categories::CategoryModel>>,
     /// Épreuves publiées (compete.managecomp.org), lues au premier accès.
     pub(crate) publications: Option<Vec<crate::public::Publication>>,
+    /// Événements publiés (épreuves ouvertes ensemble), lus au premier accès.
+    pub(crate) public_events: Option<Vec<crate::public::PublicEvent>>,
 }
 
 impl Store {
@@ -84,6 +86,7 @@ impl Store {
             failures: Default::default(),
             categories: Default::default(),
             publications: None,
+            public_events: None,
         })
     }
 

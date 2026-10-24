@@ -130,23 +130,59 @@
     $("#updated").textContent = "· mis à jour à " + String(d.getHours()).padStart(2, "0") + ":" + String(d.getMinutes()).padStart(2, "0");
   }
 
+  // Mise à jour sans clignotement : seules les cases qui ont changé sont
+  // remplacées (les classes posées par les filtres sont gardées).
+  const JS_CLASSES = ["hidden", "match-row", "active"];
+  function morph(a, b) {
+    if (a.nodeType !== b.nodeType || a.nodeName !== b.nodeName) {
+      a.replaceWith(b.cloneNode(true));
+      return;
+    }
+    if (a.nodeType === 3) {
+      if (a.nodeValue !== b.nodeValue) a.nodeValue = b.nodeValue;
+      return;
+    }
+    if (a.nodeType !== 1) return;
+    for (const { name, value } of Array.from(b.attributes)) {
+      if (name !== "class" && a.getAttribute(name) !== value) a.setAttribute(name, value);
+    }
+    for (const { name } of Array.from(a.attributes)) {
+      if (name !== "class" && !b.hasAttribute(name)) a.removeAttribute(name);
+    }
+    const cls = Array.from(b.classList).concat(Array.from(a.classList).filter((c) => JS_CLASSES.includes(c) && !b.classList.contains(c))).join(" ");
+    if ((a.getAttribute("class") || "") !== cls) {
+      if (cls) a.setAttribute("class", cls); else a.removeAttribute("class");
+    }
+    const ac = Array.from(a.childNodes);
+    const bc = Array.from(b.childNodes);
+    bc.forEach((n, i) => (i < ac.length ? morph(ac[i], n) : a.appendChild(n.cloneNode(true))));
+    for (let i = bc.length; i < ac.length; i++) ac[i].remove();
+  }
+
+  let busy = false;
   async function refresh() {
-    if (document.visibilityState !== "visible") return;
+    if (busy || document.visibilityState !== "visible") return;
+    busy = true;
     try {
-      const r = await fetch(location.href, { cache: "no-store" });
+      // « no-cache » : le navigateur redemande avec l'empreinte de la page ;
+      // rien de neuf → réponse vide du serveur.
+      const r = await fetch(location.href, { cache: "no-cache" });
       if (!r.ok) return;
       const doc = new DOMParser().parseFromString(await r.text(), "text/html");
       const fresh = doc.querySelector("main.event");
       if (!fresh || fresh.dataset.updated === main.dataset.updated) return;
       main.dataset.updated = fresh.dataset.updated;
       main.dataset.live = fresh.dataset.live;
-      $("#content").innerHTML = fresh.querySelector("#content").innerHTML;
-      $(".tabs").innerHTML = fresh.querySelector(".tabs").innerHTML;
+      morph($("#content"), fresh.querySelector("#content"));
+      morph($(".tabs"), fresh.querySelector(".tabs"));
       showTab(store.get(TAB) || defaultTab());
       applyFilters();
       renderMine();
       showUpdated();
-    } catch (e) {}
+    } catch (e) {
+    } finally {
+      busy = false;
+    }
   }
 
   // ---------------------------------------------------- démarrage
@@ -166,5 +202,5 @@
   applyFilters();
   renderMine();
   showUpdated();
-  if (main.dataset.live === "1") setInterval(refresh, 30000);
+  if (main.dataset.live === "1") setInterval(refresh, 5000);
 })();

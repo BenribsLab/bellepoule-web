@@ -89,3 +89,6 @@ table { border-collapse: collapse; }
 .line.empty { color: var(--muted); }
 .score { font-weight: 800; min-width: 2.2em; text-align: right; font-variant-numeric: tabular-nums; }
 .bout.match-row { background: var(--mark); }
+
+/* Événement (épreuves publiées ensemble) */
+.event-card { border-left: 5px solid var(--accent); }

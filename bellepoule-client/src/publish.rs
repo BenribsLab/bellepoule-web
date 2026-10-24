@@ -38,10 +38,37 @@ fn PublishDialog(contest: String, on_close: Callback<()>) -> impl IntoView {
     let names = RwSignal::new(String::from("full"));
     let noindex = RwSignal::new(false);
     let busy = RwSignal::new(false);
+    // Événement : les compétitions ouvertes (onglets) publiées ensemble.
+    let grouped = RwSignal::new(false);
+    let ev_name = RwSignal::new(String::new());
+    let ev_cats = RwSignal::new(String::new());
+    let open_count = RwSignal::new(0usize);
     let apply = move |v: Value| {
         if v.get("published").and_then(Value::as_bool).unwrap_or(false) {
             names.set(s(&v, "names"));
             noindex.set(v.get("noindex").and_then(Value::as_bool).unwrap_or(false));
+        }
+        if let Some(n) = v.get("open").and_then(Value::as_array).map(Vec::len) {
+            open_count.set(n);
+        }
+        match v.get("event").filter(|e| !e.is_null()) {
+            Some(e) => {
+                grouped.set(true);
+                ev_name.set(s(e, "name"));
+                ev_cats.set(s(e, "categories"));
+            }
+            None => {
+                if let Some(d) = v.get("event_defaults") {
+                    if ev_name.get_untracked().is_empty() {
+                        ev_name.set(s(d, "name"));
+                        ev_cats.set(s(d, "categories"));
+                    }
+                    // Plusieurs compétitions ouvertes : l'événement est proposé.
+                    if !v.get("published").and_then(Value::as_bool).unwrap_or(false) {
+                        grouped.set(open_count.get_untracked() >= 2);
+                    }
+                }
+            }
         }
         state.set(Some(v));
     };
@@ -53,7 +80,10 @@ fn PublishDialog(contest: String, on_close: Callback<()>) -> impl IntoView {
     });
     let publish = move |_| {
         busy.set(true);
-        let body = json!({ "names": names.get_untracked(), "noindex": noindex.get_untracked() });
+        let mut body = json!({ "names": names.get_untracked(), "noindex": noindex.get_untracked() });
+        if grouped.get_untracked() {
+            body["event"] = json!({ "name": ev_name.get_untracked(), "categories": ev_cats.get_untracked() });
+        }
         spawn_local(async move {
             match api::send::<_, Value>("POST", &path.get_value(), &body).await {
                 Ok(v) => apply(v),
@@ -97,25 +127,52 @@ fn PublishDialog(contest: String, on_close: Callback<()>) -> impl IntoView {
                         "Prénom et initiale du nom"
                     </label>
                 </fieldset>
+                {move || (open_count.get() >= 2 || grouped.get()).then(|| view! {
+                    <fieldset class="scores-policy publish-event">
+                        <legend>"Événement"</legend>
+                        <label class="check">
+                            <input type="checkbox" prop:checked=move || grouped.get() on:change=move |ev| grouped.set(event_target_checked(&ev)) />
+                            {move || format!("Regrouper les {} compétitions ouvertes dans un événement", open_count.get().max(1))}
+                        </label>
+                        <Show when=move || grouped.get()>
+                            <label>
+                                "Nom de l'événement"
+                                <input type="text" prop:value=move || ev_name.get() on:input=move |ev| ev_name.set(event_target_value(&ev)) />
+                            </label>
+                            <label>
+                                "Catégories"
+                                <input type="text" prop:value=move || ev_cats.get() on:input=move |ev| ev_cats.set(event_target_value(&ev)) />
+                            </label>
+                            <p class="muted small">"Sur la page publique, on voit d'abord l'événement, puis chacune de ses épreuves. Toutes les compétitions ouvertes sont publiées."</p>
+                        </Show>
+                    </fieldset>
+                })}
                 <label class="check" title="La page reste accessible par son QR code et son lien, mais n'apparaît pas sur Google">
                     <input type="checkbox" prop:checked=move || noindex.get() on:change=move |ev| noindex.set(event_target_checked(&ev)) />
                     "Cacher aux moteurs de recherche"
                 </label>
                 {move || state.get().map(|v| {
                     if v.get("published").and_then(Value::as_bool).unwrap_or(false) {
-                        let (url, short) = (s(&v, "url"), s(&v, "short_url"));
+                        // Événement : son QR code et son lien d'abord.
+                        let event = v.get("event").filter(|e| !e.is_null()).cloned();
+                        let (url, short) = match &event {
+                            Some(e) => (s(e, "url"), s(e, "short_url")),
+                            None => (s(&v, "url"), s(&v, "short_url")),
+                        };
+                        let contest_url = s(&v, "url");
                         let (url2, short2) = (url.clone(), short.clone());
                         view! {
                             <div class="publish-done">
                                 <div class="publish-qr"><QrCode text=short.clone() /></div>
                                 <div class="publish-links">
-                                    <strong>"Publiée ✔"</strong>
+                                    <strong>{if event.is_some() { "Événement publié ✔" } else { "Publiée ✔" }}</strong>
                                     <a href=url.clone() target="_blank" rel="noopener">{url.clone()}</a>
                                     <div class="row">
                                         <button class="light small" on:click=move |_| copy(url2.clone())>"Copier le lien"</button>
                                         <button class="light small" title="Lien court (QR code)" on:click=move |_| copy(short2.clone())>"Copier le lien court"</button>
                                     </div>
                                     <span class="muted small">{format!("QR code : {short}")}</span>
+                                    {event.is_some().then(|| view! { <span class="small">"Cette épreuve : "<a href=contest_url.clone() target="_blank" rel="noopener">{contest_url.clone()}</a></span> })}
                                 </div>
                             </div>
                             <div class="buttons">
