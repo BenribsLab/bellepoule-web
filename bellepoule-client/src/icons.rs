@@ -33,6 +33,7 @@ fn paths(name: &str) -> &'static str {
         "building" => r#"<path d="M4 21V5a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16M16 9h2a2 2 0 0 1 2 2v10M8 7h4M8 11h4M8 15h4M3 21h18"/>"#,
         "activity" => r#"<path d="M3 12h4l3-8 4 16 3-8h4"/>"#,
         "x" => r#"<path d="M6 6l12 12M18 6L6 18"/>"#,
+        "eraser" => r#"<path d="M7 21h10M5.5 15.5l7-7a2 2 0 0 1 2.8 0l2.2 2.2a2 2 0 0 1 0 2.8L12 19H8.5l-3-3a.7.7 0 0 1 0-.5z"/><path d="M9 12l5 5"/>"#,
         "folder" => r#"<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/>"#,
         "file-plus" => r#"<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8l-5-5z"/><path d="M14 3v5h5M12 11v6M9 14h6"/>"#,
         _ => "",

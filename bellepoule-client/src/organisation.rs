@@ -510,20 +510,22 @@ fn Batches(org: Org, d: Value) -> impl IntoView {
         <div class="org-col org-batches">
             <div class="org-toolbar">
                 <strong>"Matchs"</strong>
-                <span class="spacer"></span>
-                <select on:change=move |ev| {
-                    org.competition.set(event_target_value(&ev).parse().ok());
-                    org.batch.set(None);
-                    org.reload();
-                }>
-                    {competitions
-                        .iter()
-                        .map(|c| {
-                            let id = u(c, "id");
-                            view! { <option value=id.to_string() selected=id == current>{s(c, "title")}</option> }
-                        })
-                        .collect_view()}
-                </select>
+            </div>
+            // Un onglet par compétition, à sa couleur (comme le logiciel).
+            <div class="competition-tabs">
+                {competitions
+                    .iter()
+                    .map(|c| {
+                        let id = u(c, "id");
+                        view! {
+                            <button class="competition-tab" class:active=id == current style=format!("--c:{}", s(c, "color")) on:click=move |_| {
+                                org.competition.set(Some(id));
+                                org.batch.set(None);
+                                org.reload();
+                            }>{s(c, "title")}</button>
+                        }
+                    })
+                    .collect_view()}
             </div>
             <div class="batch-tabs" style=format!("border-color:{}", s(&comp, "color"))>
                 {batches
@@ -562,11 +564,11 @@ fn BatchJobs(org: Org, comp: Value, bt: Value) -> impl IntoView {
                 org.competition.set(Some(c));
                 org.assigning.set(true);
             }>"Placer…"</button>
-            <button class="light" disabled=!b(&bt, "can_cancel") on:click=move |_| {
+            <button class="light" disabled=!b(&bt, "can_cancel") title="Gomme : retire tous les matchs de ce lot de leurs pistes, avec leurs arbitres" on:click=move |_| {
                 if confirm("Retirer tous les matchs de ce lot de leurs pistes ?") {
                     org.act(json!({ "action": "cancel", "competition": c, "batch": id }));
                 }
-            }>"Annuler le placement"</button>
+            }><crate::icons::Icon name="eraser" />"Annuler le placement"</button>
             {ext1.map(|e1| view! {
                 <span class="muted">"Prolongation : "</span>
                 <select on:change=move |ev| org.act(json!({ "action": "extension", "competition": c, "batch": id, "choice": event_target_value(&ev).parse::<u64>().unwrap_or(0) }))>
@@ -911,6 +913,15 @@ fn JobDetail(org: Org, d: Value) -> impl IntoView {
                             />
                             <button class="light" on:click=move |_| org.act(json!({ "action": "set_time", "job": key, "time": time.get_untracked() }))>"Changer l'heure"</button>
                         </div>
+                        {b(&job, "placed").then(|| view! {
+                            <div class="row">
+                                <button class="light" title="La poule (ou le match) et ses arbitres quittent la piste" on:click=move |_| {
+                                    org.act(json!({ "action": "take_off", "job": key }));
+                                    org.job_detail.set(None);
+                                }><crate::icons::Icon name="eraser" />"Retirer de la piste"</button>
+                                <button class="light" title="Les arbitres quittent le match, qui reste sur sa piste" on:click=move |_| org.act(json!({ "action": "remove_referees", "job": key }))>"Retirer les arbitres"</button>
+                            </div>
+                        })}
                         <h4>"Tireurs"</h4>
                         <ul class="plain">
                             {arr(&job, "fencers").into_iter().map(|fe| view! { <li><strong>{s(&fe, "name")}</strong>" "<span class="muted">{s(&fe, "club")}</span></li> }).collect_view()}

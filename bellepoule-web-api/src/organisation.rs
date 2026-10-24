@@ -296,7 +296,8 @@ fn view(org: &Organisation) -> Value {
         .iter()
         .map(|p| {
             let b = p.bounds();
-            let slot = hall.piste_slot_at(p.key, cursor).and_then(|sk| hall.slots.get(&sk).map(|s| (sk, s)));
+            // Match affiché sur la piste : celui du logiciel (`piste_displayed_slot`).
+            let slot = hall.piste_displayed_slot(p.key).and_then(|sk| hall.slots.get(&sk).map(|s| (sk, s)));
             let current = slot.map(|(sk, s)| {
                 let jobs: Vec<&marshaller::model::Job> = s.jobs.iter().filter_map(|j| hall.jobs.get(j)).collect();
                 let batch = jobs.first().and_then(|j| hall.batch(j.competition, j.batch)).map(|b| b.name.clone()).unwrap_or_default();
@@ -581,14 +582,8 @@ pub async fn action(State(store): State<Shared>, client: Client, Json(a): Json<V
             }
             hall.drop_referee(r, piste);
         }
-        "take_off" => {
-            let job = u32_of(&a, "job");
-            if let Some(sk) = hall.jobs.get(&job).and_then(|j| j.slot) {
-                hall.slot_remove_job(sk, job);
-                hall.gc_slots();
-                hall.redraw();
-            }
-        }
+        "take_off" => hall.job_take_off(u32_of(&a, "job")),
+        "remove_referees" => hall.job_remove_referees(u32_of(&a, "job")),
         "move_job" => {
             // `OnJobMove` puis sélection de la piste d'arrivée.
             let (job, piste) = (u32_of(&a, "job"), u32_of(&a, "piste"));

@@ -851,3 +851,8 @@ code.pin { font-size: 1.05rem; font-weight: 700; letter-spacing: 0.15em; }
 .open-tab a strong, .open-tab a small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .open-tab a small { color: var(--muted); font-size: 0.75rem; }
 .open-tab.active { background: var(--accent-soft); border-color: var(--accent); border-left-color: var(--c, var(--accent)); }
+
+/* Organisation : un onglet par compétition */
+.competition-tabs { display: flex; gap: 4px; flex-wrap: wrap; margin: 4px 0 8px; }
+.competition-tab { background: var(--surface); color: var(--text); border: 1px solid var(--border); border-top: 4px solid var(--c, var(--accent)); border-radius: 10px 10px 4px 4px; padding: 6px 10px; font-weight: 600; font-size: 0.85rem; cursor: pointer; }
+.competition-tab.active { background: color-mix(in srgb, var(--c, var(--accent)) 22%, var(--surface)); border-color: var(--c, var(--accent)); }

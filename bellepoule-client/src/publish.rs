@@ -24,7 +24,9 @@ pub fn PublishButton(contest: String) -> impl IntoView {
             <Icon name="activity" />"Publier"
         </button>
         <Show when=move || open.get()>
-            <PublishDialog contest=contest.get_value() on_close=Callback::new(move |_| open.set(false)) />
+            <leptos::portal::Portal>
+                <PublishDialog contest=contest.get_value() on_close=Callback::new(move |_| open.set(false)) />
+            </leptos::portal::Portal>
         </Show>
     }
 }
