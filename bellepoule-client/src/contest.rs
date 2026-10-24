@@ -118,6 +118,7 @@ pub fn ContestPage(id: String) -> impl IntoView {
                                 <button class="glass" on:click=open_properties><Icon name="settings" />"Propriétés"</button>
                                 <button class="glass" on:click=move |_| formula.set(true)><Icon name="flow" />"Formule"</button>
                                 <button class="glass" on:click=download><Icon name="download" />"Enregistrer"</button>
+                                <crate::publish::PublishButton contest=id.get_value() />
                             </div>
                         </section>
                     }

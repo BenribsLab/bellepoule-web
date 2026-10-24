@@ -34,6 +34,8 @@ pub struct Store {
     pub(crate) failures: std::collections::HashMap<String, (u32, std::time::Instant)>,
     /// Modèle de catégories générales de chaque club (relu à la demande).
     categories: std::cell::RefCell<std::collections::HashMap<String, bp_core::categories::CategoryModel>>,
+    /// Épreuves publiées (compete.managecomp.org), lues au premier accès.
+    pub(crate) publications: Option<Vec<crate::public::Publication>>,
 }
 
 impl Store {
@@ -81,6 +83,7 @@ impl Store {
             sessions: Default::default(),
             failures: Default::default(),
             categories: Default::default(),
+            publications: None,
         })
     }
 
@@ -282,10 +285,15 @@ impl Store {
             std::fs::create_dir_all(parent)?;
         }
         let Some(contest) = self.contests.get_mut(&(client.id.clone(), id.to_string())) else { return Ok(()) };
+        let xml = contest.to_xml();
+        let meta = crate::public::PublicMeta::of(contest);
         // Écriture atomique : fichier temporaire puis renommage.
         let tmp = path.with_extension("cotcot.tmp");
-        std::fs::write(&tmp, contest.to_xml())?;
-        std::fs::rename(tmp, path)
+        std::fs::write(&tmp, &xml)?;
+        std::fs::rename(tmp, path)?;
+        // Épreuve publiée : la copie publique suit.
+        self.refresh_publication(client, &meta, &xml);
+        Ok(())
     }
 }
 

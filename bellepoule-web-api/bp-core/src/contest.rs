@@ -95,6 +95,9 @@ pub struct Contest {
     pub points: crate::points::PointsSettings,
     /// Origine du fichier : `AskFred…` pour un import, sinon `None`.
     pub source: Option<String>,
+    /// Publication sur ManageComp (compete.managecomp.org) : identifiant
+    /// court de la page publique, partagé par le logiciel et la version web.
+    pub public_id: Option<String>,
     pub location: String,
     /// Libellé qui distingue deux compétitions de même arme/sexe/catégorie.
     pub label: String,
@@ -160,6 +163,7 @@ impl Contest {
         Contest {
             authority: None,
             fie_id: None,
+            public_id: None,
             name,
             organizer,
             points: crate::points::PointsSettings::default(),
@@ -494,6 +498,7 @@ impl Contest {
             self.label = v.to_string();
         }
         self.settings.score_stuffing_allowed = xml::attr_bool(root, "ScoreAleatoire", false);
+        self.public_id = root.attribute("PublicationManageComp").filter(|v| !v.is_empty()).map(str::to_string);
         self.settings.minimum_team_size = xml::attr_u32(root, "TailleMinimaleEquipe", self.settings.minimum_team_size);
         self.settings.team_size = xml::attr_u32(root, "TireursParEquipe", self.settings.team_size).clamp(1, 20);
         self.settings.substitutes = xml::attr_u32(root, "RemplacantsParEquipe", self.settings.substitutes).min(10);
@@ -606,6 +611,9 @@ impl Contest {
         w.attr("TitreLong", &self.name);
         w.attr("URLorganisateur", &self.web_site);
         w.attr_fmt("ScoreAleatoire", self.settings.score_stuffing_allowed as u32);
+        if let Some(id) = &self.public_id {
+            w.attr("PublicationManageComp", id);
+        }
         w.attr_fmt("TailleMinimaleEquipe", self.settings.minimum_team_size);
         if self.settings.team_event {
             w.attr_fmt("TireursParEquipe", self.settings.team_size);

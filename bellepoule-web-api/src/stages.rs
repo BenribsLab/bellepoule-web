@@ -29,14 +29,14 @@ use crate::view::{self, Column};
 /// Liste générique (classements, barrage, scission…).
 #[derive(Serialize)]
 pub struct ListView {
-    columns: Vec<Column>,
-    rows: Vec<ListRow>,
+    pub(crate) columns: Vec<Column>,
+    pub(crate) rows: Vec<ListRow>,
 }
 
 #[derive(Serialize)]
 pub struct ListRow {
-    reference: PlayerRef,
-    cells: Vec<String>,
+    pub(crate) reference: PlayerRef,
+    pub(crate) cells: Vec<String>,
     /// Éliminé, absent… (ligne grisée).
     dimmed: bool,
     /// Case à cocher de la ligne (promu, exporté…), si la liste en a une.
@@ -854,7 +854,7 @@ fn splitting_view(c: &mut Contest, index: usize) -> Option<Value> {
     }))
 }
 
-fn general_list(c: &mut Contest, index: usize) -> Option<ListView> {
+pub(crate) fn general_list(c: &mut Contest, index: usize) -> Option<ListView> {
     let stage = c.schedule.stage(index)?.as_any().downcast_ref::<GeneralClassificationStage>()?;
     let codes = stage.filter.selected_codes();
     let refs: Vec<(PlayerRef, bool)> = stage.result().iter().map(|r| (*r, false)).collect();

@@ -1,0 +1,91 @@
+/* Pages publiques des épreuves (compete.managecomp.org) : téléphone d'abord. */
+:root {
+  --bg: #f3f6fb; --surface: #fff; --text: #17263a; --muted: #5f6f8c; --border: #dce5f4;
+  --accent: #0866cd; --accent-soft: #e6f0fc; --win: #0a5c2f; --grey: #c2c8d2; --mark: #fff3b0;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #0f1724; --surface: #18222f; --text: #e6edf6; --muted: #9aa8bd; --border: #2b3a4e; --accent: #5ba2ff; --accent-soft: #1d3150; --win: #5fd18f; --grey: #3a4658; --mark: #5a4a00; }
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--bg); color: var(--text); font: 16px/1.4 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+a { color: var(--accent); text-decoration: none; }
+.top { background: var(--surface); border-bottom: 1px solid var(--border); padding: 10px 16px; position: sticky; top: 0; z-index: 5; }
+.brand { color: var(--text); font-size: 1.15rem; }
+.brand b { color: var(--accent); }
+.brand span { color: var(--muted); font-size: 0.9rem; margin-left: 4px; }
+.wrap { max-width: 980px; margin: 0 auto; padding: 14px 16px 40px; }
+h1 { font-size: 1.5rem; margin: 6px 0 2px; line-height: 1.2; }
+h2 { font-size: 1.2rem; margin: 18px 0 8px; }
+h3 { font-size: 1.05rem; margin: 18px 0 6px; }
+h4 { font-size: 1rem; margin: 14px 0 4px; }
+.sub { margin: 0; font-weight: 600; }
+.muted { color: var(--muted); }
+small { display: block; color: var(--muted); font-size: 0.78em; font-weight: 400; }
+.crumbs { margin: 0; font-size: 0.9rem; }
+.foot { text-align: center; color: var(--muted); font-size: 0.8rem; padding: 20px 16px 30px; }
+.search, .filters input, .filters select { width: 100%; font: inherit; padding: 10px 12px; border: 1px solid var(--border); border-radius: 12px; background: var(--surface); color: var(--text); }
+.search { margin: 10px 0 14px; }
+.filters { display: grid; grid-template-columns: 1fr; gap: 8px; margin: 12px 0; }
+@media (min-width: 640px) { .filters { grid-template-columns: 2fr 1fr; } }
+/* Cartes des épreuves */
+.cards { display: grid; gap: 10px; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); }
+.card { display: grid; gap: 2px; background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 12px 14px; color: var(--text); }
+.card .date { color: var(--accent); font-weight: 700; font-size: 0.85rem; }
+/* Onglets */
+.tabs { display: flex; gap: 4px; overflow-x: auto; position: sticky; top: 49px; z-index: 4; background: var(--bg); padding: 6px 0; margin: 0 -4px; }
+.tabs a { flex: none; padding: 8px 12px; border-radius: 999px; background: var(--surface); border: 1px solid var(--border); color: var(--text); font-weight: 600; font-size: 0.92rem; }
+.tabs a.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+.js .tab { display: none; }
+.js .tab.active, .js.filtering .tab { display: block; }
+/* Mon tireur */
+#mine:empty { display: none; }
+#mine { background: var(--accent-soft); border: 1px solid var(--accent); border-radius: 14px; padding: 10px 14px; margin: 8px 0; }
+#mine .head { display: flex; justify-content: space-between; gap: 8px; align-items: center; }
+#mine button { font: inherit; font-size: 0.85rem; background: none; border: 0; color: var(--accent); padding: 4px; }
+#mine .next { font-weight: 700; }
+.hint { font-size: 0.85rem; }
+/* Formule */
+.formula { padding-left: 1.4em; margin: 0; }
+.formula li { padding: 3px 0; }
+.formula .done { color: var(--muted); }
+.formula .done::after { content: " ✔"; color: var(--win); }
+.formula .current { font-weight: 800; color: var(--accent); }
+/* Listes */
+table { border-collapse: collapse; }
+.list { width: 100%; background: var(--surface); border-radius: 12px; overflow: hidden; }
+.list td, .list th { padding: 8px 10px; border-bottom: 1px solid var(--border); text-align: left; }
+.list th { font-size: 0.85rem; color: var(--muted); }
+.list .rank { font-weight: 800; width: 3em; }
+.name { font-weight: 700; }
+[data-f] { cursor: pointer; }
+.hidden { display: none !important; }
+.match-row { background: var(--mark); }
+.res { text-align: center; }
+/* Poules */
+.pool { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 8px 10px 10px; margin: 10px 0; }
+.pool h4 { margin: 4px 0 0; }
+.pool p { margin: 0 0 6px; font-size: 0.88rem; }
+.ok { color: var(--win); }
+.scroll { overflow-x: auto; }
+.grid { width: 100%; table-layout: fixed; font-variant-numeric: tabular-nums; font-size: 0.92rem; }
+.grid th, .grid td { border: 1px solid var(--border); text-align: center; height: 2.4em; padding: 0 1px; white-space: nowrap; overflow: hidden; }
+.grid th { color: var(--muted); height: 1.8em; }
+.grid th:first-child { width: 34%; }
+.grid th:nth-child(2) { width: 1.6em; }
+.grid td.name { text-align: left; padding-left: 6px; text-overflow: ellipsis; line-height: 1.1; }
+.grid td.name small { overflow: hidden; text-overflow: ellipsis; }
+.grid td.pos { color: var(--muted); font-size: 0.85em; }
+.grid td.grey { background: var(--grey); }
+.grid td.win { color: var(--win); font-weight: 800; }
+.grid td.res { width: 2.2em; }
+/* Tableaux */
+.bouts { display: grid; gap: 8px; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
+.bout { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 6px 10px; }
+.bout .info { font-size: 0.8rem; }
+.line { display: flex; justify-content: space-between; gap: 8px; padding: 3px 0; }
+.line + .line { border-top: 1px solid var(--border); }
+.line.won .who { font-weight: 800; }
+.line.empty { color: var(--muted); }
+.score { font-weight: 800; min-width: 2.2em; text-align: right; font-variant-numeric: tabular-nums; }
+.bout.match-row { background: var(--mark); }

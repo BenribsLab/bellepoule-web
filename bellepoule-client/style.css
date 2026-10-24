@@ -836,3 +836,10 @@ code.pin { font-size: 1.05rem; font-weight: 700; letter-spacing: 0.15em; }
 .ref-call { display: block; width: 100%; margin: 0 0 12px; padding: 12px; border: 0; border-radius: 12px; background: #b42318; color: #fff; font-size: 1.05rem; font-weight: 800; }
 .ref-call.sent { background: #168456; }
 .ref-call:disabled { opacity: 0.6; }
+
+/* Publication d'une épreuve */
+.publish-dialog { width: min(620px, 94vw); }
+.publish-done { display: flex; gap: 1rem; align-items: center; padding: 0.8rem; border: 1px solid var(--border); border-radius: 14px; background: var(--surface-2); }
+.publish-qr { width: 120px; flex: none; background: #fff; border-radius: 8px; padding: 4px; }
+.publish-links { display: grid; gap: 0.4rem; min-width: 0; }
+.publish-links a { overflow-wrap: anywhere; font-weight: 600; }

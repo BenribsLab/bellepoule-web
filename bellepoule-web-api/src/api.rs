@@ -9,7 +9,7 @@ use axum::{Json, Router};
 use tokio::sync::Mutex;
 
 use crate::store::Store;
-use crate::{accounts, auth, categories, checkin, contests, formulas, organisation, schedule, season, smartpoule, stages};
+use crate::{accounts, auth, categories, checkin, compete, public, contests, formulas, organisation, schedule, season, smartpoule, stages};
 
 pub type Shared = Arc<Mutex<Store>>;
 
@@ -39,6 +39,17 @@ pub fn router(store: Shared) -> Router {
         .route("/api/contests/import", post(contests::import))
         .route("/api/contests/{id}", get(contests::get_one).delete(contests::remove))
         .route("/api/contests/{id}/hidden", put(contests::set_hidden))
+        // Pages publiques des épreuves (compete.<domaine>, /compete/ en local)
+        .route("/compete/", get(compete::home))
+        .route("/compete/style.css", get(compete::style))
+        .route("/compete/app.js", get(compete::script))
+        .route("/compete/e/{id}", get(compete::short))
+        .route("/compete/{club}", get(compete::club))
+        .route("/compete/{club}/{slug}", get(compete::event))
+        .route("/api/contests/{id}/publication", get(public::get_contest).post(public::publish_contest).delete(public::unpublish_contest))
+        // Publication par le logiciel de bureau (clé d'API du club)
+        .route("/api/publication", put(public::publish_desktop))
+        .route("/api/publication/{id}", delete(public::unpublish_desktop))
         .route("/api/contests/{id}/properties", get(contests::get_properties).put(contests::set_properties))
         .route("/api/contests/{id}/cotcot", get(contests::download))
         .route("/api/contests/{id}/export/{format}", get(contests::export))
