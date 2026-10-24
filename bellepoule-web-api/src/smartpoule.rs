@@ -77,6 +77,52 @@ pub struct Relay {
     guards: HashMap<String, SheetGuard>,
     /// Matériel vérifié par l'arbitre avant la poule : feuille → tireurs.
     equipment: HashMap<String, Vec<u32>>,
+    /// Signalements des arbitres (absence d'un tireur).
+    reports: Vec<Report>,
+    next_report: u64,
+}
+
+/// Signalement d'un arbitre : « Absence de X du club de Y sur la piste 12 ».
+#[derive(Clone, Default, Serialize, Deserialize)]
+#[serde(default)]
+struct Report {
+    id: u64,
+    /// `call` : appel du Directoire technique ; vide : absence d'un tireur.
+    kind: String,
+    token: String,
+    fencer: u32,
+    name: String,
+    club: String,
+    piste: String,
+    /// Poule ou match, et compétition.
+    sheet: String,
+    competition: String,
+    referee: String,
+    at: String,
+    /// Traité par l'organisation.
+    done: bool,
+}
+
+impl Report {
+    fn message(&self) -> String {
+        if self.kind == "call" {
+            let piste = if self.piste.is_empty() { String::new() } else { format!(" piste {}", self.piste) };
+            return format!("Directoire technique appelé{piste} par : {}", self.referee);
+        }
+        let mut m = format!("Absence de {}", self.name);
+        if !self.club.is_empty() {
+            m.push_str(&format!(" du club de {}", self.club));
+        }
+        if !self.piste.is_empty() {
+            m.push_str(&format!(" sur la piste {}", self.piste));
+        }
+        m
+    }
+
+    fn json(&self) -> Value {
+        json!({ "id": self.id, "kind": if self.kind.is_empty() { "absence" } else { self.kind.as_str() }, "message": self.message(), "name": self.name, "club": self.club, "piste": self.piste, "sheet": self.sheet,
+            "competition": self.competition, "referee": self.referee, "at": self.at, "done": self.done })
+    }
 }
 
 /// Validité d'un téléphone reconnu par PIN : la journée ou le week-end.
@@ -404,7 +450,12 @@ pub async fn security(State(store): State<Shared>, client: Client) -> Result<Jso
         phones.entry(s.referee).or_insert_with(|| (s.name.clone(), 0)).1 += 1;
     }
     let phones: Vec<Value> = phones.into_iter().map(|(r, (name, n))| json!({ "referee": r, "name": name, "count": n })).collect();
-    Ok(Json(json!({ "alerts": alerts, "paused": paused, "phones": phones })))
+    // Signalements : en cours d'abord, puis les derniers traités.
+    let mut reports: Vec<&Report> = relay.reports.iter().collect();
+    reports.sort_by_key(|r| (r.done, std::cmp::Reverse(r.id)));
+    let open = reports.iter().filter(|r| !r.done).count();
+    let reports: Vec<Value> = reports.into_iter().take(open + 10).map(Report::json).collect();
+    Ok(Json(json!({ "alerts": alerts, "paused": paused, "phones": phones, "reports": reports, "open_reports": open })))
 }
 
 /// `POST /api/smartpoule/security` : `{ "action": "unlock", "token" }`
@@ -423,6 +474,15 @@ pub async fn security_action(State(store): State<Shared>, client: Client, Json(a
             "logout" => {
                 let r = a.get("referee").and_then(Value::as_u64).unwrap_or(0) as u32;
                 store.forget_referee_phones(&client.id, r);
+            }
+            // Signalement traité (ou rouvert).
+            "report_done" => {
+                let id = a.get("id").and_then(Value::as_u64).unwrap_or(0);
+                let done = a.get("done").and_then(Value::as_bool).unwrap_or(true);
+                if let Some(r) = store.relays.entry(client.id.clone()).or_default().reports.iter_mut().find(|r| r.id == id) {
+                    r.done = done;
+                }
+                store.save_relay(&client.id)?;
             }
             other => return Err(bad_request(format!("action inconnue : {other}"))),
         }
@@ -464,12 +524,152 @@ pub async fn phone_sheet(State(store): State<Shared>, Query(q): Query<PhoneQuery
         Who::Admin => None,
         Who::Referee(r, _) => Some(r),
     };
-    let relayed = store.relays.get(&club.id).and_then(|r| r.state.get("sheets")).and_then(|s| s.get(&token)).map(|sheet| filter_bouts(sheet.clone(), referee));
-    let mut sheet = relayed
-        .or_else(|| store.list(&club).find_map(|(_, contest)| contest.smartpoule_sheet(&token, referee)))
-        .ok_or_else(|| ApiError(StatusCode::NOT_FOUND, "match introuvable".into()))?;
-    sheet["equipment"] = json!(store.relays.get(&club.id).and_then(|r| r.equipment.get(&token)).cloned().unwrap_or_default());
+    let mut sheet = store.sheet_of(&club, &token, referee).ok_or_else(|| ApiError(StatusCode::NOT_FOUND, "match introuvable".into()))?;
+    let relay = store.relays.get(&club.id);
+    sheet["equipment"] = json!(relay.and_then(|r| r.equipment.get(&token)).cloned().unwrap_or_default());
+    sheet["absences"] = json!(relay.map(|r| r.absences(&token)).unwrap_or_default());
     Ok(Json(sheet))
+}
+
+impl Relay {
+    /// Tireurs signalés absents (signalements non traités) d'une feuille.
+    fn absences(&self, token: &str) -> Vec<u32> {
+        self.reports.iter().filter(|r| !r.done && r.kind.is_empty() && r.token == token).map(|r| r.fencer).collect()
+    }
+}
+
+impl crate::store::Store {
+    /// Feuille d'un match (instantané de BellePoule ou version web).
+    fn sheet_of(&self, club: &Client, token: &str, referee: Option<u32>) -> Option<Value> {
+        let relayed = self.relays.get(&club.id).and_then(|r| r.state.get("sheets")).and_then(|s| s.get(token)).map(|sheet| filter_bouts(sheet.clone(), referee));
+        relayed.or_else(|| self.list(club).find_map(|(_, contest)| contest.smartpoule_sheet(token, referee)))
+    }
+
+    /// Un arbitre n'agit que sur les feuilles qui lui sont affectées.
+    fn check_assigned(&self, club: &Client, who: &Who, token: &str) -> Result<(), ApiError> {
+        if let Who::Referee(r, _) = who {
+            let assigned = self.all_jobs(club).iter().any(|job| job.get("token").and_then(Value::as_str) == Some(token) && mine(job, &Who::Referee(*r, String::new())));
+            if !assigned {
+                return Err(forbidden());
+            }
+        }
+        Ok(())
+    }
+}
+
+#[derive(Deserialize)]
+pub struct PhoneCall {
+    c: String,
+    r: u32,
+    k: String,
+    /// Feuille en cours (piste) ; absente depuis la liste des matchs.
+    #[serde(default)]
+    token: Option<String>,
+}
+
+/// `POST /api/smartpoule/phone/call` : l'arbitre appelle le Directoire
+/// technique (notification de l'organisation, puce rouge).
+pub async fn phone_call(State(store): State<Shared>, Json(a): Json<PhoneCall>) -> Result<Json<Value>, ApiError> {
+    let mut store = store.lock().await;
+    let q = PhoneQuery { c: a.c.clone(), r: a.r, k: a.k.clone(), token: None, id: None };
+    let (club, who) = store.authenticate(&q)?;
+    let token = a.token.clone().filter(|t| !t.is_empty());
+    let sheet = match &token {
+        Some(t) => {
+            store.check_assigned(&club, &who, t)?;
+            store.sheet_of(&club, t, None)
+        }
+        None => None,
+    };
+    let text = |k: &str| sheet.as_ref().and_then(|s| s.get(k)).and_then(Value::as_str).unwrap_or("").trim().to_string();
+    let referee = match &who {
+        Who::Admin => "Administrateur".to_string(),
+        Who::Referee(_, n) => n.clone(),
+    };
+    let relay = store.relays.entry(club.id.clone()).or_default();
+    let token = token.unwrap_or_default();
+    // Un appel en cours du même arbitre pour la même feuille suffit.
+    if relay.reports.iter().any(|r| !r.done && r.kind == "call" && r.token == token && r.referee == referee) {
+        return Ok(Json(json!({ "status": "already" })));
+    }
+    relay.next_report += 1;
+    relay.reports.push(Report {
+        id: relay.next_report,
+        kind: "call".into(),
+        token,
+        fencer: 0,
+        name: String::new(),
+        club: String::new(),
+        piste: text("piste").split_whitespace().next().unwrap_or("").to_string(),
+        sheet: text("name"),
+        competition: text("competition"),
+        referee,
+        at: crate::store::chrono_now(),
+        done: false,
+    });
+    store.save_relay(&club.id)?;
+    Ok(Json(json!({ "status": "ok" })))
+}
+
+#[derive(Deserialize)]
+pub struct PhoneAbsence {
+    c: String,
+    r: u32,
+    k: String,
+    token: String,
+    fencer: u32,
+    /// Faux : le signalement est retiré (le tireur est arrivé).
+    absent: bool,
+}
+
+/// `POST /api/smartpoule/phone/absence` : l'arbitre signale l'absence d'un
+/// tireur de sa poule (ou retire son signalement).
+pub async fn phone_absence(State(store): State<Shared>, Json(a): Json<PhoneAbsence>) -> Result<Json<Value>, ApiError> {
+    let mut store = store.lock().await;
+    let q = PhoneQuery { c: a.c.clone(), r: a.r, k: a.k.clone(), token: None, id: None };
+    let (club, who) = store.authenticate(&q)?;
+    store.check_assigned(&club, &who, &a.token)?;
+    let sheet = store.sheet_of(&club, &a.token, None).ok_or_else(|| bad_request("feuille introuvable"))?;
+    let fencer = sheet
+        .get("fencers")
+        .and_then(Value::as_array)
+        .and_then(|l| l.iter().find(|f| f.get("reference").and_then(Value::as_u64) == Some(a.fencer as u64)))
+        .cloned()
+        .ok_or_else(|| bad_request("tireur introuvable"))?;
+    let text = |v: &Value, k: &str| v.get(k).and_then(Value::as_str).unwrap_or("").trim().to_string();
+    let referee = match &who {
+        Who::Admin => "Administrateur".to_string(),
+        Who::Referee(_, n) => n.clone(),
+    };
+    let relay = store.relays.entry(club.id.clone()).or_default();
+    if a.absent {
+        if !relay.reports.iter().any(|r| !r.done && r.kind.is_empty() && r.token == a.token && r.fencer == a.fencer) {
+            relay.next_report += 1;
+            let piste = text(&sheet, "piste");
+            relay.reports.push(Report {
+                id: relay.next_report,
+                token: a.token.clone(),
+                fencer: a.fencer,
+                name: text(&fencer, "name"),
+                club: text(&fencer, "club"),
+                piste: piste.split_whitespace().next().unwrap_or("").to_string(),
+                sheet: text(&sheet, "name"),
+                competition: text(&sheet, "competition"),
+                referee,
+                at: crate::store::chrono_now(),
+                done: false,
+                kind: String::new(),
+            });
+            // Les plus anciens signalements traités sont oubliés.
+            let mut done = relay.reports.iter().filter(|r| r.done).count();
+            relay.reports.retain(|r| if r.done && done > 200 { done -= 1; false } else { true });
+        }
+    } else {
+        relay.reports.retain(|r| r.done || !r.kind.is_empty() || r.token != a.token || r.fencer != a.fencer);
+    }
+    let absences = relay.absences(&a.token);
+    store.save_relay(&club.id)?;
+    Ok(Json(json!({ "absences": absences })))
 }
 
 #[derive(Deserialize)]
@@ -488,12 +688,7 @@ pub async fn phone_equipment(State(store): State<Shared>, Json(e): Json<PhoneEqu
     let mut store = store.lock().await;
     let q = PhoneQuery { c: e.c.clone(), r: e.r, k: e.k.clone(), token: None, id: None };
     let (club, who) = store.authenticate(&q)?;
-    if let Who::Referee(r, _) = who {
-        let assigned = store.all_jobs(&club).iter().any(|job| job.get("token").and_then(Value::as_str) == Some(e.token.as_str()) && mine(job, &Who::Referee(r, String::new())));
-        if !assigned {
-            return Err(forbidden());
-        }
-    }
+    store.check_assigned(&club, &who, &e.token)?;
     let relay = store.relays.entry(club.id.clone()).or_default();
     let list = relay.equipment.entry(e.token.clone()).or_default();
     list.retain(|f| *f != e.fencer);

@@ -55,6 +55,17 @@ pub fn SecurityBanner() -> impl IntoView {
             h.clear();
         }
     });
+    let done = move |id: u64, value: bool| {
+        spawn_local(async move {
+            match api::send::<_, Value>("POST", "/api/smartpoule/security", &json!({ "action": "report_done", "id": id, "done": value })).await {
+                Ok(v) => {
+                    data.set(Some(v));
+                    crate::refresh_reports();
+                }
+                Err(e) => alert(&e.message),
+            }
+        });
+    };
     let unlock = move |token: String| {
         spawn_local(async move {
             match api::send::<_, Value>("POST", "/api/smartpoule/security", &json!({ "action": "unlock", "token": token })).await {
@@ -64,6 +75,36 @@ pub fn SecurityBanner() -> impl IntoView {
         });
     };
     view! {
+        // Signalements des arbitres (absence d'un tireur).
+        {move || {
+            let d = data.get()?;
+            let reports = arr(&d, "reports");
+            (!reports.is_empty()).then(|| view! {
+                <div class="reports card">
+                    <h3>{format!("Signalements des arbitres ({} en cours)", u(&d, "open_reports"))}</h3>
+                    {reports.into_iter().map(|r| {
+                        let id = u(&r, "id");
+                        let is_done = r.get("done").and_then(Value::as_bool).unwrap_or(false);
+                        let detail = [s(&r, "sheet"), s(&r, "competition"), format!("signalé par {} à {}", s(&r, "referee"), s(&r, "at"))]
+                            .into_iter().filter(|x| !x.trim().is_empty()).collect::<Vec<_>>().join(" · ");
+                        view! {
+                            <div class="report" class:done=is_done>
+                                <span class="report-dot"></span>
+                                <div class="report-text">
+                                    <strong>{s(&r, "message")}</strong>
+                                    <div class="muted small">{detail}</div>
+                                </div>
+                                {if is_done {
+                                    view! { <button class="ghost small" on:click=move |_| done(id, false)>"Rouvrir"</button> }.into_any()
+                                } else {
+                                    view! { <button class="small" on:click=move |_| done(id, true)>"Traité"</button> }.into_any()
+                                }}
+                            </div>
+                        }
+                    }).collect_view()}
+                </div>
+            })
+        }}
         {move || {
             let d = data.get()?;
             let alerts = arr(&d, "alerts");

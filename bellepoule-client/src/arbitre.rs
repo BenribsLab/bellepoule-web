@@ -363,6 +363,7 @@ fn JobsScreen(who: Who, forget: Callback<()>) -> impl IntoView {
     });
     view! {
         <div class="ref-screen">
+            <CallButton who=who.get_value() />
             <header class="ref-head">
                 <div>
                     <div class="ref-brand">"ManageComp Arbitre"</div>
@@ -403,6 +404,35 @@ fn JobsScreen(who: Who, forget: Callback<()>) -> impl IntoView {
     }
 }
 
+// ------------------------------------------------- Directoire technique
+
+/// « Appeler le Directoire technique », tout en haut des écrans de
+/// l'arbitre : l'organisation reçoit une notification (puce rouge).
+#[component]
+fn CallButton(who: Who, #[prop(optional)] token: Option<String>) -> impl IntoView {
+    let busy = RwSignal::new(false);
+    let sent = RwSignal::new(false);
+    let call = move |_| {
+        if busy.get_untracked() || !ask("Appeler le Directoire technique ?") {
+            return;
+        }
+        busy.set(true);
+        let body = who.body(json!({ "token": token.clone() }));
+        spawn_local(async move {
+            match api::send::<_, Value>("POST", "/api/smartpoule/phone/call", &body).await {
+                Ok(_) => sent.set(true),
+                Err(e) => crate::alert(&e.message),
+            }
+            busy.set(false);
+        });
+    };
+    view! {
+        <button class="ref-call" class:sent=move || sent.get() disabled=move || busy.get() on:click=call>
+            {move || if sent.get() { "📣 Directoire technique appelé ✔" } else { "📣 Appeler le Directoire technique" }}
+        </button>
+    }
+}
+
 // ------------------------------------------------------------------ feuille
 
 async fn fetch_sheet(who: &Who, token: &str) -> Result<Value, String> {
@@ -421,6 +451,7 @@ fn SheetScreen(who: Who, token: String) -> impl IntoView {
     let who = StoredValue::new(who);
     view! {
         <div class="ref-screen">
+            <CallButton who=who.get_value() token=token.get_value() />
             <header class="ref-head">
                 <a class="ref-back" href="#/">"‹ Mes matchs"</a>
             </header>
@@ -486,12 +517,19 @@ fn checked_list(v: &Value) -> Vec<u64> {
     arr(v, "equipment").iter().filter_map(Value::as_u64).collect()
 }
 
+/// Tireurs signalés absents (références).
+fn absent_list(v: &Value) -> Vec<u64> {
+    arr(v, "absences").iter().filter_map(Value::as_u64).collect()
+}
+
 #[component]
 fn PoolGrid(sheet: Value, who: Who, token: String) -> impl IntoView {
     let rows = arr(&sheet, "fencers");
     let n = rows.len();
     // Matériel vérifié avant la poule (case du nom soulignée en vert).
     let equipment = RwSignal::new(checked_list(&sheet));
+    // Absences signalées à l'organisation.
+    let absences = RwSignal::new(absent_list(&sheet));
     let open = RwSignal::new(None::<Value>);
     let (who, token) = (StoredValue::new(who), StoredValue::new(token));
     let toggle = move |fencer: u64, checked: bool| {
@@ -510,6 +548,23 @@ fn PoolGrid(sheet: Value, who: Who, token: String) -> impl IntoView {
                     equipment.update(|l| set(l, !checked));
                     crate::alert(&e.message);
                 }
+            }
+        });
+    };
+    let report = move |fencer: u64, absent: bool, name: String| {
+        let question = if absent {
+            format!("Signaler à l'organisation l'absence de {name} ?")
+        } else {
+            format!("{name} est arrivé : retirer le signalement d'absence ?")
+        };
+        if !ask(&question) {
+            return;
+        }
+        let body = who.get_value().body(json!({ "token": token.get_value(), "fencer": fencer, "absent": absent }));
+        spawn_local(async move {
+            match api::send::<_, Value>("POST", "/api/smartpoule/phone/absence", &body).await {
+                Ok(v) => absences.set(absent_list(&v)),
+                Err(e) => crate::alert(&e.message),
             }
         });
     };
@@ -548,6 +603,7 @@ fn PoolGrid(sheet: Value, who: Who, token: String) -> impl IntoView {
                                 <td
                                     class="ref-gname"
                                     class:checked=move || reference.is_some_and(|f| equipment.with(|l| l.contains(&f)))
+                                    class:absent=move || reference.is_some_and(|f| absences.with(|l| l.contains(&f)))
                                     on:click=move |_| open.set(Some(row.clone()))
                                 >{short_name(&full)}</td>
                                 <td class="ref-gpos">{s(&r, "position")}</td>
@@ -586,6 +642,19 @@ fn PoolGrid(sheet: Value, who: Who, token: String) -> impl IntoView {
                                     <span class="ref-switch-track"><span class="ref-switch-thumb"></span></span>
                                     <span>"Matériel vérifié"</span>
                                 </label>
+                                {
+                                    let name = s(&r, "name");
+                                    move || if absences.with(|l| l.contains(&f)) {
+                                        let name = name.clone();
+                                        view! {
+                                            <div class="ref-absent-note">"🔴 Absence signalée à l'organisation"</div>
+                                            <button class="ref-light" on:click=move |_| report(f, false, name.clone())>"Le tireur est arrivé"</button>
+                                        }.into_any()
+                                    } else {
+                                        let name = name.clone();
+                                        view! { <button class="ref-absent" on:click=move |_| report(f, true, name.clone())>"Signaler l'absence du tireur"</button> }.into_any()
+                                    }
+                                }
                             }.into_any(),
                             None => view! { <p class="ref-muted ref-small">"Vérification du matériel : mettez à jour ManageComp sur l'ordinateur de l'organisation."</p> }.into_any(),
                         }}
@@ -684,6 +753,7 @@ fn MatchLoader(who: Who, token: String, bout: u64) -> impl IntoView {
     let (who, token) = (StoredValue::new(who), StoredValue::new(token));
     view! {
         <div class="ref-screen">
+            <CallButton who=who.get_value() token=token.get_value() />
             <header class="ref-head"><a class="ref-back" href=back>"‹ Feuille"</a></header>
             {move || match data.get() {
                 None => view! { <p class="ref-muted">"Chargement…"</p> }.into_any(),

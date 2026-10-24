@@ -177,6 +177,7 @@ fn App() -> impl IntoView {
                         </a>
                         <a href="#/organisation" class:active=move || route.get() == Route::Organisation>
                             <icons::Icon name="grid" />"Organisation"
+                            <ReportsDot />
                         </a>
                         <a href="#/saison" class:active=move || route.get() == Route::Season>
                             <icons::Icon name="activity" />"Classement de saison"
@@ -397,5 +398,39 @@ fn Login(logged: RwSignal<bool>) -> impl IntoView {
             </section>
             <Footer />
         </div>
+    }
+}
+
+thread_local! {
+    /// Signalements des arbitres en cours (puce rouge du menu Organisation).
+    static OPEN_REPORTS: std::cell::Cell<Option<RwSignal<u64>>> = const { std::cell::Cell::new(None) };
+}
+
+/// Relit le nombre de signalements en cours.
+pub fn refresh_reports() {
+    let Some(count) = OPEN_REPORTS.with(|c| c.get()) else { return };
+    leptos::task::spawn_local(async move {
+        if let Ok(v) = api::get::<serde_json::Value>("/api/smartpoule/security").await {
+            count.set(v.get("open_reports").and_then(serde_json::Value::as_u64).unwrap_or(0));
+        }
+    });
+}
+
+/// Puce rouge : un arbitre a signalé l'absence d'un tireur.
+#[component]
+fn ReportsDot() -> impl IntoView {
+    let count = RwSignal::new(0u64);
+    OPEN_REPORTS.with(|c| c.set(Some(count)));
+    refresh_reports();
+    let handle = set_interval_with_handle(refresh_reports, std::time::Duration::from_secs(20)).ok();
+    on_cleanup(move || {
+        if let Some(h) = handle {
+            h.clear();
+        }
+    });
+    view! {
+        {move || (count.get() > 0).then(|| view! {
+            <span class="nav-dot" title=format!("{} signalement(s) d'arbitre en cours", count.get())>{count.get()}</span>
+        })}
     }
 }
