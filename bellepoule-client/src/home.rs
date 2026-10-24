@@ -118,6 +118,7 @@ fn ContestCards(list: Vec<ContestSummary>, on_change: impl Fn() + Copy + 'static
                                 if let Err(e) = api::delete(&format!("/api/contests/{id}")).await {
                                     alert(&e.message);
                                 }
+                                crate::refresh_tabs();
                                 on_change();
                             });
                         }

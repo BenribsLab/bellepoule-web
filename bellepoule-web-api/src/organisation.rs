@@ -36,8 +36,8 @@ pub struct Organisation {
     inputs: HashMap<(String, u32), Message>,
     pub referees: bool,
     pub pistes: bool,
-    /// Compétitions organisées (comme les onglets ouverts du logiciel) ;
-    /// `None` : celles de la date la plus récente.
+    /// Compétitions ouvertes (onglets, comme le logiciel de bureau) : ce
+    /// sont elles qui sont organisées.
     pub contests: Option<Vec<String>>,
     dir: PathBuf,
 }
@@ -97,37 +97,44 @@ impl Store {
         self.organisations.entry(client.id.clone()).or_insert_with(|| Organisation::load(dir))
     }
 
-    /// Compétitions en cours du club (non terminées) : identifiant et date.
-    fn running_contests(&self, client: &Client) -> Vec<(String, (u32, u32, u32))> {
-        self.contests
-            .iter()
-            .filter(|((c, _), contest)| c == &client.id && !contest.schedule.is_over())
-            .map(|((_, id), contest)| (id.clone(), (contest.year, contest.month, contest.day)))
-            .collect()
+    /// Compétitions ouvertes (onglets de l'application, comme le logiciel de
+    /// bureau), encore présentes dans le club.
+    pub fn organised_contests(&mut self, client: &Client) -> Vec<String> {
+        let open = self.organisation(client).contests.clone().unwrap_or_default();
+        open.into_iter().filter(|id| self.contests.contains_key(&(client.id.clone(), id.clone()))).collect()
     }
 
-    /// Compétitions organisées : celles choisies (encore en cours), sinon
-    /// celles de la date la plus récente.
-    pub fn organised_contests(&mut self, client: &Client) -> Vec<String> {
-        let running = self.running_contests(client);
-        match self.organisation(client).contests.clone() {
-            Some(list) => list.into_iter().filter(|id| running.iter().any(|(r, _)| r == id)).collect(),
-            None => {
-                let latest = running.iter().map(|(_, d)| *d).max();
-                running.into_iter().filter(|(_, d)| Some(*d) == latest).map(|(id, _)| id).collect()
-            }
+    /// Ouvre une compétition (onglet) : elle entre dans l'organisation.
+    pub fn open_contest(&mut self, client: &Client, id: &str) {
+        let org = self.organisation(client);
+        let list = org.contests.get_or_insert_with(Vec::new);
+        if !list.iter().any(|x| x == id) {
+            list.push(id.to_string());
+            org.save_settings();
         }
     }
 
-    /// Nouvelle compétition : l'organisation passe aux compétitions de la
-    /// même date (une autre journée n'y reste pas).
-    pub fn organise_with(&mut self, client: &Client, id: &str) {
-        let running = self.running_contests(client);
-        let Some(date) = running.iter().find(|(r, _)| r == id).map(|(_, d)| *d) else { return };
-        let list: Vec<String> = running.into_iter().filter(|(_, d)| *d == date).map(|(r, _)| r).collect();
+    /// Ferme une compétition (onglet) : elle sort de l'organisation.
+    pub fn close_contest(&mut self, client: &Client, id: &str) {
         let org = self.organisation(client);
-        org.contests = Some(list);
-        org.save_settings();
+        if let Some(list) = org.contests.as_mut() {
+            list.retain(|x| x != id);
+            org.save_settings();
+        }
+    }
+
+    /// Onglets des compétitions ouvertes.
+    pub fn open_tabs(&mut self, client: &Client) -> Value {
+        let open = self.organised_contests(client);
+        json!(open
+            .iter()
+            .filter_map(|id| self.contests.get(&(client.id.clone(), id.clone())).map(|c| json!({
+                "id": id,
+                "name": c.name,
+                "detail": ([c.weapon.label(), c.gender_label(), c.category.display_image()].into_iter().filter(|s| !s.is_empty()).collect::<Vec<_>>().join(" · ")),
+                "color": c.color,
+            })))
+            .collect::<Vec<_>>())
     }
 
     /// Identifiants réseau des compétitions de la version web : toutes, et
@@ -146,29 +153,6 @@ impl Store {
             }
         }
         (all, chosen)
-    }
-
-    /// Compétitions en cours, pour le choix des compétitions organisées.
-    fn organisation_choices(&mut self, client: &Client) -> Value {
-        let organised = self.organised_contests(client);
-        let mut list: Vec<Value> = self
-            .contests
-            .iter()
-            .filter(|((c, _), contest)| c == &client.id && !contest.schedule.is_over())
-            .map(|((_, id), c)| {
-                json!({
-                    "id": id,
-                    "name": c.name,
-                    "detail": ([c.weapon.label(), c.gender_label(), c.category.display_image()].into_iter().filter(|s| !s.is_empty()).collect::<Vec<_>>().join(" · ")),
-                    "date": c.date_image(),
-                    "sort": format!("{:04}{:02}{:02}", c.year, c.month, c.day),
-                    "color": c.color,
-                    "selected": organised.contains(id),
-                })
-            })
-            .collect();
-        list.sort_by(|a, b| b["sort"].as_str().cmp(&a["sort"].as_str()));
-        json!(list)
     }
 
     /// Transmet à la salle les colis des compétitions organisées, puis
@@ -489,9 +473,7 @@ fn view(org: &Organisation) -> Value {
 pub async fn get(State(store): State<Shared>, client: Client) -> Result<Json<Value>, ApiError> {
     let mut store = store.lock().await;
     store.sync_organisation(&client);
-    let mut v = view(store.organisation(&client));
-    v["contests"] = store.organisation_choices(&client);
-    Ok(Json(v))
+    Ok(Json(view(store.organisation(&client))))
 }
 
 // ------------------------------------------------------------------ actions
@@ -529,11 +511,6 @@ pub async fn action(State(store): State<Shared>, client: Client, Json(a): Json<V
     let hall = &mut org.hall;
     match str_of(&a, "action") {
         // Options
-        // Compétitions organisées (cochées), comme les onglets ouverts du logiciel.
-        "contests" => {
-            org.contests = Some(a.get("ids").and_then(Value::as_array).map(|l| l.iter().filter_map(|v| v.as_str().map(str::to_string)).collect()).unwrap_or_default());
-            org.save_settings();
-        }
         "features" => {
             org.referees = a.get("referees").and_then(Value::as_bool).unwrap_or(org.referees);
             org.pistes = a.get("pistes").and_then(Value::as_bool).unwrap_or(org.pistes);
@@ -711,9 +688,7 @@ pub async fn action(State(store): State<Shared>, client: Client, Json(a): Json<V
     }
     store.apply_outbox(&client);
     store.sync_organisation(&client);
-    let mut v = view(store.organisation(&client));
-    v["contests"] = store.organisation_choices(&client);
-    Ok(Json(v))
+    Ok(Json(view(store.organisation(&client))))
 }
 
 /// `GET /api/organisation/referee-codes` : QR codes personnels et PIN des
@@ -877,13 +852,34 @@ pub async fn import(
     }
     store.apply_outbox(&client);
     store.sync_organisation(&client);
-    let mut v = view(store.organisation(&client));
-    v["contests"] = store.organisation_choices(&client);
-    Ok(Json(v))
+    Ok(Json(view(store.organisation(&client))))
 }
 
 /// Durée en minutes (affichage).
 #[allow(dead_code)]
 fn minutes(span: Span) -> i64 {
     span / MINUTE
+}
+
+/// `GET /api/open-contests` : onglets des compétitions ouvertes.
+pub async fn open_tabs(State(store): State<Shared>, client: Client) -> Json<Value> {
+    let mut store = store.lock().await;
+    Json(store.open_tabs(&client))
+}
+
+/// `POST /api/contests/{id}/open` : ouvre la compétition (onglet).
+pub async fn open_contest(State(store): State<Shared>, client: Client, axum::extract::Path(id): axum::extract::Path<String>) -> Result<Json<Value>, ApiError> {
+    let mut store = store.lock().await;
+    if store.get(&client, &id).is_none() {
+        return Err(crate::api::not_found());
+    }
+    store.open_contest(&client, &id);
+    Ok(Json(store.open_tabs(&client)))
+}
+
+/// `POST /api/contests/{id}/close` : ferme la compétition (onglet).
+pub async fn close_contest(State(store): State<Shared>, client: Client, axum::extract::Path(id): axum::extract::Path<String>) -> Json<Value> {
+    let mut store = store.lock().await;
+    store.close_contest(&client, &id);
+    Json(store.open_tabs(&client))
 }

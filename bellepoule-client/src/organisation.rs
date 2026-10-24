@@ -172,7 +172,6 @@ pub fn Organisation() -> impl IntoView {
                     let referees_on = b(&d, "referees_enabled");
                     let pistes_on = b(&d, "pistes_enabled");
                     view! {
-                        <OrganisedContests org=org d=d.clone() />
                         <Header org=org d=d.clone() />
                         <Timeline org=org d=d.clone() />
                         <Overlaps org=org d=d.clone() />
@@ -190,58 +189,6 @@ pub fn Organisation() -> impl IntoView {
                 }
             }}
         </section>
-    }
-}
-
-// ------------------------------------------- compétitions organisées
-
-/// Compétitions de l'organisation (comme les onglets ouverts du logiciel) :
-/// une nouvelle compétition y entre avec celles de la même date ; « Modifier »
-/// en ajoute ou en retire.
-#[component]
-fn OrganisedContests(org: Org, d: Value) -> impl IntoView {
-    let list = arr(&d, "contests");
-    let chosen: Vec<Value> = list.iter().filter(|c| b(c, "selected")).cloned().collect();
-    let editing = RwSignal::new(false);
-    let picked = RwSignal::new(chosen.iter().map(|c| s(c, "id")).collect::<Vec<_>>());
-    let all = StoredValue::new(list);
-    view! {
-        <div class="org-contests">
-            <span class="muted small">"Compétitions organisées :"</span>
-            {if chosen.is_empty() {
-                view! { <span class="muted small">"aucune"</span> }.into_any()
-            } else {
-                chosen.iter().map(|c| view! {
-                    <span class="chip" style=format!("border-left:4px solid {}", s(c, "color"))>{format!("{} · {} · {}", s(c, "name"), s(c, "detail"), s(c, "date"))}</span>
-                }).collect_view().into_any()
-            }}
-            <button class="ghost small" on:click=move |_| editing.set(true)>"Modifier…"</button>
-        </div>
-        <Show when=move || editing.get()>
-            <div class="overlay" on:click=move |_| editing.set(false)>
-                <div class="dialog" on:click=|ev| ev.stop_propagation()>
-                    <h2>"Compétitions organisées"</h2>
-                    <p class="muted small">"Les pistes, les arbitres et les signalements ne concernent que les compétitions cochées. Une nouvelle compétition y entre avec celles de la même date."</p>
-                    <div class="org-contest-list">
-                        {all.get_value().into_iter().map(|c| {
-                            let id = s(&c, "id");
-                            let id2 = id.clone();
-                            view! {
-                                <label class="check">
-                                    <input type="checkbox" prop:checked=move || picked.with(|p| p.contains(&id))
-                                        on:change=move |ev| { let on = event_target_checked(&ev); let id = id2.clone(); picked.update(|p| { p.retain(|x| *x != id); if on { p.push(id); } }); } />
-                                    <span><strong>{s(&c, "name")}</strong>" "<span class="muted">{format!("{} · {}", s(&c, "detail"), s(&c, "date"))}</span></span>
-                                </label>
-                            }
-                        }).collect_view()}
-                    </div>
-                    <div class="buttons">
-                        <button type="button" class="light" on:click=move |_| editing.set(false)>"Annuler"</button>
-                        <button type="button" on:click=move |_| { org.act(json!({ "action": "contests", "ids": picked.get_untracked() })); editing.set(false); }>"Valider"</button>
-                    </div>
-                </div>
-            </div>
-        </Show>
     }
 }
 

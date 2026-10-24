@@ -12,6 +12,7 @@ use crate::{alert, confirm};
 
 #[component]
 pub fn ContestPage(id: String) -> impl IntoView {
+    crate::open_tab(&id);
     let id = StoredValue::new(id);
     let summary = RwSignal::new(None::<ContestSummary>);
     let schedule = RwSignal::new(None::<ScheduleView>);

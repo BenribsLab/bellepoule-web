@@ -46,6 +46,10 @@ pub fn router(store: Shared) -> Router {
         .route("/compete/e/{id}", get(compete::short))
         .route("/compete/{club}", get(compete::club))
         .route("/compete/{club}/{slug}", get(compete::event))
+        // Compétitions ouvertes (onglets) : ce sont elles qui sont organisées.
+        .route("/api/open-contests", get(organisation::open_tabs))
+        .route("/api/contests/{id}/open", post(organisation::open_contest))
+        .route("/api/contests/{id}/close", post(organisation::close_contest))
         .route("/api/contests/{id}/publication", get(public::get_contest).post(public::publish_contest).delete(public::unpublish_contest))
         // Publication par le logiciel de bureau (clé d'API du club)
         .route("/api/publication", put(public::publish_desktop))

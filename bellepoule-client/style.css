@@ -844,6 +844,10 @@ code.pin { font-size: 1.05rem; font-weight: 700; letter-spacing: 0.15em; }
 .publish-links { display: grid; gap: 0.4rem; min-width: 0; }
 .publish-links a { overflow-wrap: anywhere; font-weight: 600; }
 
-/* Organisation : compétitions organisées */
-.org-contests { display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: center; margin-bottom: 0.6rem; }
-.org-contest-list { display: grid; gap: 0.5rem; max-height: 55vh; overflow: auto; }
+/* Onglets des compétitions ouvertes */
+.open-tabs { display: flex; gap: 6px; overflow-x: auto; padding: 8px 0 2px; margin-bottom: 6px; }
+.open-tab { flex: none; display: flex; align-items: center; gap: 2px; max-width: 260px; background: var(--surface); border: 1px solid var(--border); border-left: 4px solid var(--c, var(--accent)); border-radius: 12px; padding: 4px 4px 4px 10px; }
+.open-tab a { display: grid; min-width: 0; color: var(--text); text-decoration: none; line-height: 1.2; }
+.open-tab a strong, .open-tab a small { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.open-tab a small { color: var(--muted); font-size: 0.75rem; }
+.open-tab.active { background: var(--accent-soft); border-color: var(--accent); border-left-color: var(--c, var(--accent)); }

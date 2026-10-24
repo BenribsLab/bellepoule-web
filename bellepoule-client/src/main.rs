@@ -214,6 +214,7 @@ fn App() -> impl IntoView {
                     </div>
                 </aside>
                 <div class="content">
+                    <OpenTabs route=route />
                     <main>
                         {move || {
                             let page = match route.get() {
@@ -481,5 +482,78 @@ fn ReportsDot() -> impl IntoView {
         {move || (count.get() > 0).then(|| view! {
             <span class="nav-dot" title=format!("{} signalement(s) d'arbitre en cours", count.get())>{count.get()}</span>
         })}
+    }
+}
+
+thread_local! {
+    /// Onglets des compétitions ouvertes (partagés par les organisateurs du club).
+    static OPEN_TABS: std::cell::Cell<Option<RwSignal<Vec<serde_json::Value>>>> = const { std::cell::Cell::new(None) };
+}
+
+fn set_tabs(v: serde_json::Value) {
+    if let Some(tabs) = OPEN_TABS.with(|c| c.get()) {
+        tabs.set(v.as_array().cloned().unwrap_or_default());
+    }
+}
+
+/// Relit les onglets (compétition supprimée, ouverte ailleurs…).
+pub fn refresh_tabs() {
+    leptos::task::spawn_local(async move {
+        if let Ok(v) = api::get::<serde_json::Value>("/api/open-contests").await {
+            set_tabs(v);
+        }
+    });
+}
+
+/// Ouvre une compétition dans les onglets (elle entre dans l'organisation).
+pub fn open_tab(id: &str) {
+    let path = format!("/api/contests/{id}/open");
+    leptos::task::spawn_local(async move {
+        if let Ok(v) = api::send::<_, serde_json::Value>("POST", &path, &serde_json::json!({})).await {
+            set_tabs(v);
+        }
+    });
+}
+
+/// Compétitions ouvertes, en onglets comme sur le logiciel de bureau : ce
+/// sont elles que l'organisation (pistes, arbitres, signalements) prend en compte.
+#[component]
+fn OpenTabs(route: RwSignal<Route>) -> impl IntoView {
+    let tabs = RwSignal::new(Vec::<serde_json::Value>::new());
+    OPEN_TABS.with(|c| c.set(Some(tabs)));
+    refresh_tabs();
+    let close = move |id: String| {
+        let path = format!("/api/contests/{id}/close");
+        leptos::task::spawn_local(async move {
+            if let Ok(v) = api::send::<_, serde_json::Value>("POST", &path, &serde_json::json!({})).await {
+                set_tabs(v);
+            }
+        });
+        if route.get_untracked() == Route::Contest(id) {
+            navigate(&Route::Home);
+        }
+    };
+    let text = |v: &serde_json::Value, k: &str| v.get(k).and_then(serde_json::Value::as_str).unwrap_or("").to_string();
+    view! {
+        {move || {
+            let list = tabs.get();
+            (!list.is_empty()).then(|| view! {
+                <nav class="open-tabs" title="Compétitions ouvertes : ce sont elles que l'organisation prend en compte">
+                    {list.into_iter().map(|t| {
+                        let id = text(&t, "id");
+                        let (href_id, active_id, close_id) = (id.clone(), id.clone(), id.clone());
+                        view! {
+                            <div class="open-tab" class:active=move || route.get() == Route::Contest(active_id.clone()) style=format!("--c:{}", text(&t, "color"))>
+                                <a href=format!("#/contest/{href_id}") title=format!("{} · {}", text(&t, "name"), text(&t, "detail"))>
+                                    <strong>{text(&t, "name")}</strong>
+                                    <small>{text(&t, "detail")}</small>
+                                </a>
+                                <button class="ghost icon-only small" title="Fermer (la compétition n'est pas effacée)" on:click=move |_| close(close_id.clone())>"×"</button>
+                            </div>
+                        }
+                    }).collect_view()}
+                </nav>
+            })
+        }}
     }
 }

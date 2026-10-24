@@ -255,7 +255,7 @@ pub async fn create(State(store): State<Shared>, client: Client, Json(input): Js
     }
     let mut store = store.lock().await;
     let id = store.insert(&client, c).map_err(internal)?;
-    store.organise_with(&client, &id);
+    store.open_contest(&client, &id);
     let c = store.get(&client, &id).ok_or_else(not_found)?;
     Ok((StatusCode::CREATED, Json(summary(&id, c))))
 }
@@ -327,8 +327,8 @@ pub async fn import(
         let c = store.get(&client, &id).ok_or_else(not_found)?;
         created.push(summary(&id, c));
     }
-    if let Some(first) = created.first() {
-        store.organise_with(&client, &first.id);
+    for c in &created {
+        store.open_contest(&client, &c.id);
     }
     Ok((StatusCode::CREATED, Json(created)))
 }
