@@ -129,6 +129,10 @@ impl Store {
                 org.inputs.insert(k, m);
             }
         }
+        // Chaque arbitre a sa clé personnelle (QR code personnel, PIN).
+        if let Some(org) = self.organisations.get_mut(&client.id) {
+            org.hall.ensure_referee_keys();
+        }
         self.apply_outbox(client);
     }
 
@@ -621,6 +625,48 @@ pub async fn action(State(store): State<Shared>, client: Client, Json(a): Json<V
     store.apply_outbox(&client);
     store.sync_organisation(&client);
     Ok(Json(view(store.organisation(&client))))
+}
+
+/// `GET /api/organisation/referee-codes` : QR codes personnels et PIN des
+/// arbitres (feuilles personnelles, liste des PIN).
+pub async fn referee_codes(State(store): State<Shared>, client: Client) -> Result<Json<Value>, ApiError> {
+    let mut store = store.lock().await;
+    store.sync_organisation(&client);
+    let admin = store.smartpoule_admin_key(&client);
+    let hall = &store.organisation(&client).hall;
+    let referees: Vec<Value> = hall
+        .referees
+        .referees
+        .iter()
+        .filter_map(|(r, x)| {
+            let key = hall.referee_key(*r)?;
+            let p = &x.player;
+            Some(json!({
+                "reference": r,
+                "name": p.name(),
+                "first_name": p.first_name(),
+                "club": p.str_attr("club").unwrap_or_default(),
+                "weapon": p.str_attr("weapon").unwrap_or_default(),
+                "key": key,
+                "pin": bp_core::smartpoule::referee_pin(&key),
+            }))
+        })
+        .collect();
+    Ok(Json(json!({ "club": client.id, "club_name": client.name, "admin_key": admin, "referees": referees })))
+}
+
+/// `POST /api/organisation/referee-codes` `{ "reference" }` : nouveau code
+/// d'un arbitre (QR code personnel et PIN) ; ses téléphones sont oubliés.
+pub async fn renew_referee_code(State(store): State<Shared>, client: Client, Json(a): Json<Value>) -> Result<Json<Value>, ApiError> {
+    let reference = u32_of(&a, "reference");
+    {
+        let mut store = store.lock().await;
+        store.sync_organisation(&client);
+        store.organisation(&client).hall.renew_referee_key(reference).ok_or_else(|| bad_request("arbitre inconnu"))?;
+        store.forget_referee_phones(&client.id, reference);
+        store.apply_outbox(&client);
+    }
+    referee_codes(State(store), client).await
 }
 
 #[derive(serde::Deserialize)]

@@ -18,8 +18,10 @@ pub fn Home() -> impl IntoView {
     let meta = LocalResource::new(|| api::get::<Meta>("/api/meta"));
     let reload = move || version.update(|v| *v += 1);
     let creating = RwSignal::new(false);
+    let choosing = RwSignal::new(false);
 
     let search = RwSignal::new(String::new());
+    let show_hidden = RwSignal::new(false);
 
     view! {
         <header class="page-head">
@@ -42,7 +44,7 @@ pub fn Home() -> impl IntoView {
                 <input type="search" placeholder="Rechercher" prop:value=move || search.get() on:input=move |ev| search.set(event_target_value(&ev)) />
             </label>
             <ImportButton on_done=reload />
-            <button on:click=move |_| creating.set(true)><Icon name="plus" />"Nouvelle compétition"</button>
+            <button on:click=move |_| choosing.set(true)><Icon name="plus" />"Nouvelle compétition"</button>
         </header>
         {move || match contests.get() {
             None => view! { <div class="contest-grid">{(0..3).map(|_| view! { <div class="contest-card skeleton"></div> }).collect_view()}</div> }.into_any(),
@@ -52,18 +54,38 @@ pub fn Home() -> impl IntoView {
                     <Icon name="trophy" />
                     <h2>"Aucune compétition"</h2>
                     <p class="muted">"Créez une compétition ou ouvrez un fichier .cotcot du logiciel de bureau."</p>
-                    <button on:click=move |_| creating.set(true)><Icon name="plus" />"Nouvelle compétition"</button>
+                    <button on:click=move |_| choosing.set(true)><Icon name="plus" />"Nouvelle compétition"</button>
                 </div>
             }.into_any(),
             Some(Ok(list)) => {
                 let needle = search.get().to_lowercase();
+                let retired = list.iter().filter(|c| c.hidden).count();
+                let hidden = show_hidden.get();
                 let list: Vec<_> = list
                     .into_iter()
+                    .filter(|c| c.hidden == hidden)
                     .filter(|c| needle.is_empty() || format!("{} {} {} {}", c.name, c.label, c.location, c.category).to_lowercase().contains(&needle))
                     .collect();
-                view! { <ContestCards list=list on_change=reload /> }.into_any()
+                view! {
+                    {(hidden && list.is_empty()).then(|| view! { <p class="muted">"Aucune compétition retirée."</p> })}
+                    <ContestCards list=list on_change=reload />
+                    {(retired > 0 || hidden).then(|| view! {
+                        <div class="row hidden-toggle">
+                            <button class="ghost small" on:click=move |_| show_hidden.update(|h| *h = !*h)>
+                                {if hidden { "‹ Retour aux compétitions".to_string() } else { format!("Compétitions retirées de l'accueil ({retired})") }}
+                            </button>
+                        </div>
+                    })}
+                }.into_any()
             }
         }}
+        <Show when=move || choosing.get()>
+            <NewContestChooser
+                on_empty=move || { choosing.set(false); creating.set(true); }
+                on_close=move || choosing.set(false)
+                on_done=reload
+            />
+        </Show>
         <Show when=move || creating.get()>
             {move || match meta.get() {
                 Some(Ok(m)) => view! { <NewContestDialog meta=m on_close=move || creating.set(false) /> }.into_any(),
@@ -84,10 +106,13 @@ fn ContestCards(list: Vec<ContestSummary>, on_change: impl Fn() + Copy + 'static
                 .map(|(i, c)| {
                     let open_id = c.id.clone();
                     let del_id = c.id.clone();
+                    let hide_id = c.id.clone();
                     let name = c.name.clone();
+                    let hide_name = c.name.clone();
+                    let hidden = c.hidden;
                     let delete = move |ev: leptos::ev::MouseEvent| {
                         ev.stop_propagation();
-                        if confirm(&format!("Supprimer « {name} » ?")) {
+                        if confirm(&format!("Supprimer définitivement « {name} » ? Ses données seront effacées.")) {
                             let id = del_id.clone();
                             spawn_local(async move {
                                 if let Err(e) = api::delete(&format!("/api/contests/{id}")).await {
@@ -96,6 +121,20 @@ fn ContestCards(list: Vec<ContestSummary>, on_change: impl Fn() + Copy + 'static
                                 on_change();
                             });
                         }
+                    };
+                    // Retrait de l'accueil (la compétition est conservée) ou remise.
+                    let toggle_hidden = move |ev: leptos::ev::MouseEvent| {
+                        ev.stop_propagation();
+                        if !hidden && !confirm(&format!("Retirer « {hide_name} » de l'accueil ? La compétition est conservée et reste consultable dans « Compétitions retirées ».")) {
+                            return;
+                        }
+                        let id = hide_id.clone();
+                        spawn_local(async move {
+                            if let Err(e) = api::send_empty("PUT", &format!("/api/contests/{id}/hidden"), &serde_json::json!({ "hidden": !hidden })).await {
+                                alert(&e.message);
+                            }
+                            on_change();
+                        });
                     };
                     let style = format!("--c:{};--i:{}", c.color, i.min(12));
                     let detail = [c.weapon_label.clone(), c.gender_label.clone(), c.category.clone()]
@@ -109,7 +148,16 @@ fn ContestCards(list: Vec<ContestSummary>, on_change: impl Fn() + Copy + 'static
                             <div class="cc-body">
                                 <div class="cc-top">
                                     <span class="cc-weapon">{detail}</span>
-                                    <button class="ghost icon-only danger" title="Supprimer" on:click=delete><Icon name="trash" /></button>
+                                    <span class="cc-tools">
+                                        {if hidden {
+                                            view! {
+                                                <button class="ghost small" title="Remettre sur l'accueil" on:click=toggle_hidden>"Remettre"</button>
+                                                <button class="ghost icon-only danger" title="Supprimer définitivement" on:click=delete><Icon name="trash" /></button>
+                                            }.into_any()
+                                        } else {
+                                            view! { <button class="ghost icon-only" title="Retirer de l'accueil (la compétition est conservée)" on:click=toggle_hidden><Icon name="x" /></button> }.into_any()
+                                        }}
+                                    </span>
                                 </div>
                                 <h3>{c.name.clone()}</h3>
                                 {(!c.label.is_empty()).then(|| view! { <p class="muted cc-label">{c.label.clone()}</p> })}
@@ -177,28 +225,84 @@ pub async fn read_file(input: &web_sys::HtmlInputElement) -> Option<(String, Vec
     Some((name, js_sys::Uint8Array::new(&buffer).to_vec()))
 }
 
-/// Import d'un fichier BellePoule (`.cotcot`).
+/// Ouvre le fichier choisi (`.cotcot`, `.xml`, `.zip` de la FFE, `.frd`
+/// d'AskFred) : une seule compétition créée est ouverte, plusieurs (AskFred)
+/// restent dans la liste.
+async fn open_file(el: web_sys::HtmlInputElement, on_done: impl Fn() + 'static) {
+    if let Some((name, bytes)) = read_file(&el).await {
+        let path = format!("/api/contests/import?name={}", js_sys::encode_uri_component(&name));
+        match api::upload::<Vec<ContestSummary>>(&path, bytes).await {
+            Ok(list) if list.len() == 1 => {
+                if name.to_lowercase().ends_with(".frd") {
+                    alert("Import AskFred terminé : vérifiez les données importées.");
+                }
+                navigate(&Route::Contest(list[0].id.clone()));
+            }
+            Ok(list) => alert(&format!("Import AskFred terminé : {} compétitions créées. Vérifiez les données importées.", list.len())),
+            Err(e) => alert(&e.message),
+        }
+        on_done();
+    }
+    el.set_value("");
+}
+
+/// Import d'un fichier de compétition.
 #[component]
 fn ImportButton(on_done: impl Fn() + Copy + 'static) -> impl IntoView {
     let input = NodeRef::<leptos::html::Input>::new();
     let changed = move |_| {
         let Some(el) = input.get() else { return };
-        spawn_local(async move {
-            if let Some((_, bytes)) = read_file(&el).await {
-                match api::upload::<ContestSummary>("/api/contests/import", bytes).await {
-                    Ok(c) => navigate(&Route::Contest(c.id)),
-                    Err(e) => alert(&e.message),
-                }
-                on_done();
-            }
-            el.set_value("");
-        });
+        spawn_local(open_file(el, on_done));
     };
     view! {
         <label class="button light">
             <Icon name="upload" />
             "Ouvrir un fichier"
-            <input type="file" accept=".cotcot,.xml" class="hidden" node_ref=input on:change=changed />
+            <input type="file" accept=".cotcot,.xml,.XML,.zip,.frd" class="hidden" node_ref=input on:change=changed />
         </label>
+    }
+}
+
+/// Nouvelle compétition : méthode de création, comme sur le bureau.
+#[component]
+fn NewContestChooser(
+    on_empty: impl Fn() + Copy + 'static,
+    on_close: impl Fn() + Copy + 'static,
+    on_done: impl Fn() + Copy + 'static,
+) -> impl IntoView {
+    let choice = move |accept: &'static str, image: AnyView, label: &'static str| {
+        let input = NodeRef::<leptos::html::Input>::new();
+        let changed = move |_| {
+            let Some(el) = input.get() else { return };
+            on_close();
+            spawn_local(open_file(el, on_done));
+        };
+        view! {
+            <label class="new-choice">
+                <span class="new-choice-icon">{image}</span>
+                <span>{label}</span>
+                <input type="file" accept=accept class="hidden" node_ref=input on:change=changed />
+            </label>
+        }
+    };
+    view! {
+        <div class="overlay" on:click=move |_| on_close()>
+            <div class="dialog new-chooser" on:click=|ev| ev.stop_propagation()>
+                <h2>"Nouvelle compétition"</h2>
+                <p class="muted">"Choisissez une méthode de création :"</p>
+                <div class="new-choices">
+                    {choice(".zip", view! { <img src="/zip.png" alt="" /> }.into_any(), "À partir d'un fichier zip de la FFE (extranet)")}
+                    {choice(".xml,.XML", view! { <Icon name="folder" /> }.into_any(), "À partir d'un fichier XML")}
+                    {choice(".frd", view! { <img src="/askfred.png" alt="" /> }.into_any(), "À partir d'AskFred (.frd)")}
+                    <button type="button" class="new-choice" on:click=move |_| on_empty()>
+                        <span class="new-choice-icon"><Icon name="file-plus" /></span>
+                        <span>"Compétition vide"</span>
+                    </button>
+                </div>
+                <div class="buttons">
+                    <button type="button" class="light" on:click=move |_| on_close()>"Annuler"</button>
+                </div>
+            </div>
+        </div>
     }
 }

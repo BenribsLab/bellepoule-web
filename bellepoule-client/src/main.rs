@@ -14,6 +14,8 @@ mod icons;
 mod live;
 mod organisation;
 mod properties;
+mod qr;
+mod referee_codes;
 mod season;
 mod stages;
 

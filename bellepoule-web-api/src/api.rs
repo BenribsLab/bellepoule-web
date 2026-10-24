@@ -38,6 +38,7 @@ pub fn router(store: Shared) -> Router {
         .route("/api/contests", get(contests::list).post(contests::create))
         .route("/api/contests/import", post(contests::import))
         .route("/api/contests/{id}", get(contests::get_one).delete(contests::remove))
+        .route("/api/contests/{id}/hidden", put(contests::set_hidden))
         .route("/api/contests/{id}/properties", get(contests::get_properties).put(contests::set_properties))
         .route("/api/contests/{id}/cotcot", get(contests::download))
         .route("/api/contests/{id}/export/{format}", get(contests::export))
@@ -64,6 +65,7 @@ pub fn router(store: Shared) -> Router {
         // Organisation (pistes, arbitres, planning)
         .route("/api/organisation", get(organisation::get).post(organisation::action))
         .route("/api/organisation/import", post(organisation::import))
+        .route("/api/organisation/referee-codes", get(organisation::referee_codes).post(organisation::renew_referee_code))
         // SmartPoule : relais BellePoule ↔ téléphones des arbitres
         .route("/api/smartpoule/state", put(smartpoule::put_state))
         .route("/api/smartpoule/pending", get(smartpoule::pending))
@@ -74,6 +76,8 @@ pub fn router(store: Shared) -> Router {
         .route("/api/smartpoule/phone/score", post(smartpoule::phone_score))
         .route("/api/smartpoule/phone/result", get(smartpoule::phone_result))
         .route("/api/smartpoule/phone/live", post(smartpoule::phone_live))
+        .route("/api/smartpoule/phone/pin", post(smartpoule::phone_pin))
+        .route("/api/smartpoule/security", get(smartpoule::security).post(smartpoule::security_action))
         .route("/api/live", get(smartpoule::live))
         // Appel
         .route("/api/contests/{id}/checkin", get(checkin::get_checkin))

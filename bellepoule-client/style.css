@@ -730,3 +730,53 @@ td.move-down { color: #b42318; font-weight: 700; }
 .pillow-list { max-height: 55vh; overflow: auto; display: grid; gap: 4px; }
 .place-input { width: 4.5rem; }
 .b-label.b-found { outline: 3px solid var(--accent); outline-offset: 2px; background: var(--accent-soft); border-radius: 4px; z-index: 2; }
+
+/* Nouvelle compétition : méthode de création */
+.new-chooser { width: min(480px, 94vw); }
+.new-chooser h2, .new-chooser > p { text-align: center; }
+.new-choices { display: grid; gap: 0.5rem; }
+.new-choice {
+  display: flex; align-items: center; gap: 0.9rem; width: 100%;
+  padding: 0.55rem 0.8rem; border: 1px solid var(--border); border-radius: 12px;
+  background: var(--surface); color: var(--text); font: inherit; font-weight: 500;
+  text-align: left; cursor: pointer; transition: border-color .15s, transform .15s, box-shadow .15s;
+}
+.new-choice:hover { border-color: var(--accent); transform: translateY(-1px); box-shadow: 0 4px 14px rgb(0 0 0 / .08); }
+.new-choice-icon { flex: none; display: grid; place-items: center; width: 44px; height: 44px; border-radius: 10px; background: var(--surface-2, rgb(0 0 0 / .04)); }
+.new-choice-icon img { max-width: 34px; max-height: 34px; }
+.new-choice-icon svg { width: 26px; height: 26px; }
+fieldset.scores-policy { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4rem 1.2rem; border: 1px solid var(--border); border-radius: 12px; padding: 0.5rem 0.9rem 0.7rem; }
+fieldset.scores-policy legend { font-weight: 700; padding: 0 0.3rem; }
+button.warn { color: var(--warning); }
+
+.cc-tools { display: inline-flex; align-items: center; gap: 0.2rem; }
+.hidden-toggle { justify-content: center; margin-top: 1rem; }
+
+/* QR codes (feuilles, arbitres) */
+.qr { display: block; line-height: 0; }
+.qr svg { width: 100%; height: auto; display: block; }
+.sheet-qr { display: inline-flex; align-items: center; gap: 0.5rem; margin-left: auto; }
+.sheet-qr .qr { width: 78px; }
+.sheet-qr span { font-size: 0.75rem; max-width: 8rem; color: var(--muted); line-height: 1.2; }
+.ms-qr { width: 58px; margin-left: auto; }
+.ms-qr .qr { width: 58px; }
+.security-alert { border: 1px solid var(--danger); background: color-mix(in srgb, var(--danger) 8%, transparent); border-radius: 12px; padding: 0.6rem 0.9rem; margin-bottom: 0.8rem; display: grid; gap: 0.4rem; }
+.referee-codes { width: min(820px, 96vw); max-height: 90vh; overflow: auto; }
+.referee-codes .table-scroll { overflow: auto; }
+code.pin { font-size: 1.05rem; font-weight: 700; letter-spacing: 0.15em; }
+.print-page.referee-page { text-align: center; display: flex; flex-direction: column; align-items: center; gap: 4mm; padding-top: 18mm; }
+.referee-page .rp-logo { height: 18mm; }
+.referee-page h1 { margin: 6mm 0 0; font-size: 26pt; }
+.referee-page .rp-club { margin: 0; font-size: 14pt; color: #555; }
+.referee-page .rp-qr { width: 95mm; margin: 6mm 0; }
+.referee-page .rp-help { max-width: 150mm; font-size: 12pt; margin: 0; }
+.referee-page .rp-pin { font-size: 18pt; border: 2px solid #000; border-radius: 4mm; padding: 3mm 8mm; margin: 4mm 0; }
+.referee-page .rp-pin strong { letter-spacing: 0.25em; font-size: 24pt; }
+.pin-list td, .pin-list th { padding: 2mm 3mm; font-size: 12pt; }
+/* ManageComp Arbitre : code PIN */
+.ref-pin-screen { padding-top: 12vh; text-align: center; }
+.ref-pin { display: grid; gap: 14px; justify-items: center; margin-top: 18px; }
+.ref-pin-input { font-size: 2.2rem; letter-spacing: 0.5em; text-align: center; width: 9.5rem; padding: 10px 0 10px 0.5em; border: 2px solid #0866cd; border-radius: 14px; }
+.ref-pin-ok { background: #0866cd; color: #fff; border: 0; border-radius: 12px; padding: 12px 36px; font-size: 1.1rem; font-weight: 700; }
+.ref-pin-ok:disabled { opacity: 0.45; }
+@media print { .sheet-qr span { color: #000; } }

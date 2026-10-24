@@ -182,6 +182,31 @@ impl Store {
 
     // ------------------------------------------------ catégories générales
 
+    // ------------------------------------------------ compétitions retirées de l'accueil
+
+    fn hidden_path(&self, client: &Client) -> PathBuf {
+        self.dir.join("clients").join(&client.id).join("hidden.json")
+    }
+
+    /// Compétitions retirées de l'accueil (conservées).
+    pub fn hidden(&self, client: &Client) -> std::collections::HashSet<String> {
+        std::fs::read(self.hidden_path(client)).ok().and_then(|b| serde_json::from_slice(&b).ok()).unwrap_or_default()
+    }
+
+    pub fn set_hidden(&self, client: &Client, id: &str, hidden: bool) -> std::io::Result<()> {
+        let mut set = self.hidden(client);
+        if hidden {
+            set.insert(id.to_string());
+        } else {
+            set.remove(id);
+        }
+        let path = self.hidden_path(client);
+        if let Some(dir) = path.parent() {
+            std::fs::create_dir_all(dir)?;
+        }
+        std::fs::write(path, serde_json::to_vec(&set)?)
+    }
+
     pub fn categories_path(&self, client: &Client) -> PathBuf {
         self.dir.join("clients").join(&client.id).join("categories.json")
     }

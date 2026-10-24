@@ -32,6 +32,7 @@ pub fn Pools(ctx: StageCtx) -> impl IntoView {
                 .get()
                 .map(|v| {
                     let d = v["data"].clone();
+                    let club = s(&v, "club");
                     let locked = b(&d, "locked");
                     let pools = arr(&d, "pools");
                     let max = u(&d, "max_score");
@@ -56,6 +57,10 @@ pub fn Pools(ctx: StageCtx) -> impl IntoView {
                             <button class="light" disabled=sel == 0 on:click=move |_| selected.update(|x| *x = x.saturating_sub(1))>"‹"</button>
                             <button class="light" disabled=sel + 1 >= pools.len() on:click=move |_| selected.update(|x| *x += 1)>"›"</button>
                             <span class="spacer"></span>
+                            {(b(&d, "stuffing") && !locked).then(|| view! {
+                                <button class="light warn" title="Scores aléatoires pour tester la formule (les scores saisis sont remplacés)"
+                                    on:click=move |_| if crate::confirm("Remplir aléatoirement les scores de toutes les poules ? Les scores déjà saisis seront remplacés.") { ctx.act.run(json!({ "action": "stuff" })) }>"⚠ Remplissage automatique"</button>
+                            })}
                             <button class="light" class:active=move || view_mode.get() == "sheet" on:click=move |_| view_mode.set("sheet")>"Feuille"</button>
                             <button class="light" class:active=move || view_mode.get() == "ranking" on:click=move |_| view_mode.set("ranking")>"Classement"</button>
                             <button class="light" class:active=move || view_mode.get() == "current" on:click=move |_| view_mode.set("current")>"Classement du tour"</button>
@@ -66,7 +71,7 @@ pub fn Pools(ctx: StageCtx) -> impl IntoView {
                         {move || match view_mode.get() {
                             "ranking" => view! { <ListTable list=classification.clone() /> }.into_any(),
                             "current" => view! { <ListTable list=current.clone() /> }.into_any(),
-                            _ => pool.clone().map(|p| view! { <Sheet ctx=ctx pool=p max=max locked=locked /> }.into_any()).unwrap_or_else(|| view! { <p class="muted">"Aucune poule."</p> }.into_any()),
+                            _ => pool.clone().map(|p| view! { <Sheet ctx=ctx pool=p max=max locked=locked club=club.clone() /> }.into_any()).unwrap_or_else(|| view! { <p class="muted">"Aucune poule."</p> }.into_any()),
                         }}
                     }
                 })
@@ -113,7 +118,7 @@ fn cell_id(pool: u64, m: u64, fencer: u64) -> String {
 }
 
 #[component]
-fn Sheet(ctx: StageCtx, pool: Value, max: u64, locked: bool) -> impl IntoView {
+fn Sheet(ctx: StageCtx, pool: Value, max: u64, locked: bool, club: String) -> impl IntoView {
     let p = u(&pool, "index");
     let rows = arr(&pool, "rows");
     let n = rows.len();
@@ -137,6 +142,16 @@ fn Sheet(ctx: StageCtx, pool: Value, max: u64, locked: bool) -> impl IntoView {
             <h3>{s(&pool, "name")}</h3>
             {pool.get("piste").and_then(Value::as_str).map(|x| view! { <span class="roadmap">{format!("Piste {x}")}</span> })}
             {pool.get("referee").and_then(Value::as_str).map(|x| view! { <span class="roadmap">{format!("Arbitre : {x}")}</span> })}
+            // QR code de la feuille : sans le PIN d'un arbitre de la poule, il ne donne accès à rien.
+            {(!club.is_empty() && !s(&pool, "token").is_empty()).then(|| {
+                let url = crate::qr::sheet_url(&club, &s(&pool, "token"));
+                view! {
+                    <div class="sheet-qr" title="Arbitre : scannez ce QR code avec votre téléphone, puis entrez votre code PIN">
+                        <crate::qr::QrCode text=url />
+                        <span>"Arbitre : scannez, puis votre code PIN"</span>
+                    </div>
+                }
+            })}
         </div>
         <div class="sheet-wrap">
         <table class="sheet">

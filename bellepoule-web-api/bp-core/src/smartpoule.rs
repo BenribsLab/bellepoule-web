@@ -19,6 +19,42 @@ use crate::player::{PlayerRef, PlayerStore};
 use crate::rounds::pool::PoolAllocatorStage;
 use crate::rounds::table::TableSupervisor;
 
+/// Jeton d'une poule (QR code de sa feuille, matchs du téléphone).
+pub fn pool_token(contest: u32, round: u32, number: u32) -> String {
+    format!("p~{contest}~{round}~{number}")
+}
+
+/// Jeton d'un match de tableau (`chemin` : `TableSet::match_path`).
+pub fn match_token(contest: u32, stage: u32, set: &str, path: &str) -> String {
+    format!("t~{contest}~{stage}~{set}~{path}")
+}
+
+/// Code PIN (4 chiffres) d'un arbitre, tiré de sa clé personnelle : il
+/// change avec elle et n'a pas à être enregistré à part. Il confirme
+/// l'arbitre qui scanne le QR code d'une feuille.
+pub fn referee_pin(key: &str) -> String {
+    // FNV-1a 64 bits : stable d'une plateforme à l'autre.
+    let mut h: u64 = 0xcbf2_9ce4_8422_2325;
+    for b in "managecomp-pin|".bytes().chain(key.bytes()) {
+        h ^= b as u64;
+        h = h.wrapping_mul(0x0000_0100_0000_01b3);
+    }
+    format!("{:04}", h % 10_000)
+}
+
+/// Nouvelle clé personnelle d'arbitre (32 caractères, QR code personnel).
+pub fn new_referee_key() -> String {
+    use rand::Rng;
+    const ALPHABET: &[u8] = b"0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+    let mut rng = rand::thread_rng();
+    (0..32).map(|_| ALPHABET[rng.gen_range(0..ALPHABET.len())] as char).collect()
+}
+
+/// Clé personnelle valide (32 caractères).
+pub fn is_referee_key(key: &str) -> bool {
+    key.len() == 32
+}
+
 fn identity(players: &PlayerStore, r: PlayerRef) -> (String, String) {
     players
         .get(r)
@@ -59,6 +95,40 @@ fn match_xml(m: &Match, values: &[String; 2]) -> Option<String> {
 }
 
 impl Contest {
+    /// Chaque arbitre reçoit une clé personnelle (QR code personnel, dont
+    /// découle son PIN) s'il n'en a pas. Vrai si une clé a été créée.
+    pub fn ensure_referee_keys(&mut self) -> bool {
+        let id = crate::player::AttrId::global("password");
+        let mut changed = false;
+        for r in self.referees.refs().to_vec() {
+            if let Some(p) = self.referees.get_mut(r) {
+                if !p.str_attr("password").is_some_and(is_referee_key) {
+                    p.set_str(&id, &new_referee_key());
+                    changed = true;
+                }
+            }
+        }
+        if changed {
+            self.dirty = true;
+        }
+        changed
+    }
+
+    /// Nouvelle clé (donc nouveau PIN et nouveau QR code personnel) d'un arbitre.
+    pub fn renew_referee_key(&mut self, reference: u32) -> Option<String> {
+        let key = new_referee_key();
+        self.referees.get_mut(reference)?.set_str(&crate::player::AttrId::global("password"), &key);
+        self.dirty = true;
+        Some(key)
+    }
+
+    /// Jeton de la feuille d'une poule du tour de poules `index` (phase des poules).
+    pub fn pool_sheet_token(&self, index: usize, number: u32) -> Option<String> {
+        let stage = self.schedule.stage(index)?;
+        let round = stage.as_any().downcast_ref::<crate::rounds::pool::PoolSupervisorStage>()?.round();
+        Some(pool_token(self.net_id, round.net_id(), number))
+    }
+
     fn title(&self) -> String {
         format!("{} · {} · {} · {}", self.name, self.weapon.label(), self.gender_label(), self.category.display_image())
     }
@@ -91,7 +161,7 @@ impl Contest {
                         continue;
                     }
                     out.push(json!({
-                        "token": format!("p~{}~{}~{}", self.net_id, round.net_id(), pool.number()),
+                        "token": pool_token(self.net_id, round.net_id(), pool.number()),
                         "kind": "pool",
                         "color": self.color,
                         "competition": self.title(),
@@ -124,7 +194,7 @@ impl Contest {
                         let (a, _) = identity(&self.players, m.opponent(0).unwrap());
                         let (b, _) = identity(&self.players, m.opponent(1).unwrap());
                         out.push(json!({
-                            "token": format!("t~{}~{}~{}~{}", self.net_id, stage.base().net_id, set.id(), path),
+                            "token": match_token(self.net_id, stage.base().net_id, set.id(), &path),
                             "kind": "match",
                             "competition": self.title(),
                             "name": format!("{} — {}", set.name(), m.name),
@@ -442,4 +512,20 @@ fn apply_officiating(m: &mut Match, timing: crate::officiating::BoutTiming, stat
     }
     m.officiating = Some(state);
     Ok(())
+}
+
+#[cfg(test)]
+mod pin_tests {
+    use super::*;
+
+    #[test]
+    fn pin_follows_the_key() {
+        let key = new_referee_key();
+        assert!(is_referee_key(&key));
+        let pin = referee_pin(&key);
+        assert_eq!(pin.len(), 4);
+        assert!(pin.chars().all(|c| c.is_ascii_digit()));
+        assert_eq!(pin, referee_pin(&key));
+        assert_eq!(referee_pin("abc"), referee_pin("abc"));
+    }
 }

@@ -165,6 +165,7 @@ pub fn Organisation() -> impl IntoView {
 
     view! {
         <section class="card organisation">
+            <crate::referee_codes::SecurityBanner />
             {move || match org.data.get() {
                 None => view! { <p class="muted">"Chargement…"</p> }.into_any(),
                 Some(d) => {
@@ -210,6 +211,7 @@ fn Header(org: Org, d: Value) -> impl IntoView {
                 <input type="checkbox" prop:checked=pistes_on on:change=move |ev| org.act(json!({ "action": "features", "pistes": event_target_checked(&ev) })) />
                 "Gérer les pistes"
             </label>
+            {referees_on.then(|| view! { <crate::referee_codes::RefereeCodesButton /> })}
             <span class="spacer"></span>
             <span class="org-warnings" title="Affinités signalées entre arbitres et tireurs">
                 {["club", "league", "country"]

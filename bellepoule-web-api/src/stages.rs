@@ -92,7 +92,10 @@ fn club(players: &PlayerStore, r: PlayerRef) -> String {
 pub async fn get_stage(State(store): State<Shared>, client: Client, Path((id, index)): Path<(String, usize)>) -> Result<Json<Value>, ApiError> {
     let mut store = store.lock().await;
     let c = store.get_mut(&client, &id).ok_or_else(not_found)?;
-    Ok(Json(stage_view(c, index)?))
+    let mut v = stage_view(c, index)?;
+    // Club : adresse des QR codes des feuilles (ManageComp Arbitre).
+    v["club"] = json!(client.id);
+    Ok(Json(v))
 }
 
 fn stage_view(c: &mut Contest, index: usize) -> Result<Value, ApiError> {
@@ -124,6 +127,7 @@ fn stage_view(c: &mut Contest, index: usize) -> Result<Value, ApiError> {
         }
     }
     body["team"] = json!(c.settings.team_event);
+    body["stuffing"] = json!(c.settings.score_stuffing_allowed);
     let locked = c.schedule.stage(index).map(|s| s.base().locked).unwrap_or(false);
     let name = c.schedule.stage(index).map(|s| s.name()).unwrap_or_default();
     let max_score = c.schedule.stage(index).and_then(|s| s.base().max_score);
@@ -457,6 +461,8 @@ fn pools_view(c: &mut Contest, index: usize) -> Option<Value> {
             json!({
                 "index": i,
                 "name": sheet.title,
+                // QR code de la feuille : l'arbitre le scanne puis donne son PIN.
+                "token": bp_core::smartpoule::pool_token(c.net_id, round.net_id(), pool.number()),
                 "piste": sheet.piste,
                 "referee": sheet.referee.map(|(n, f)| format!("{n} {}", f.unwrap_or_default()).trim().to_string()),
                 "over": pool.is_over(),
@@ -978,7 +984,9 @@ pub async fn stage_action(
         })
         .ok_or_else(not_found)?
         .map_err(internal)?;
-    Ok(Json(result?))
+    let mut v = result?;
+    v["club"] = json!(client.id);
+    Ok(Json(v))
 }
 
 /// Classement de chaque groupe puis de tous les groupes, en HTML (export).
@@ -1114,6 +1122,7 @@ pub async fn match_sheets(State(store): State<Shared>, client: Client, Path((id,
                 let referee = sheet.referee.map(|(n, f)| format!("{n} {f}").trim().to_string());
                 let mut result = sheet_json(format!("{} — {}", set.name(), sheet.name), referee, sheet.piste.clone(), fencers, max);
                 result["officiating"] = json!(set.bout(node).and_then(|m| m.officiating.as_ref()).map(|s| s.summary()).unwrap_or_default());
+                result["token"] = json!(set.match_path(node).map(|p| bp_core::smartpoule::match_token(c.net_id, stage_net, set.id(), &p)));
                 sheets.push(result);
             }
         }
@@ -1122,6 +1131,7 @@ pub async fn match_sheets(State(store): State<Shared>, client: Client, Path((id,
     }
     Ok(Json(json!({
         "contest": c.name,
+        "club": client.id,
         "header": format!("{} - {} - {}", c.weapon.label(), c.gender_label(), c.category.display_image()),
         "date": c.date_image(),
         "sheets": sheets,

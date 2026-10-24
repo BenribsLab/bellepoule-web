@@ -58,6 +58,10 @@ pub fn Table(ctx: StageCtx) -> impl IntoView {
                                     }
                                 })}
                             <span class="spacer"></span>
+                            {(b(&d, "stuffing") && !locked).then(|| view! {
+                                <button class="light warn" title="Scores aléatoires pour tester la formule (les scores saisis sont remplacés)"
+                                    on:click=move |_| if crate::confirm("Remplir aléatoirement les scores des matchs restants de ce tableau ?") { ctx.act.run(json!({ "action": "stuff" })) }>"⚠ Remplissage automatique"</button>
+                            })}
                             <label class="inline" title="Numéro du match à afficher dans le tableau : tapez 3 pour aller au match 1-16.3">
                                 "Aller au match n° "
                                 <input type="text" class="place-input" placeholder="n°" on:change=move |ev| goto_match(&event_target_value(&ev)) />

@@ -66,6 +66,7 @@ pub fn MatchSheetsButton(ctx: StageCtx) -> impl IntoView {
                                     .into_iter()
                                     .map(|page| {
                                         let header = v.clone();
+                                        let club = s(&header, "club");
                                         view! {
                                             <section class="print-page">
                                                 <header class="page-header">
@@ -77,7 +78,7 @@ pub fn MatchSheetsButton(ctx: StageCtx) -> impl IntoView {
                                                     <div class="group-title">"Feuilles de match"</div>
                                                     <div>{s(&header, "date")}</div>
                                                 </header>
-                                                {page.into_iter().map(|sheet| view! { <MatchSheet sheet=sheet /> }).collect_view()}
+                                                {page.into_iter().map(|sheet| view! { <MatchSheet sheet=sheet club=club.clone() /> }).collect_view()}
                                             </section>
                                         }
                                     })
@@ -91,7 +92,8 @@ pub fn MatchSheetsButton(ctx: StageCtx) -> impl IntoView {
 }
 
 #[component]
-fn MatchSheet(sheet: Value) -> impl IntoView {
+fn MatchSheet(sheet: Value, club: String) -> impl IntoView {
+    let token = sheet.get("token").and_then(Value::as_str).unwrap_or("").to_string();
     let boxes = u(&sheet, "boxes") as usize;
     let referee = sheet.get("referee").and_then(Value::as_str).unwrap_or("").to_string();
     let piste = sheet.get("piste").and_then(Value::as_str).unwrap_or("").to_string();
@@ -101,6 +103,9 @@ fn MatchSheet(sheet: Value) -> impl IntoView {
                 <span class="ms-name">{s(&sheet, "name")}</span>
                 <span class="ms-box"><span class="ms-label">"Arbitre"</span>{referee}</span>
                 <span class="ms-box"><span class="ms-label">"Piste"</span>{piste}</span>
+                {(!club.is_empty() && !token.is_empty()).then(|| view! {
+                    <span class="ms-qr" title="Arbitre : scannez, puis votre code PIN"><crate::qr::QrCode text=crate::qr::sheet_url(&club, &token) /></span>
+                })}
             </div>
             <div style="white-space:pre-line;font-size:10px">{s(&sheet, "officiating")}</div>
             {arr(&sheet, "fencers")

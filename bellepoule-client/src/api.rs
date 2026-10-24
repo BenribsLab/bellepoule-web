@@ -236,6 +236,8 @@ pub struct ContestSummary {
     pub team_event: bool,
     pub fencers: usize,
     pub stage: String,
+    #[serde(default)]
+    pub hidden: bool,
 }
 
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize, Default)]
@@ -260,6 +262,9 @@ pub struct Properties {
     /// `top_bonus`, `formula`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub points: Option<serde_json::Value>,
+    /// Remplissage automatique des scores.
+    #[serde(default)]
+    pub score_stuffing: bool,
 }
 
 #[derive(Clone, Debug, Serialize)]

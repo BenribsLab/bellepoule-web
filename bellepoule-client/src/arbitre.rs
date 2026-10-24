@@ -192,6 +192,14 @@ fn push_live(who: &Who, state: Value) {
 #[component]
 pub fn ArbitrePage() -> impl IntoView {
     let who = RwSignal::new(None::<Who>);
+    // QR code d'une feuille (`?c=<club>&s=<jeton>`) : PIN de l'arbitre.
+    let pin_for = RwSignal::new(None::<(String, String)>);
+    if let (Some(c), Some(t), None) = (param("c"), param("s"), param("k")) {
+        pin_for.set(Some((c, t)));
+        if let Some(h) = web_sys::window().and_then(|w| w.history().ok()) {
+            let _ = h.replace_state_with_url(&wasm_bindgen::JsValue::NULL, "", Some("/"));
+        }
+    }
     match (param("c"), param("r").and_then(|r| r.parse().ok()), param("k")) {
         (Some(c), Some(r), Some(k)) => {
             let w = Who { c, r, k };
@@ -217,7 +225,17 @@ pub fn ArbitrePage() -> impl IntoView {
     }
     view! {
         <div class="ref-app">
-            {move || match who.get() {
+            {move || pin_for.get().map(|(club, token)| {
+                let done = Callback::new(move |w: Option<Who>| {
+                    if let Some(w) = w {
+                        save(IDENTITY, &w);
+                        who.set(Some(w));
+                    }
+                    pin_for.set(None);
+                });
+                view! { <PinScreen club=club token=token current=who.get_untracked() done=done /> }
+            })}
+            {move || pin_for.with(Option::is_none).then(|| match who.get() {
                 None => view! {
                     <div class="ref-screen ref-center">
                         <h1>"ManageComp Arbitre"</h1>
@@ -235,6 +253,83 @@ pub fn ArbitrePage() -> impl IntoView {
                         view! { <JobsScreen who=w forget=Callback::new(move |_| { forget(IDENTITY); who.set(None); }) /> }.into_any()
                     }
                 }
+            })}
+        </div>
+    }
+}
+
+// ---------------------------------------------------------------- code PIN
+
+/// QR code d'une feuille : le téléphone déjà reconnu pour cette feuille y
+/// va directement ; sinon l'arbitre entre son PIN (une fois par compétition).
+#[component]
+fn PinScreen(club: String, token: String, current: Option<Who>, done: Callback<Option<Who>>) -> impl IntoView {
+    let checking = RwSignal::new(current.as_ref().is_some_and(|w| w.c == club));
+    let pin = RwSignal::new(String::new());
+    let error = RwSignal::new(None::<String>);
+    let busy = RwSignal::new(false);
+    let token = StoredValue::new(token);
+    let club = StoredValue::new(club);
+    let open_sheet = move || go(&format!("#/feuille/{}", enc(&token.get_value())));
+    if let Some(w) = current.filter(|w| w.c == club.get_value()) {
+        spawn_local(async move {
+            let path = format!("/api/smartpoule/phone/jobs?{}", w.query());
+            let mine = api::get::<Value>(&path).await.ok().is_some_and(|d| arr(&d, "jobs").iter().any(|j| s(j, "token") == token.get_value()));
+            if mine {
+                open_sheet();
+                done.run(None);
+            } else {
+                checking.set(false);
+            }
+        });
+    }
+    let submit = move |ev: leptos::ev::SubmitEvent| {
+        ev.prevent_default();
+        if busy.get_untracked() {
+            return;
+        }
+        busy.set(true);
+        error.set(None);
+        let body = json!({ "c": club.get_value(), "token": token.get_value(), "pin": pin.get_untracked() });
+        spawn_local(async move {
+            match api::send::<_, Value>("POST", "/api/smartpoule/phone/pin", &body).await {
+                Ok(v) => {
+                    let w = Who { c: s(&v, "c"), r: u(&v, "r") as u32, k: s(&v, "k") };
+                    open_sheet();
+                    done.run(Some(w));
+                }
+                Err(e) => {
+                    error.set(Some(e.message));
+                    pin.set(String::new());
+                }
+            }
+            busy.set(false);
+        });
+    };
+    view! {
+        <div class="ref-screen ref-pin-screen">
+            <div class="ref-brand">"ManageComp Arbitre"</div>
+            {move || if checking.get() {
+                view! { <p class="ref-muted">"Vérification…"</p> }.into_any()
+            } else {
+                view! {
+                    <form class="ref-pin" on:submit=submit>
+                        <p>"Entrez votre code PIN d'arbitre pour arbitrer cette feuille. Il ne vous sera demandé qu'une fois pour la compétition."</p>
+                        <input
+                            class="ref-pin-input"
+                            type="password"
+                            inputmode="numeric"
+                            autocomplete="one-time-code"
+                            maxlength="4"
+                            placeholder="••••"
+                            prop:value=move || pin.get()
+                            on:input=move |ev| pin.set(event_target_value(&ev).chars().filter(char::is_ascii_digit).take(4).collect())
+                        />
+                        {move || error.get().map(|e| view! { <p class="ref-error">{e}</p> })}
+                        <button type="submit" class="ref-pin-ok" disabled=move || busy.get() || pin.get().len() != 4>"Valider"</button>
+                        <p class="ref-small ref-muted">"Pas de code PIN ? Il est sur votre feuille personnelle d'arbitre, ou demandez-le à l'organisation."</p>
+                    </form>
+                }.into_any()
             }}
         </div>
     }

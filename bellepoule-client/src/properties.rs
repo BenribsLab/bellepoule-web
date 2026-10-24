@@ -39,6 +39,7 @@ pub struct PropertiesForm {
     pub team_size: RwSignal<String>,
     pub substitutes: RwSignal<String>,
     pub points: RwSignal<Option<serde_json::Value>>,
+    pub score_stuffing: RwSignal<bool>,
 }
 
 impl PropertiesForm {
@@ -59,6 +60,7 @@ impl PropertiesForm {
             team_size: RwSignal::new(p.team_size.unwrap_or(3).to_string()),
             substitutes: RwSignal::new(p.substitutes.unwrap_or(1).to_string()),
             points: RwSignal::new(p.points.clone()),
+            score_stuffing: RwSignal::new(p.score_stuffing),
         }
     }
 
@@ -79,6 +81,7 @@ impl PropertiesForm {
             team_size: self.team_size.get().parse().ok(),
             substitutes: self.substitutes.get().parse().ok(),
             points: self.points.get(),
+            score_stuffing: self.score_stuffing.get(),
         }
     }
 }
@@ -171,6 +174,18 @@ pub fn PropertiesFields(form: PropertiesForm, meta: Meta, #[prop(default = true)
                     <input type="number" min="0" max="10" prop:value=move || form.substitutes.get() on:input=move |ev| form.substitutes.set(event_target_value(&ev)) />
                 </label>
             </Show>
+            <fieldset class="scores-policy">
+                <legend>"Scores"</legend>
+                <span>"Remplissage automatique des scores"</span>
+                <label class="check" title="Bouton « Remplissage automatique » dans les poules et les tableaux : scores aléatoires pour tester la formule">
+                    <input type="radio" name="score-stuffing" prop:checked=move || form.score_stuffing.get() on:change=move |_| form.score_stuffing.set(true) />
+                    "⚠ Autoriser"
+                </label>
+                <label class="check">
+                    <input type="radio" name="score-stuffing" prop:checked=move || !form.score_stuffing.get() on:change=move |_| form.score_stuffing.set(false) />
+                    "Interdire"
+                </label>
+            </fieldset>
             {move || form.points.with(Option::is_some).then(|| view! { <PointsFields points=form.points /> })}
         </div>
     }

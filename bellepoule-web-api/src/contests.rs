@@ -56,6 +56,8 @@ pub struct ContestSummary {
     fencers: usize,
     /// Phase en cours (classe et nom).
     stage: String,
+    /// Retirée de l'accueil (conservée).
+    hidden: bool,
 }
 
 pub fn summary(id: &str, c: &Contest) -> ContestSummary {
@@ -81,6 +83,7 @@ pub fn summary(id: &str, c: &Contest) -> ContestSummary {
         team_event: c.settings.team_event,
         fencers: c.schedule.checkin().map(|ch| ch.fencers(&c.players).len()).unwrap_or(0),
         stage,
+        hidden: false,
     }
 }
 
@@ -120,6 +123,9 @@ pub struct Properties {
     /// Points de la compétition (préférences « Points »).
     #[serde(default)]
     pub points: Option<bp_core::points::PointsSettings>,
+    /// Remplissage automatique des scores (tests de la formule).
+    #[serde(default)]
+    pub score_stuffing: Option<bool>,
 }
 
 fn properties_of(c: &Contest) -> Properties {
@@ -139,6 +145,7 @@ fn properties_of(c: &Contest) -> Properties {
         team_size: Some(c.settings.team_size),
         substitutes: Some(c.settings.substitutes),
         points: Some(c.points.clone()),
+        score_stuffing: Some(c.settings.score_stuffing_allowed),
     }
 }
 
@@ -192,13 +199,35 @@ fn apply(c: &mut Contest, p: &Properties) -> Result<(), ApiError> {
         }
         c.points = points.clone();
     }
+    if let Some(stuffing) = p.score_stuffing {
+        c.set_score_stuffing(stuffing);
+    }
     c.apply_properties(None);
     Ok(())
 }
 
 pub async fn list(State(store): State<Shared>, client: Client) -> Json<Vec<ContestSummary>> {
     let store = store.lock().await;
-    Json(store.list(&client).map(|(id, c)| summary(id, c)).collect())
+    let hidden = store.hidden(&client);
+    Json(
+        store
+            .list(&client)
+            .map(|(id, c)| ContestSummary { hidden: hidden.contains(id), ..summary(id, c) })
+            .collect(),
+    )
+}
+
+#[derive(Deserialize)]
+pub struct Hidden {
+    hidden: bool,
+}
+
+/// Retire une compétition de l'accueil (sans l'effacer) ou l'y remet.
+pub async fn set_hidden(State(store): State<Shared>, client: Client, Path(id): Path<String>, Json(h): Json<Hidden>) -> Result<StatusCode, ApiError> {
+    let store = store.lock().await;
+    store.get(&client, &id).ok_or_else(not_found)?;
+    store.set_hidden(&client, &id, h.hidden).map_err(internal)?;
+    Ok(StatusCode::NO_CONTENT)
 }
 
 pub async fn get_one(State(store): State<Shared>, client: Client, Path(id): Path<String>) -> Result<Json<ContestSummary>, ApiError> {
@@ -244,13 +273,60 @@ pub async fn set_properties(State(store): State<Shared>, client: Client, Path(id
 }
 
 /// Import d'un fichier `.cotcot` (corps de la requête).
-pub async fn import(State(store): State<Shared>, client: Client, body: String) -> Result<(StatusCode, Json<ContestSummary>), ApiError> {
-    let mut c = Contest::new(None, false);
-    c.load_xml_str(&body).map_err(|e| bad_request(e.to_string()))?;
+#[derive(Deserialize, Default)]
+pub struct ImportQuery {
+    /// Nom du fichier : son extension choisit le format.
+    #[serde(default)]
+    name: String,
+}
+
+/// Ouverture d'un fichier comme sur le bureau : `.cotcot`/`.xml`, archive
+/// `.zip` de la FFE (extranet, premier XML), AskFred `.frd` (une compétition
+/// par épreuve). Renvoie les compétitions créées.
+pub async fn import(
+    State(store): State<Shared>,
+    client: Client,
+    Query(q): Query<ImportQuery>,
+    body: axum::body::Bytes,
+) -> Result<(StatusCode, Json<Vec<ContestSummary>>), ApiError> {
+    use bp_core::formats::archive::{self, FileKind};
+    let xml = |bytes: &[u8]| -> Result<Contest, ApiError> {
+        let text = bp_core::formats::encoding::decode_xml(bytes).map_err(|e| bad_request(e.to_string()))?;
+        let mut c = Contest::new(None, false);
+        c.load_xml_str(&text).map_err(|e| bad_request(e.to_string()))?;
+        Ok(c)
+    };
+    let contests = match archive::file_kind(&q.name.to_lowercase()) {
+        FileKind::Zip => {
+            let entries = archive::xml_entries(&body).map_err(|e| bad_request(e.to_string()))?;
+            let (_, content) = entries.into_iter().next().ok_or_else(|| bad_request("aucune compétition XML dans l'archive"))?;
+            vec![xml(&content)?]
+        }
+        FileKind::AskFred => {
+            let file = bp_core::formats::askfred::reader::AskFredFile::parse(&body).map_err(|e| bad_request(e.to_string()))?;
+            if file.events.is_empty() {
+                return Err(bad_request("aucune épreuve dans le fichier AskFred"));
+            }
+            file.events
+                .iter()
+                .map(|event| {
+                    let mut c = Contest::new(None, false);
+                    c.load_askfred(&file, event);
+                    c
+                })
+                .collect()
+        }
+        FileKind::Contest => vec![xml(&body)?],
+        _ => return Err(bad_request("fichier non reconnu : .cotcot, .xml, .zip ou .frd attendu")),
+    };
     let mut store = store.lock().await;
-    let id = store.insert(&client, c).map_err(internal)?;
-    let c = store.get(&client, &id).ok_or_else(not_found)?;
-    Ok((StatusCode::CREATED, Json(summary(&id, c))))
+    let mut created = Vec::new();
+    for c in contests {
+        let id = store.insert(&client, c).map_err(internal)?;
+        let c = store.get(&client, &id).ok_or_else(not_found)?;
+        created.push(summary(&id, c));
+    }
+    Ok((StatusCode::CREATED, Json(created)))
 }
 
 pub async fn remove(State(store): State<Shared>, client: Client, Path(id): Path<String>) -> Result<StatusCode, ApiError> {
