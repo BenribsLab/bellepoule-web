@@ -779,6 +779,34 @@ impl Contest {
                 }
             }
         }
+        // La division poursuit la formule de la compétition après le point de
+        // scission (phases et réglages), pas la formule par défaut.
+        let continuation = self.formula_after(index);
+        if !continuation.is_empty() {
+            target.with_schedule(|schedule, ctx| {
+                while schedule.len() > 1 {
+                    let last = schedule.len() - 1;
+                    schedule.remove_stage(ctx, last);
+                }
+                let mut last_kind = None;
+                for spec in &continuation {
+                    // Une poule de division ajoute elle-même son tour de poules.
+                    let at = if spec.kind == crate::stage::StageKind::PoolSupervisor && last_kind == Some(crate::stage::StageKind::DivisionRound) {
+                        schedule.len() - 1
+                    } else {
+                        schedule.add_kind(ctx, spec.kind, None)
+                    };
+                    last_kind = Some(spec.kind);
+                    if let Some(stage) = schedule.stage_mut(at) {
+                        spec.apply(stage, ctx.players);
+                    }
+                }
+                if schedule.stage(schedule.len() - 1).is_none_or(|s| s.kind() != crate::stage::StageKind::GeneralClassification) {
+                    schedule.add_kind(ctx, crate::stage::StageKind::GeneralClassification, None);
+                }
+                schedule.set_current(0);
+            });
+        }
         target.with_schedule(|schedule, ctx| {
             if let Some(checkin) = schedule.checkin_mut() {
                 checkin.on_list_changed(ctx);
@@ -786,6 +814,40 @@ impl Contest {
         });
         target.dirty = true;
         Ok(target)
+    }
+
+    /// Phases de la formule après `index` (point de scission), avec leurs
+    /// réglages : ce que les divisions poursuivent.
+    fn formula_after(&self, index: usize) -> Vec<StageSpec> {
+        use crate::rounds::pool::PoolSupervisorStage;
+        use crate::rounds::table::supervisor::TableSupervisor;
+        let mut out = Vec::new();
+        for j in index + 1..self.schedule.len() {
+            let Some(s) = self.schedule.stage(j) else { continue };
+            if s.is_input_provider() {
+                continue;
+            }
+            let base = s.base();
+            let mut spec = StageSpec {
+                kind: s.kind(),
+                name: base.name.clone(),
+                max_score: base.max_score,
+                nb_qualified: base.nb_qualified,
+                timing: base.bout_timing,
+                pool: None,
+                fenced: None,
+            };
+            if let Some(p) = s.as_any().downcast_ref::<PoolSupervisorStage>() {
+                let round = p.round();
+                spec.pool = Some(PoolSpec { name: round.name.clone(), max_score: round.max_score, nb_qualified: round.nb_qualified(), criteria: round.swapping_criteria().to_vec() });
+            }
+            if let Some(t) = s.as_any().downcast_ref::<TableSupervisor>() {
+                spec.fenced = Some(t.fenced_places_mode());
+                spec.max_score = Some(t.max_score());
+            }
+            out.push(spec);
+        }
+        out
     }
 
     /// Points de chaque tireur au classement général (préférences « Points »
@@ -821,6 +883,54 @@ impl Contest {
     /// Un libellé est conseillé pour la publication sur GREG.
     pub fn needs_label_for_greg(&self) -> bool {
         self.label.is_empty()
+    }
+}
+
+/// Réglages d'une phase recopiés dans une division (point de scission).
+struct StageSpec {
+    kind: crate::stage::StageKind,
+    name: String,
+    max_score: Option<u32>,
+    nb_qualified: Option<u32>,
+    timing: crate::officiating::BoutTiming,
+    pool: Option<PoolSpec>,
+    fenced: Option<crate::rounds::table::supervisor::FencedPlaces>,
+}
+
+struct PoolSpec {
+    name: String,
+    max_score: u32,
+    nb_qualified: Option<u32>,
+    criteria: Vec<String>,
+}
+
+impl StageSpec {
+    fn apply(&self, stage: &mut dyn crate::stage::Stage, players: &mut PlayerStore) {
+        {
+            let base = stage.base_mut();
+            if !self.name.is_empty() {
+                base.name = self.name.clone();
+            }
+            base.max_score = self.max_score;
+            base.nb_qualified = self.nb_qualified;
+            base.bout_timing = self.timing;
+        }
+        if let (Some(pool), Some(p)) = (&self.pool, stage.as_any_mut().downcast_mut::<crate::rounds::pool::PoolSupervisorStage>()) {
+            let mut round = p.round();
+            round.name = pool.name.clone();
+            round.set_max_score(pool.max_score);
+            round.set_nb_qualified(pool.nb_qualified);
+            let regular: Vec<&str> = crate::rounds::pool::round::regular_swapping_criteria();
+            let reg: Vec<&str> = pool.criteria.iter().map(String::as_str).filter(|c| regular.contains(c)).collect();
+            let extras: Vec<&str> = pool.criteria.iter().map(String::as_str).filter(|c| !regular.contains(c)).collect();
+            round.set_swapping_criteria(players, &reg, &extras);
+        }
+        if let (Some(mode), Some(t)) = (self.fenced, stage.as_any_mut().downcast_mut::<crate::rounds::table::supervisor::TableSupervisor>()) {
+            t.set_fenced_places(mode);
+            if let Some(m) = self.max_score {
+                t.set_max_score(m);
+            }
+        }
     }
 }
 

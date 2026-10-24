@@ -245,7 +245,7 @@ fn with_etag(etag: String, body: String) -> Response {
 
 pub async fn event(State(store): State<Shared>, headers: HeaderMap, Path((club, slug)): Path<(String, String)>) -> Response {
     let base = public_base(&headers);
-    let (p, xml, event, links) = {
+    let (p, xml, event, links, siblings, etag) = {
         let mut store = store.lock().await;
         // Événement : la liste de ses épreuves.
         if let Some(e) = store.public_events().iter().find(|e| e.club_slug == club && e.slug == slug).cloned() {
@@ -257,7 +257,8 @@ pub async fn event(State(store): State<Shared>, headers: HeaderMap, Path((club, 
             return with_etag(etag, layout(&base, &e.name, e.noindex, event_group_page(&base, &e, &list)));
         }
         let Some(p) = store.publications().iter().find(|p| p.club_slug == club && p.slug == slug).cloned() else { return not_found() };
-        let etag = format!("\"p{}-{}-{ASSETS}\"", p.updated, p.names);
+        let sisters = store.publications().iter().filter(|o| !p.event.is_empty() && o.event == p.event && o.id != p.id).map(|o| o.updated).max().unwrap_or(0);
+        let etag = format!("\"p{}-{sisters}-{}-{ASSETS}\"", p.updated, p.names);
         if unchanged(&headers, &etag) {
             return StatusCode::NOT_MODIFIED.into_response();
         }
@@ -270,23 +271,44 @@ pub async fn event(State(store): State<Shared>, headers: HeaderMap, Path((club, 
             .filter(|o| !p.event.is_empty() && o.event == p.event && o.club == p.club && o.id != p.id)
             .map(|o| (o.title.clone(), format!("{base}{}/{}", o.club_slug, o.slug)))
             .collect();
-        (p, xml, event, links)
+        // Copies des épreuves sœurs, lues seulement si la formule a une scission.
+        let siblings: Vec<(String, String, String)> = if xml.contains("Scission") || xml.contains("Splitting") {
+            store
+                .publications()
+                .iter()
+                .filter(|o| !p.event.is_empty() && o.event == p.event && o.club == p.club && o.id != p.id)
+                .cloned()
+                .collect::<Vec<_>>()
+                .into_iter()
+                .filter_map(|o| Some((o.title.clone(), format!("{base}{}/{}", o.club_slug, o.slug), std::fs::read_to_string(store.publication_file(&o.id)).ok()?)))
+                .collect()
+        } else {
+            Vec::new()
+        };
+        (p, xml, event, links, siblings, etag)
     };
-    let etag = format!("\"p{}-{}-{ASSETS}\"", p.updated, p.names);
     let mut c = Contest::new(None, false);
     if c.load_xml_str(&xml).is_err() {
         return not_found();
     }
     let names = Names { short: p.names == "short" };
-    let body = event_body(&base, &p, event.as_ref(), &links, &mut c, &names);
+    // Épreuves du même événement (divisions d'un point de scission) : leur suite.
+    let divisions: Vec<DivisionContest> = siblings
+        .into_iter()
+        .filter_map(|(title, url, xml)| {
+            let mut contest = Contest::new(None, false);
+            contest.load_xml_str(&xml).ok()?;
+            Some(DivisionContest { title, url, contest })
+        })
+        .collect();
+    let body = event_body(&base, &p, event.as_ref(), &links, &divisions, &mut c, &names);
     with_etag(etag, layout(&base, &format!("{} — {}", p.title, p.subtitle), p.noindex, body))
 }
 
-fn event_body(base: &str, p: &Publication, event: Option<&PublicEvent>, links: &[(String, String)], c: &mut Contest, names: &Names) -> String {
-    let current = c.schedule.current_index();
+fn event_body(base: &str, p: &Publication, event: Option<&PublicEvent>, links: &[(String, String)], divisions: &[DivisionContest], c: &mut Contest, names: &Names) -> String {
     let over = c.schedule.is_over();
     let sections: Vec<(&str, &str, String)> = vec![
-        ("formule", "Formule", formula(c, current, over, links)),
+        ("formule", "Formule", formula(c, links, divisions)),
         ("tireurs", "Tireurs", fencers(c, names)),
         ("poules", "Poules", pools(c, names)),
         ("tableaux", "Tableaux", tables(c, names)),
@@ -344,9 +366,17 @@ fn qualified(c: &Contest, n: usize) -> String {
     format!("{n} qualifié{}{}", if feminine { "e" } else { "" }, if n > 1 { "s" } else { "" })
 }
 
+/// Compétition d'une division : nom, adresse publique, contenu.
+pub struct DivisionContest {
+    title: String,
+    url: String,
+    contest: Contest,
+}
+
 /// Formule : tireurs au départ, puis chaque phase (entrants, poules,
-/// décalage, qualifiés ; tableau, exemptés), comme les sites de résultats.
-fn formula(c: &Contest, current: usize, over: bool, links: &[(String, String)]) -> String {
+/// décalage, qualifiés ; tableau, exemptés) ; après un point de scission,
+/// la suite de chaque division.
+fn formula(c: &Contest, links: &[(String, String)], divisions: &[DivisionContest]) -> String {
     let start = c
         .schedule
         .checkin()
@@ -361,17 +391,40 @@ fn formula(c: &Contest, current: usize, over: bool, links: &[(String, String)]) 
     if pool_rounds > 0 {
         out.push_str(&format!("<p>{pool_rounds} tour{} de poules</p>", if pool_rounds > 1 { "s" } else { "" }));
     }
-    for i in 0..c.schedule.len() {
+    out.push_str(&phases(c, 0, (start > 0).then_some(start), links, divisions));
+    out.push_str("</div>");
+    out
+}
+
+fn block(state: &str, title: &str, lines: &[String]) -> String {
+    format!(
+        "<hr><div class=\"phase {state}\"><h4>{}</h4>{}</div>",
+        esc(title),
+        lines
+            .iter()
+            .map(|l| match l.strip_prefix('\u{1}') {
+                Some(html) => format!("<p>{html}</p>"),
+                None => format!("<p>{}</p>", esc(l)),
+            })
+            .collect::<String>()
+    )
+}
+
+/// Phases de `c` à partir de `from`. `carry` : nombre de tireurs attendus
+/// (qualifiés de la phase précédente) tant qu'une phase n'a pas commencé.
+fn phases(c: &Contest, from: usize, mut carry: Option<usize>, links: &[(String, String)], divisions: &[DivisionContest]) -> String {
+    let current = c.schedule.current_index();
+    let over = c.schedule.is_over();
+    let mut out = String::new();
+    for i in from..c.schedule.len() {
         let Some(s) = c.schedule.stage(i) else { continue };
         let state = if over || i < current { "done" } else if i == current { "current" } else { "next" };
-        let entrants = s.base().attendees.len();
+        let entrants = Some(s.base().attendees.len()).filter(|n| *n > 0);
         let mut lines: Vec<String> = Vec::new();
-        let title;
         if let Some(sup) = s.as_any().downcast_ref::<PoolSupervisorStage>() {
             let round = sup.round();
-            title = format!("Poules — {}", round.name);
-            let n = if entrants > 0 { entrants } else { round.attendees().len() };
-            if n > 0 {
+            let n = entrants.or(Some(round.attendees().len()).filter(|n| *n > 0)).or(carry);
+            if let Some(n) = n {
                 lines.push(people(c, n));
             }
             // Poules : nombre et tailles (« 3 poules de 7, 3 poules de 6 »).
@@ -391,62 +444,90 @@ fn formula(c: &Contest, current: usize, over: bool, links: &[(String, String)]) 
                 }
                 groups.sort_by(|a, b| b.0.cmp(&a.0));
                 let detail = groups.iter().map(|(size, k)| format!("{k} poule{} de {size}", if *k > 1 { "s" } else { "" })).collect::<Vec<_>>().join(", ");
-                let total = sizes.len();
-                lines.push(if groups.len() > 1 { format!("{total} poules ({detail})") } else { detail });
+                lines.push(if groups.len() > 1 { format!("{} poules ({detail})", sizes.len()) } else { detail });
             }
             let criteria: Vec<String> = round.swapping_criteria().iter().map(|code| tr(bp_core::attribute::desc(code).user_name).to_lowercase()).collect();
             if !criteria.is_empty() {
                 lines.push(format!("Décalage par : {}", criteria.join(", ")));
             }
-            if let Some(q) = round.nb_qualified().map(|q| q as usize).or((n > 0).then_some(n)) {
+            let q = round.nb_qualified().map(|q| q as usize).or(n);
+            if let Some(q) = q {
                 lines.push(qualified(c, q));
             }
+            carry = q;
+            out.push_str(&block(state, &format!("Poules — {}", round.name), &lines));
         } else if let Some(sup) = s.as_any().downcast_ref::<TableSupervisor>() {
-            title = if entrants > 0 { format!("Élimination directe : {}", people(c, entrants)) } else { "Élimination directe".to_string() };
-            // Premier tableau : taille et exemptés.
-            let size = sup.table_sets().first().and_then(|set| set.tables().iter().map(|t| t.size()).max()).unwrap_or(0) as usize;
-            if size > 1 {
-                let exempted = size.saturating_sub(entrants);
-                lines.push(if entrants > 0 && exempted > 0 {
-                    format!("Tableau de {size}, {exempted} exempté{}{}", if c.gender == 1 && !c.settings.team_event { "e" } else { "" }, if exempted > 1 { "s" } else { "" })
-                } else {
-                    format!("Tableau de {size}")
-                });
+            let n = entrants.or(carry);
+            let title = match n {
+                Some(n) => format!("Élimination directe : {}", people(c, n)),
+                None => "Élimination directe".to_string(),
+            };
+            // Premier tableau : taille (connue, sinon d'après les entrants) et exemptés.
+            let size = sup.table_sets().first().and_then(|set| set.tables().iter().map(|t| t.size()).max()).map(|s| s as usize).filter(|s| *s > 1).or(n.map(|n| n.max(2).next_power_of_two()));
+            let feminine = c.gender == 1 && !c.settings.team_event;
+            if let Some(size) = size {
+                let exempted = n.map(|n| size.saturating_sub(n)).unwrap_or(0);
+                let mut line = format!("Tableau de {size}");
+                if exempted > 0 {
+                    line.push_str(&format!(", {exempted} exempté{}{}", if feminine { "e" } else { "" }, if exempted > 1 { "s" } else { "" }));
+                }
+                if s.base().nb_qualified.is_none() {
+                    line.push_str(" jusqu'à la finale");
+                }
+                lines.push(line);
             }
             if let Some(q) = s.base().nb_qualified {
                 lines.push(qualified(c, q as usize));
             }
+            carry = s.base().nb_qualified.map(|q| q as usize).or(n);
+            out.push_str(&block(state, &title, &lines));
         } else if let Some(split) = s.as_any().downcast_ref::<bp_core::rounds::splitting::Splitting>() {
-            title = tr("Splitting");
-            if entrants > 0 {
-                lines.push(people(c, entrants));
+            if let Some(n) = entrants.or(carry) {
+                lines.push(people(c, n));
             }
             // Lignes déjà en HTML (liens vers les divisions) : marquées.
             lines.extend(split_lines(c, split, s.name(), links).into_iter().map(|h| format!("\u{1}{h}")));
+            out.push_str(&block(state, &tr("Splitting"), &lines));
+            let used = split.divisions_in_use(&c.players);
+            if !used.is_empty() {
+                // La suite de chaque division (sa propre compétition).
+                for d in &used {
+                    let label = split.division_name(*d);
+                    let count = split.exported_players(&c.players, *d).len();
+                    let target = if c.name.trim().is_empty() { label.clone() } else { format!("{} - {}", c.name.trim(), label.trim()) };
+                    let found = divisions.iter().find(|x| x.title == target);
+                    let head = match found {
+                        Some(x) => format!("<a href=\"{}\">{}</a>", esc(&x.url), esc(&label)),
+                        None => esc(&label),
+                    };
+                    out.push_str(&format!("<div class=\"division\"><h4 class=\"division-head\">{head}</h4>"));
+                    if let Some(x) = found {
+                        out.push_str(&phases(&x.contest, 1, Some(count), &[], &[]));
+                    }
+                    out.push_str("</div>");
+                }
+                let remaining = split.remaining(&c.players).len();
+                if remaining == 0 {
+                    // Plus personne ici : la suite est dans les divisions.
+                    break;
+                }
+                out.push_str(&format!("<hr><p class=\"division-head\">Suite de cette épreuve : {}</p>", esc(&people(c, remaining))));
+                carry = Some(remaining);
+            } else {
+                carry = entrants.or(carry);
+            }
         } else {
             let kind = s.kind();
             // Appel, composition des poules, classement : déjà dits.
             if matches!(kind, bp_core::stage::StageKind::Checkin | bp_core::stage::StageKind::PoolAllocator | bp_core::stage::StageKind::GeneralClassification) {
                 continue;
             }
-            title = format!("{} {}", tr(kind.class_name()), s.name()).trim().to_string();
-            if entrants > 0 {
-                lines.push(people(c, entrants));
+            if let Some(n) = entrants.or(carry) {
+                lines.push(people(c, n));
             }
+            out.push_str(&block(state, &format!("{} {}", tr(kind.class_name()), s.name()).trim().to_string(), &lines));
         }
-        out.push_str(&format!(
-            "<hr><div class=\"phase {state}\"><h4>{}</h4>{}</div>",
-            esc(&title),
-            lines
-                .iter()
-                .map(|l| match l.strip_prefix('\u{1}') {
-                    Some(html) => format!("<p>{html}</p>"),
-                    None => format!("<p>{}</p>", esc(l)),
-                })
-                .collect::<String>()
-        ));
     }
-    out.push_str("</div>");
     out
 }
 
@@ -471,7 +552,10 @@ fn split_lines(c: &Contest, split: &bp_core::rounds::splitting::Splitting, stage
                 format!("{name} : {} → épreuve à part", esc(&people(c, split.exported_players(&c.players, *d).len())))
             })
             .collect();
-        lines.push(esc(&format!("Restent : {}", people(c, split.remaining(&c.players).len()))));
+        let remaining = split.remaining(&c.players).len();
+        if remaining > 0 {
+            lines.push(esc(&format!("Restent : {}", people(c, remaining))));
+        }
         return lines;
     }
     let config = &split.config;

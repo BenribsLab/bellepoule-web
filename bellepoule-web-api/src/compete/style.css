@@ -112,3 +112,8 @@ table { border-collapse: collapse; }
 .bouts-list { display: none; }
 .filtering .bouts-list { display: block; }
 .filtering .trees { display: none; }
+
+/* Formule : suite de chaque division après un point de scission */
+.division { border-left: 4px solid var(--accent); padding-left: 12px; margin: 10px 0 6px; }
+.division-head { margin: 8px 0 0; font-weight: 800; color: var(--accent); }
+.division hr:first-of-type { display: none; }
