@@ -1,6 +1,6 @@
 # French translation for bellepoule
 # Copyright (c) 2010 Rosetta Contributors and Canonical Ltd 2010
-# This file is distributed under the same license as the BellePoule package.
+# This file is distributed under the same license as the ManageComp package.
 #
 msgid ""
 msgstr ""
@@ -46,8 +46,8 @@ msgstr "Suivez les instructions données par "
 msgid "Access denied!"
 msgstr "Accès refusé !"
 
-msgid "<b>Smartpoule</b> configuration code"
-msgstr "Code de configuration de <b>SmartPoule</b>"
+msgid "<b>ManageComp Arbitre</b> configuration code"
+msgstr "Code de configuration de <b>ManageComp Arbitre</b>"
 
 msgid ""
 "Uncheck this box to quicken the data input. The corresponding field will be "
@@ -161,8 +161,8 @@ msgstr "Fichiers d'exemples"
 msgid "Competition files"
 msgstr "Fichiers de compétition"
 
-msgid "BellePoule files"
-msgstr "Fichiers BellePoule"
+msgid "ManageComp files"
+msgstr "Fichiers ManageComp"
 
 msgid "Recently opened files"
 msgstr "Fichiers récemment ouverts"
@@ -217,8 +217,8 @@ msgstr ""
 "\n"
 "Réafficher la fiche pour le renseigner ?"
 
-msgid "BellePoule files (.cotcot)"
-msgstr "Les fichiers BellePoule (.cotcot)"
+msgid "ManageComp files (.cotcot)"
+msgstr "Les fichiers ManageComp (.cotcot)"
 
 msgid "Close without saving"
 msgstr "Fermer sans enregistrer"
@@ -256,11 +256,11 @@ msgstr ""
 msgid "Barrage"
 msgstr "Barrage"
 
-msgid "<b><big>Do you really want to quit BellePoule</big></b>"
-msgstr "<b><big>Voulez-vous vraiment quitter BellePoule ?</big></b>"
+msgid "<b><big>Do you really want to quit ManageComp</big></b>"
+msgstr "<b><big>Voulez-vous vraiment quitter ManageComp ?</big></b>"
 
-msgid "Quit BellePoule?"
-msgstr "Quitter BellePoule ?"
+msgid "Quit ManageComp?"
+msgstr "Quitter ManageComp ?"
 
 msgid "All the unsaved competions will be lost."
 msgstr "Toutes les compétitions non enregistrées seront perdues."
@@ -316,8 +316,8 @@ msgstr ""
 "<b>%s</b> est en retard.\n"
 "Voulez-vous décaler les matchs suivants ?\n"
 
-msgid "Restart BellePoule for this change to take effect"
-msgstr "Redémarrez BellePoule pour appliquer les changements"
+msgid "Restart ManageComp for this change to take effect"
+msgstr "Redémarrez ManageComp pour appliquer les changements"
 
 msgid "Educ"
 msgstr "Éduc"
@@ -829,8 +829,8 @@ msgstr "Promus"
 msgid "Eliminated"
 msgstr "Éliminés"
 
-msgid "BellePoule - Fencing tournament"
-msgstr "BellePoule - Tournoi d'escrime"
+msgid "ManageComp - Fencing tournament"
+msgstr "ManageComp - Tournoi d'escrime"
 
 msgid "File"
 msgstr "Fichier"
@@ -886,18 +886,18 @@ msgstr "Mot de passe"
 msgid ""
 "Enter your WIFI network settings here.\n"
 "They will be used to automatically configure\n"
-"the smarthphones running <b>SmartPoule</b>"
+"the smartphones running <b>ManageComp Arbitre</b>"
 msgstr ""
 "Copiez ici les paramètres du réseau WIFI.\n"
 "Ils seront automatiquement utilisés pour configurer\n"
-"les smartphones avec <b>SmartPoule</b>."
+"les smartphones avec <b>ManageComp Arbitre</b>."
 
 msgid ""
-"Scan this code with <b>SmartPoule</b>\n"
+"Scan this code with <b>ManageComp Arbitre</b>\n"
 "to make your smarphone\n"
 "a score sheet scanner."
 msgstr ""
-"Scannez ce code avec <b>SmartPoule</b>\n"
+"Scannez ce code avec <b>ManageComp Arbitre</b>\n"
 "pour transformer votre smartphone en\n"
 "scanner de feuilles de match."
 
@@ -907,11 +907,11 @@ msgstr "<b>Scanner de feuilles de match</b>"
 msgid "Connection rejected"
 msgstr "Connection rejetée"
 
-msgid "BellePoule2D is already operating on the network."
-msgstr "BellePoule2D est déjà présent sur le réseau"
+msgid "Organisation is already operating on the network."
+msgstr "Organisation est déjà présent sur le réseau"
 
-msgid "Connection to <b>BellePoule</b>"
-msgstr "Connexion à <b>BellePoule</b>"
+msgid "Connection to <b>ManageComp</b>"
+msgstr "Connexion à <b>ManageComp</b>"
 
 msgid "Plug an USB stick."
 msgstr "Insérez une clé USB."
@@ -921,20 +921,20 @@ msgstr "Retirez-la."
 
 msgid ""
 "Plug it now in a computer where\n"
-"<b>BellePoule</b> is running."
+"<b>ManageComp</b> is running."
 msgstr ""
 "Insérez-la maintenant dans l'ordinateur où\n"
-"tourne <b>BellePoule</b>."
+"tourne <b>ManageComp</b>."
 
 msgid "Scan this QRCode:"
 msgstr "Scannez ce QRCode :"
 
 msgid ""
 "Scan the other QRCode on the partner application\n"
-" (menu <b>BellePoule2D</b>)."
+" (menu <b>Organisation</b>)."
 msgstr ""
 "Scannez l'autre QRCode sur l'application partenaire\n"
-" (menu <b>BellePoule2D</b>)."
+" (menu <b>Organisation</b>)."
 
 msgid "Fenced places"
 msgstr "Places tirées"
@@ -1059,10 +1059,10 @@ msgstr ""
 "les compétitions issues de scission."
 
 msgid ""
-"BellePoule needs your agreement\n"
+"ManageComp needs your agreement\n"
 "to tweet on your behalf"
 msgstr ""
-"BellePoule a besoin de votre accord\n"
+"ManageComp a besoin de votre accord\n"
 "pour tweeter pour votre compte"
 
 msgid "Click on the link to open a web browser:"
@@ -1077,9 +1077,9 @@ msgstr "sur ce site web"
 msgid "Paste the authorization code here:"
 msgstr "Coller le code d'autorisation ici :"
 
-msgid "BellePoule needs your agreement to post announces on your behalf"
+msgid "ManageComp needs your agreement to post announces on your behalf"
 msgstr ""
-"BellePoule a besoin de votre accord pour poster des annonces pour votre "
+"ManageComp a besoin de votre accord pour poster des annonces pour votre "
 "compte"
 
 msgid "New competition"
@@ -1100,15 +1100,15 @@ msgstr "À partir d'un fichier zip de la FFE (extranet)"
 msgid "From AskFred (.frd)"
 msgstr "À partir d'AskFred (.frd)"
 
-msgid "Connection to <b>BellePoule2D</b>"
-msgstr "Connexion à <b>BellePoule2D</b>"
+msgid "Connection to <b>Organisation</b>"
+msgstr "Connexion à <b>Organisation</b>"
 
 msgid ""
 "Plug it now in a computer where\n"
-"<b>BellePoule2D</b> is running."
+"<b>Organisation</b> is running."
 msgstr ""
 "Insérez-la maintenant dans l'ordinateur où\n"
-"tourne <b>BellePoule2D</b>."
+"tourne <b>Organisation</b>."
 
 msgid "Recently opened"
 msgstr "Récemment ouvert"
@@ -1160,10 +1160,10 @@ msgstr "<b>Serveur vidéo</b>"
 
 msgid ""
 "Scan the other QRCode on the partner application\n"
-" (menu <b>BellePoule</b>)."
+" (menu <b>ManageComp</b>)."
 msgstr ""
 "Scanner l'autre QRCode sur l'application partenaire\n"
-" (menu <b>BellePoule</b>)."
+" (menu <b>ManageComp</b>)."
 
 msgid "Reload the imported fencers?"
 msgstr "Recharger les tireurs importés ?"
@@ -1546,3 +1546,807 @@ msgstr "Entraînement des jeunes — classement de chaque groupe"
 
 msgid "General classification (all groups)"
 msgstr "Classement général (tous les groupes)"
+
+msgid "Barrage bouts"
+msgstr "Matchs de barrage"
+
+msgid "Bouts to"
+msgstr "Matchs en"
+
+msgid "Places to award"
+msgstr "places à prendre"
+
+msgid "Print score sheets"
+msgstr "Imprimer les feuilles de match"
+
+msgid "Save"
+msgstr "Enregistrer"
+
+msgid "Saved"
+msgstr "Enregistré"
+
+msgid "These competitions are not saved:"
+msgstr "Ces compétitions ne sont pas enregistrées :"
+
+msgid "Connection"
+msgstr "Connexion"
+
+msgid "Presence"
+msgstr "Présence"
+
+msgid "Last name"
+msgstr "Nom"
+
+msgid "First name"
+msgstr "Prénom"
+
+msgid "Workload"
+msgstr "Charge"
+
+msgid "Club"
+msgstr "Club"
+
+msgid "Region"
+msgstr "Région"
+
+msgid "Country"
+msgstr "Pays"
+
+msgid "Hall"
+msgstr "Salle"
+
+msgid "Present"
+msgstr "Présent"
+
+msgid "Licence"
+msgstr "Licence"
+
+msgid "Choose a referee file to import..."
+msgstr "Choisissez un fichier d'arbitres à importer..."
+
+msgid "All referee files (FFF, CSV)"
+msgstr "Tous les fichiers d'arbitres (FFF, CSV)"
+
+msgid "<b><big>Authentication failed!</big></b>"
+msgstr "<b><big>Échec de l'authentification !</big></b>"
+
+msgid "<b><big>Another organisation is already running on the network!</big></b>"
+msgstr "<b><big>Une autre organisation est déjà présente sur le réseau !</big></b>"
+
+msgid "Change piste number…"
+msgstr "Modifier le numéro…"
+
+msgid "Piste number"
+msgstr "Numéro de piste"
+
+msgid "Piste not found."
+msgstr "Piste introuvable."
+
+msgid "The piste number must be greater than zero."
+msgstr "Le numéro de piste doit être supérieur à zéro."
+
+msgid "This piste number is already used."
+msgstr "Ce numéro de piste est déjà utilisé."
+
+msgid "Pool resources"
+msgstr "Pistes et arbitres de la poule"
+
+msgid "Pool resources…"
+msgstr "Pistes et arbitres de la poule…"
+
+msgid "Pool not found."
+msgstr "Poule introuvable."
+
+msgid "These resources are only available for pools."
+msgstr "Ces ressources sont réservées aux poules."
+
+msgid "Place the pool on a piste first."
+msgstr "Placez d’abord la poule sur une piste."
+
+msgid "Select at least one piste."
+msgstr "Sélectionnez au moins une piste."
+
+msgid "Assign a different referee to each piste."
+msgstr "Affectez un arbitre différent à chaque piste."
+
+msgid "Piste unavailable:"
+msgstr "Piste indisponible :"
+
+msgid "Referee not found."
+msgstr "Arbitre introuvable."
+
+msgid "Referee unavailable:"
+msgstr "Arbitre indisponible :"
+
+msgid "Referees (single piste)"
+msgstr "Arbitres (une seule piste)"
+
+msgid "Select a referee"
+msgstr "Choisir un arbitre"
+
+msgid "Select the pistes for this pool. For multiple pistes, choose a different referee beside each selected piste. Matches are scheduled in waves without simultaneous bouts for a fencer."
+msgstr "Cochez les pistes de cette poule. Pour plusieurs pistes, choisissez un arbitre différent à côté de chacune. Les matchs sont répartis par vagues, sans assauts simultanés pour un même tireur."
+
+msgid "Not assigned"
+msgstr "Non affecté"
+
+msgid "Wave %d"
+msgstr "Vague %d"
+
+msgid "Finish each wave before starting the next one."
+msgstr "Terminez tous les matchs d’une vague avant de commencer la suivante."
+
+msgid "Organisation"
+msgstr "Organisation"
+
+msgid "Manage referees"
+msgstr "Gérer les arbitres"
+
+msgid "Manage pistes"
+msgstr "Gérer les pistes"
+
+msgid "Optional organisation tools. Enable referees, pistes, or both. Your competitions remain available in their tabs."
+msgstr "Activez les arbitres, les pistes, les deux ou aucun. Vos compétitions restent accessibles dans leurs onglets."
+
+msgid "Assign referees"
+msgstr "Affecter des arbitres"
+
+msgid "Resources…"
+msgstr "Affectations…"
+
+msgid "Close organisation"
+msgstr "Fermer l’organisation"
+
+msgid "Import"
+msgstr "Importer"
+
+msgid "TOURNAMENT"
+msgstr "TOURNOI"
+
+msgid "MANAGEMENT"
+msgstr "GESTION"
+
+msgid "Dashboard"
+msgstr "Tableau de bord"
+
+msgid "Participants"
+msgstr "Participants"
+
+msgid "Fencing tournament"
+msgstr "Tournoi d’escrime"
+
+msgid "Show or hide navigation"
+msgstr "Afficher ou masquer la navigation"
+
+msgid "Your tournament starts here"
+msgstr "Votre compétition commence ici"
+
+msgid "Open a competition or create a new event.\nParticipants, pools and organisation, all in one place."
+msgstr "Ouvrez une compétition ou créez une nouvelle épreuve.\nParticipants, poules et organisation, au même endroit."
+
+msgid "Open a competition"
+msgstr "Ouvrir une compétition"
+
+msgid "Resume competition"
+msgstr "Revenir à la compétition"
+
+msgid "Search a participant…"
+msgstr "Rechercher un participant…"
+
+msgid "rows displayed"
+msgstr "lignes affichées"
+
+msgid "Mark everyone present"
+msgstr "Marquer tout le monde présent"
+
+msgid "Mark everyone absent"
+msgstr "Marquer tout le monde absent"
+
+msgid "Recent competitions"
+msgstr "COMPÉTITIONS RÉCENTES"
+
+msgid "Start time of the bout (HH:MM)"
+msgstr "Heure de début du match (HH:MM)"
+
+msgid "Set the time"
+msgstr "Changer l'heure"
+
+msgid "Time:"
+msgstr "Heure :"
+
+msgid "Enter the time as HH:MM."
+msgstr "Saisissez l'heure sous la forme HH:MM."
+
+msgid "Move up"
+msgstr "Monter"
+
+msgid "Move down"
+msgstr "Descendre"
+
+msgid "Assign at least one referee to each piste."
+msgstr "Affectez au moins un arbitre à chaque piste."
+
+msgid "Referee of the same club as a fencer"
+msgstr "Arbitre du même club qu'un tireur"
+
+msgid "Assign anyway?"
+msgstr "Affecter quand même ?"
+
+msgid "Place a group"
+msgstr "Placer un groupe"
+
+msgid "Place a group…"
+msgstr "Placer un groupe…"
+
+msgid "State"
+msgstr "État"
+
+msgid "Time"
+msgstr "Heure"
+
+msgid "To place"
+msgstr "À placer"
+
+msgid "Referees only"
+msgstr "Arbitres seuls"
+
+msgid "Placed"
+msgstr "Placé"
+
+msgid "to place"
+msgstr "à placer"
+
+msgid "placed"
+msgstr "placés"
+
+msgid "No pool in this group."
+msgstr "Aucune poule dans ce groupe."
+
+msgid "Youth training: place all the pools of a group on one or several pistes"
+msgstr "Entraînement des jeunes : placer toutes les poules d'un groupe sur une ou plusieurs pistes"
+
+msgid "One piste: the pools of the group follow one another. As many pistes as pools (or more): the pools are fenced at the same time. The referees are shared between the pistes; on a piste with several referees, they take turns bout after bout, avoiding fencers of their club."
+msgstr "Une piste : les poules du groupe s'enchaînent. Autant de pistes que de poules (ou plus) : les poules se tirent en même temps. Les arbitres sont répartis sur les pistes ; sur une piste à plusieurs arbitres, ils alternent match après match en évitant les tireurs de leur club."
+
+msgid "Select the pistes and the referees of this pool. With several referees, they are shared between the pistes and take turns bout after bout, avoiding fencers of their club. Matches are scheduled in waves without simultaneous bouts for a fencer."
+msgstr "Choisissez les pistes et les arbitres de la poule. Avec plusieurs arbitres, ils sont répartis sur les pistes et alternent match après match en évitant les tireurs de leur club. Les matchs sont organisés en vagues, sans qu'un tireur ait deux matchs en même temps."
+
+msgid "Piste screens (ManageComp Live)"
+msgstr "Écrans de piste (ManageComp Live)"
+
+msgid "Start each screen with: managecomp-live --live <this address> --piste <number>. The same address opened in a browser shows the live score of a piste."
+msgstr "Lancez chaque écran avec : managecomp-live --live <cette adresse> --piste <numéro>. La même adresse ouverte dans un navigateur affiche le score en direct d'une piste."
+
+msgid "Help"
+msgstr "Aide"
+
+msgid "Preferences"
+msgstr "Préférences"
+
+msgid "_About"
+msgstr "À _propos"
+
+msgid "_Help"
+msgstr "_Aide"
+
+msgid "_New"
+msgstr "_Nouveau"
+
+msgid "_Open"
+msgstr "_Ouvrir"
+
+msgid "_Quit"
+msgstr "_Quitter"
+
+msgid "Export"
+msgstr "Exporter"
+
+msgid "Add another criterion"
+msgstr "Ajouter un autre critère"
+
+msgid "Remove this criterion"
+msgstr "Retirer ce critère"
+
+msgid "Opening the competition…"
+msgstr "Ouverture de la compétition…"
+
+msgid "Reading the file…"
+msgstr "Lecture du fichier…"
+
+msgid "Divisions"
+msgstr "Divisions"
+
+msgid "Fill in"
+msgstr "Remplissage"
+
+msgid "by hand"
+msgstr "à la main"
+
+msgid "by ranking"
+msgstr "au classement"
+
+msgid "by criteria"
+msgstr "par critères"
+
+msgid "Kept in this competition: the first"
+msgstr "Gardés dans cette compétition : les"
+
+msgid "places"
+msgstr "places"
+
+msgid "Add a division"
+msgstr "Ajouter une division"
+
+msgid "Move the selection to"
+msgstr "Placer la sélection dans"
+
+msgid "Stays here"
+msgstr "Reste ici"
+
+msgid "Division name"
+msgstr "Nom de la division"
+
+msgid "the rest"
+msgstr "le reste"
+
+msgid "Categories"
+msgstr "Catégories"
+
+msgid "Birth years"
+msgstr "Années de naissance"
+
+msgid "Born in or before"
+msgstr "Nés en … ou avant"
+
+msgid "Born in or after"
+msgstr "Nés en … ou après"
+
+msgid "Remove this division"
+msgstr "Retirer cette division"
+
+msgid "e.g. M13, M15"
+msgstr "ex. : M13, M15"
+
+msgid "e.g. 2014, 2015"
+msgstr "ex. : 2014, 2015"
+
+msgid "year"
+msgstr "année"
+
+msgid "Division"
+msgstr "Division"
+
+msgid "General category"
+msgstr "Catégorie générale"
+
+msgid "The general category of each fencer is computed from the birth date. Settings common to every competition."
+msgstr "La catégorie générale de chaque tireur est calculée d'après sa date de naissance. Réglage commun à toutes les compétitions."
+
+msgid "Model"
+msgstr "Modèle"
+
+msgid "Delete this model"
+msgstr "Supprimer ce modèle"
+
+msgid "Season changes on"
+msgstr "Bascule de la saison le"
+
+msgid "January"
+msgstr "janvier"
+
+msgid "February"
+msgstr "février"
+
+msgid "March"
+msgstr "mars"
+
+msgid "April"
+msgstr "avril"
+
+msgid "May"
+msgstr "mai"
+
+msgid "June"
+msgstr "juin"
+
+msgid "July"
+msgstr "juillet"
+
+msgid "August"
+msgstr "août"
+
+msgid "September"
+msgstr "septembre"
+
+msgid "October"
+msgstr "octobre"
+
+msgid "November"
+msgstr "novembre"
+
+msgid "December"
+msgstr "décembre"
+
+msgid "Born from"
+msgstr "Nés de"
+
+msgid "Add a category"
+msgstr "Ajouter une catégorie"
+
+msgid "Model name"
+msgstr "Nom du modèle"
+
+msgid "Save the model"
+msgstr "Enregistrer le modèle"
+
+msgid "New category"
+msgstr "Nouvelle catégorie"
+
+msgid "and before"
+msgstr "et avant"
+
+msgid "Remove this category"
+msgstr "Retirer cette catégorie"
+
+msgid "Current season:"
+msgstr "Saison en cours :"
+
+msgid "(not saved)"
+msgstr "(non enregistré)"
+
+msgid "Give the model a name."
+msgstr "Donnez un nom au modèle."
+
+msgid "The FFE model is provided: save your changes under another name."
+msgstr "Le modèle FFE est fourni : enregistrez vos modifications sous un autre nom."
+
+msgid "The FFE model is provided and cannot be deleted."
+msgstr "Le modèle FFE est fourni et ne peut pas être supprimé."
+
+msgid "Delete the model"
+msgstr "Supprimer le modèle"
+
+msgid "Division pools"
+msgstr "Poules de division"
+
+msgid "Pools per division"
+msgstr "Poules par division"
+
+msgid "Promoted after each round"
+msgstr "Montées après chaque tour"
+
+msgid "Relegated after each round"
+msgstr "Descentes après chaque tour"
+
+msgid "First distribution"
+msgstr "Répartition de départ"
+
+msgid "by ranking (best in D1)"
+msgstr "au classement (les meilleurs en D1)"
+
+msgid "at random"
+msgstr "au hasard"
+
+msgid "Add another \"Division pools\" phase for each new round: promotions and relegations are then proposed from the previous round."
+msgstr "Pour un nouveau tour, ajoutez une autre phase « Poules de division » : les montées et descentes y sont proposées d'après le tour précédent."
+
+msgid "Movement"
+msgstr "Mouvement"
+
+msgid "from"
+msgstr "depuis"
+
+msgid "Award points for this competition (season ranking)"
+msgstr "Attribuer des points pour cette compétition (classement de saison)"
+
+msgid "By default, out of N participants the 1st gets N points and the last 1 point."
+msgstr "Par défaut, sur N participants, le 1er gagne N points et le dernier 1 point."
+
+msgid "Weight of the competition"
+msgstr "Poids de la compétition"
+
+msgid "Bonus by place"
+msgstr "Bonus par place"
+
+msgid "Add a place bonus"
+msgstr "Ajouter un bonus de place"
+
+msgid "Bonus for finishing in the top"
+msgstr "Bonus pour finir dans les premiers"
+
+msgid "Add a top bonus"
+msgstr "Ajouter un bonus « dans les X »"
+
+msgid "Default formula"
+msgstr "Formule par défaut"
+
+msgid "Variables: participants, place, bonus (place and top bonuses), poids (weight). Operations: + - * / ( )."
+msgstr "Variables : participants, place, bonus (bonus de place et « dans les X »), poids. Opérations : + - * / ( )."
+
+msgid "In the top"
+msgstr "Dans les"
+
+msgid "points:"
+msgstr "points :"
+
+msgid "Example with 10 participants:"
+msgstr "Exemple sur 10 participants :"
+
+msgid "Season ranking"
+msgstr "Classement de saison"
+
+msgid "Season folder:"
+msgstr "Dossier de la saison :"
+
+msgid "Choose…"
+msgstr "Choisir…"
+
+msgid "Reload"
+msgstr "Actualiser"
+
+msgid "Group the selection"
+msgstr "Regrouper la sélection"
+
+msgid "The selected lines are one and the same fencer"
+msgstr "Les lignes sélectionnées sont un seul et même tireur"
+
+msgid "Separate this first name"
+msgstr "Séparer ce prénom"
+
+msgid "Fencers with this first name are told apart by last name and category"
+msgstr "Les tireurs de ce prénom sont distingués par leur nom et leur catégorie"
+
+msgid "Undo the corrections"
+msgstr "Annuler les corrections"
+
+msgid "Export (CSV)"
+msgstr "Exporter (CSV)"
+
+msgid "Undo every manual correction?"
+msgstr "Annuler toutes les corrections faites à la main ?"
+
+msgid "Season folder"
+msgstr "Dossier de la saison"
+
+msgid "(choose the folder holding the season's competitions)"
+msgstr "(choisissez le dossier qui contient les compétitions de la saison)"
+
+msgid "Rank"
+msgstr "Rang"
+
+msgid "Competitions"
+msgstr "Compétitions"
+
+msgid "Total"
+msgstr "Total"
+
+msgid "competition(s) with points"
+msgstr "compétition(s) avec points"
+
+msgid "fencer(s)"
+msgstr "tireur(s)"
+
+msgid "manual correction(s)"
+msgstr "correction(s) à la main"
+
+msgid "Select at least two lines (Ctrl + click)."
+msgstr "Sélectionnez au moins deux lignes (Ctrl + clic)."
+
+msgid "season-ranking"
+msgstr "classement-saison"
+
+msgid "Weight of the competition (C)"
+msgstr "Poids de la compétition (C)"
+
+msgid "Saved formulas"
+msgstr "Formules enregistrées"
+
+msgid "Delete"
+msgstr "Supprimer"
+
+msgid "Save this formula as"
+msgstr "Enregistrer cette formule sous le nom"
+
+msgid "How to write a formula?"
+msgstr "Comment écrire une formule ?"
+
+msgid "Only the formulas you saved can be deleted."
+msgstr "Seules les formules que vous avez enregistrées peuvent être supprimées."
+
+msgid "no."
+msgstr "n°"
+
+msgid "Number of the match to show in the displayed table: type 3 to go to match 1-16.3"
+msgstr "Numéro du match à afficher dans le tableau : tapez 3 pour aller au match 1-16.3"
+
+msgid "Remove from recent competitions (the file is kept)"
+msgstr "Retirer des compétitions récentes (le fichier est conservé)"
+
+msgid "Remove from recent competitions"
+msgstr "Retirer des compétitions récentes"
+
+msgid "The file is not deleted."
+msgstr "Le fichier n'est pas effacé."
+
+msgid "blocked sheet(s)"
+msgstr "feuille(s) bloquée(s)"
+
+msgid "Sheet blocked: too many wrong PIN codes"
+msgstr "Feuille bloquée : trop de codes PIN faux"
+
+msgid "Unlock it in BellePoule2D > Referees on phones."
+msgstr "Débloquez-la dans la fenêtre « Arbitres sur téléphone »."
+
+msgid "Blocked sheet"
+msgstr "Feuille bloquée"
+
+msgid "Unlock"
+msgstr "Débloquer"
+
+msgid "Personal sheets"
+msgstr "Feuilles personnelles"
+
+msgid "One page per referee: personal QR code (no PIN) and PIN code"
+msgstr "Une page par arbitre : QR code personnel (sans PIN) et code PIN"
+
+msgid "PIN list"
+msgstr "Liste des PIN"
+
+msgid "Pool and match sheets carry a QR code too: the referee scans it, then enters the PIN (once for the competition). After 20 wrong PINs the sheet pauses 5 minutes, after 20 more it is blocked until you unlock it."
+msgstr "Les feuilles de poule et de match portent aussi un QR code : l'arbitre le scanne puis entre son PIN (une seule fois pour la compétition). Après 20 PIN faux, la feuille est suspendue 5 minutes ; après 20 de plus, elle est bloquée jusqu'à ce que vous la débloquiez."
+
+msgid "New code"
+msgstr "Nouveau code"
+
+msgid "New personal QR code and new PIN (if a PIN has leaked): the referee's phones must reconnect"
+msgstr "Nouveau QR code personnel et nouveau PIN (si un PIN a circulé) : les téléphones de l'arbitre devront se reconnecter"
+
+msgid "New code for"
+msgstr "Nouveau code pour"
+
+msgid "The current personal QR code and PIN will no longer work. Remember to give the referee the new sheet."
+msgstr "Le QR code personnel et le PIN actuels ne marcheront plus. Pensez à remettre la nouvelle feuille à l'arbitre."
+
+msgid "Scan this QR code with your phone's camera: your pools and bouts appear, without password. This sheet is personal, keep it."
+msgstr "Scannez ce QR code avec l'appareil photo de votre téléphone : vos poules et vos matchs s'affichent, sans mot de passe. Cette feuille est personnelle, gardez-la pour vous."
+
+msgid "Your PIN code:"
+msgstr "Votre code PIN :"
+
+msgid "Pool and match sheets carry a QR code too: scan it, then enter this PIN code (once for the competition)."
+msgstr "Les feuilles de poule et de match portent aussi un QR code : scannez-le, puis entrez ce code PIN (une seule fois pour la compétition)."
+
+msgid "Referees' PIN codes"
+msgstr "Codes PIN des arbitres"
+
+msgid "Confidential: for the organisers."
+msgstr "Confidentiel : réservé à l'organisation."
+
+msgid "referee report(s): see Referees on phones"
+msgstr "signalement(s) d'arbitre : voir « Arbitres sur téléphone »"
+
+msgid "Referee report"
+msgstr "Signalement d'un arbitre"
+
+msgid "Mark it as handled in BellePoule2D > Referees on phones."
+msgstr "Marquez-le comme traité dans la fenêtre « Arbitres sur téléphone »."
+
+msgid "reported by"
+msgstr "signalé par"
+
+msgid "Handled"
+msgstr "Traité"
+
+msgid "Take off the piste"
+msgstr "Retirer de la piste"
+
+msgid "The bout (or pool) and its referees leave the piste"
+msgstr "Le match (ou la poule) et ses arbitres quittent la piste"
+
+msgid "Remove the referees"
+msgstr "Retirer les arbitres"
+
+msgid "The referees leave the bout, which stays on its piste"
+msgstr "Les arbitres quittent le match, qui reste sur sa piste"
+
+msgid "The referees' phones (ManageComp Arbitre app) exchange through your ManageComp server: no need to be on the same network."
+msgstr "Les téléphones des arbitres (ManageComp Arbitre) passent par votre serveur ManageComp : inutile d'être sur le même réseau."
+
+msgid "Server address"
+msgstr "Adresse du serveur"
+
+msgid "Club API key"
+msgstr "Clé d'API du club"
+
+msgid "Save and connect"
+msgstr "Enregistrer et connecter"
+
+msgid "Connected"
+msgstr "Connecté"
+
+msgid "Not configured"
+msgstr "Non configuré"
+
+msgid "Connection error"
+msgstr "Erreur de connexion"
+
+msgid "connecting…"
+msgstr "connexion…"
+
+msgid "API key refused"
+msgstr "Clé d'API refusée"
+
+msgid "Administrator"
+msgstr "Administrateur"
+
+msgid "all the bouts"
+msgstr "tous les matchs"
+
+msgid "Print the QR codes"
+msgstr "Imprimer les QR codes"
+
+msgid "Enter the server address and the club API key, then save: the QR codes appear once connected."
+msgstr "Saisissez l'adresse du serveur et la clé d'API du club, puis enregistrez : les QR codes apparaissent une fois connecté."
+
+msgid "Publish"
+msgstr "Publier"
+
+msgid "Public results page (compete.managecomp.org)"
+msgstr "Page publique des résultats (compete.managecomp.org)"
+
+msgid "Publish on ManageComp"
+msgstr "Publier sur ManageComp"
+
+msgid "Set the server address and the club API key first, in the Referees on phones window."
+msgstr "Réglez d'abord l'adresse du serveur et la clé d'API du club, dans la fenêtre « Arbitres sur téléphone »."
+
+msgid "A public page follows the event live (formula, fencers, pools, tables, ranking), with filters by name and club. Parents and fencers open it by scanning the QR code; it stays available after the competition."
+msgstr "Une page publique suit l'épreuve en direct (formule, tireurs, poules, tableaux, classement), avec des filtres par nom et par club. Parents et tireurs y accèdent en scannant le QR code ; elle reste consultable après la compétition."
+
+msgid "Fencers' names:"
+msgstr "Noms des tireurs :"
+
+msgid "Full names"
+msgstr "Noms complets"
+
+msgid "First name and initial"
+msgstr "Prénom et initiale du nom"
+
+msgid "Hide from search engines"
+msgstr "Cacher aux moteurs de recherche"
+
+msgid "The page stays available through its QR code and link, but does not show up on Google"
+msgstr "La page reste accessible par son QR code et son lien, mais n'apparaît pas sur Google"
+
+msgid "Group the open competitions in an event"
+msgstr "Regrouper les compétitions ouvertes dans un événement"
+
+msgid "Event name"
+msgstr "Nom de l'événement"
+
+msgid "Copy the link"
+msgstr "Copier le lien"
+
+msgid "Unpublish"
+msgstr "Dépublier"
+
+msgid "Publish again (options, event)"
+msgstr "Publier à nouveau (options, événement)"
+
+msgid "Event published ✔"
+msgstr "Événement publié ✔"
+
+msgid "Published ✔"
+msgstr "Publiée ✔"
+
+msgid "Publishing…"
+msgstr "Publication…"
+
+msgid "Unpublish this competition?"
+msgstr "Dépublier cette compétition ?"
+
+msgid "Its public page and QR code will stop working. You can publish it again (new address)."
+msgstr "Sa page publique et son QR code ne marcheront plus. Vous pourrez la publier à nouveau (nouvelle adresse)."
+
+msgid "Splitting"
+msgstr "Point de scission"

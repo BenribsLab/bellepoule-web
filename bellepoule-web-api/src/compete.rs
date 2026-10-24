@@ -409,6 +409,12 @@ fn formula(c: &Contest, current: usize, over: bool) -> String {
             if let Some(q) = s.base().nb_qualified {
                 lines.push(qualified(c, q as usize));
             }
+        } else if let Some(split) = s.as_any().downcast_ref::<bp_core::rounds::splitting::Splitting>() {
+            title = tr("Splitting");
+            if entrants > 0 {
+                lines.push(people(c, entrants));
+            }
+            lines.extend(split_lines(c, split));
         } else {
             let kind = s.kind();
             // Appel, composition des poules, classement : déjà dits.
@@ -428,6 +434,63 @@ fn formula(c: &Contest, current: usize, over: bool) -> String {
     }
     out.push_str("</div>");
     out
+}
+
+/// Point de scission : les divisions (épreuves à part) et ceux qui restent ;
+/// la répartition faite, sinon la règle de la formule.
+fn split_lines(c: &Contest, split: &bp_core::rounds::splitting::Splitting) -> Vec<String> {
+    use bp_core::rounds::splitting::{Criterion, Size, SplitMode};
+    let used = split.divisions_in_use(&c.players);
+    if !used.is_empty() {
+        let mut lines: Vec<String> = used
+            .iter()
+            .map(|d| format!("{} : {} → épreuve à part", split.division_name(*d), people(c, split.exported_players(&c.players, *d).len())))
+            .collect();
+        lines.push(format!("Restent : {}", people(c, split.remaining(&c.players).len())));
+        return lines;
+    }
+    let config = &split.config;
+    let size = |s: &Size| match s {
+        Size::Count(n) => n.to_string(),
+        Size::Percent(p) => format!("{p} %"),
+    };
+    let mut lines = Vec::new();
+    match config.mode {
+        SplitMode::Manual => {
+            let names: Vec<String> = (1..=config.divisions.len() as u32).map(|d| split.division_name(d)).collect();
+            lines.push(format!("Divisions choisies à la main : {}", names.join(", ")));
+        }
+        SplitMode::Ranking => {
+            if let Some(k) = &config.keep {
+                lines.push(format!("Les {} premiers restent", size(k)));
+            }
+            let mut first = config.keep.is_none();
+            for (i, d) in config.divisions.iter().enumerate() {
+                let name = split.division_name(i as u32 + 1);
+                lines.push(match &d.size {
+                    Some(s) if first => format!("{name} : les {} premiers", size(s)),
+                    Some(s) => format!("{name} : les {} suivants", size(s)),
+                    None => format!("{name} : le reste"),
+                });
+                first = false;
+            }
+        }
+        SplitMode::Criteria => {
+            for (i, d) in config.divisions.iter().enumerate() {
+                let name = split.division_name(i as u32 + 1);
+                let rule = match &d.criterion {
+                    Some(Criterion::Category { values }) => values.join(", "),
+                    Some(Criterion::BirthYears { years }) => format!("nés en {}", years.iter().map(|y| y.to_string()).collect::<Vec<_>>().join(", ")),
+                    Some(Criterion::BornBefore { year }) => format!("nés en {year} ou avant"),
+                    Some(Criterion::BornFrom { year }) => format!("nés en {year} ou après"),
+                    None => "—".into(),
+                };
+                lines.push(format!("{name} : {rule}"));
+            }
+            lines.push("Les autres restent".into());
+        }
+    }
+    lines
 }
 
 /// Tireurs présents.
