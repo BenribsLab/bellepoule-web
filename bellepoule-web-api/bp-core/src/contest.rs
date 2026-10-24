@@ -748,6 +748,9 @@ impl Contest {
             splitting.division_name(division)
         };
         let mut target = self.duplicate(Some(&label), config);
+        // Publication : la division rejoint l'événement de la compétition
+        // (elle sera publiée à son tour).
+        target.public_event = self.public_event.clone();
         // Division par catégories : la compétition créée prend la catégorie
         // (la plus âgée s'il y en a plusieurs ; les autres sont surclassés).
         if let Some(code) = splitting.division_category(division) {

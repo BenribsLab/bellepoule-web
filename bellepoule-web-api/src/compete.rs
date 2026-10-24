@@ -245,7 +245,7 @@ fn with_etag(etag: String, body: String) -> Response {
 
 pub async fn event(State(store): State<Shared>, headers: HeaderMap, Path((club, slug)): Path<(String, String)>) -> Response {
     let base = public_base(&headers);
-    let (p, xml, event) = {
+    let (p, xml, event, links) = {
         let mut store = store.lock().await;
         // Événement : la liste de ses épreuves.
         if let Some(e) = store.public_events().iter().find(|e| e.club_slug == club && e.slug == slug).cloned() {
@@ -263,7 +263,14 @@ pub async fn event(State(store): State<Shared>, headers: HeaderMap, Path((club, 
         }
         let Ok(xml) = std::fs::read_to_string(store.publication_file(&p.id)) else { return not_found() };
         let event = store.public_events().iter().find(|e| e.id == p.event).cloned();
-        (p, xml, event)
+        // Épreuves du même événement (divisions d'un point de scission).
+        let links: Vec<(String, String)> = store
+            .publications()
+            .iter()
+            .filter(|o| !p.event.is_empty() && o.event == p.event && o.club == p.club && o.id != p.id)
+            .map(|o| (o.title.clone(), format!("{base}{}/{}", o.club_slug, o.slug)))
+            .collect();
+        (p, xml, event, links)
     };
     let etag = format!("\"p{}-{}-{ASSETS}\"", p.updated, p.names);
     let mut c = Contest::new(None, false);
@@ -271,15 +278,15 @@ pub async fn event(State(store): State<Shared>, headers: HeaderMap, Path((club, 
         return not_found();
     }
     let names = Names { short: p.names == "short" };
-    let body = event_body(&base, &p, event.as_ref(), &mut c, &names);
+    let body = event_body(&base, &p, event.as_ref(), &links, &mut c, &names);
     with_etag(etag, layout(&base, &format!("{} — {}", p.title, p.subtitle), p.noindex, body))
 }
 
-fn event_body(base: &str, p: &Publication, event: Option<&PublicEvent>, c: &mut Contest, names: &Names) -> String {
+fn event_body(base: &str, p: &Publication, event: Option<&PublicEvent>, links: &[(String, String)], c: &mut Contest, names: &Names) -> String {
     let current = c.schedule.current_index();
     let over = c.schedule.is_over();
     let sections: Vec<(&str, &str, String)> = vec![
-        ("formule", "Formule", formula(c, current, over)),
+        ("formule", "Formule", formula(c, current, over, links)),
         ("tireurs", "Tireurs", fencers(c, names)),
         ("poules", "Poules", pools(c, names)),
         ("tableaux", "Tableaux", tables(c, names)),
@@ -339,7 +346,7 @@ fn qualified(c: &Contest, n: usize) -> String {
 
 /// Formule : tireurs au départ, puis chaque phase (entrants, poules,
 /// décalage, qualifiés ; tableau, exemptés), comme les sites de résultats.
-fn formula(c: &Contest, current: usize, over: bool) -> String {
+fn formula(c: &Contest, current: usize, over: bool, links: &[(String, String)]) -> String {
     let start = c
         .schedule
         .checkin()
@@ -414,7 +421,8 @@ fn formula(c: &Contest, current: usize, over: bool) -> String {
             if entrants > 0 {
                 lines.push(people(c, entrants));
             }
-            lines.extend(split_lines(c, split));
+            // Lignes déjà en HTML (liens vers les divisions) : marquées.
+            lines.extend(split_lines(c, split, s.name(), links).into_iter().map(|h| format!("\u{1}{h}")));
         } else {
             let kind = s.kind();
             // Appel, composition des poules, classement : déjà dits.
@@ -429,7 +437,13 @@ fn formula(c: &Contest, current: usize, over: bool) -> String {
         out.push_str(&format!(
             "<hr><div class=\"phase {state}\"><h4>{}</h4>{}</div>",
             esc(&title),
-            lines.iter().map(|l| format!("<p>{}</p>", esc(l))).collect::<String>()
+            lines
+                .iter()
+                .map(|l| match l.strip_prefix('\u{1}') {
+                    Some(html) => format!("<p>{html}</p>"),
+                    None => format!("<p>{}</p>", esc(l)),
+                })
+                .collect::<String>()
         ));
     }
     out.push_str("</div>");
@@ -438,15 +452,26 @@ fn formula(c: &Contest, current: usize, over: bool) -> String {
 
 /// Point de scission : les divisions (épreuves à part) et ceux qui restent ;
 /// la répartition faite, sinon la règle de la formule.
-fn split_lines(c: &Contest, split: &bp_core::rounds::splitting::Splitting) -> Vec<String> {
+/// Lignes en HTML : le nom d'une division mène à sa page publique (même
+/// événement, nom « compétition - division » comme le logiciel le donne).
+fn split_lines(c: &Contest, split: &bp_core::rounds::splitting::Splitting, stage_name: String, links: &[(String, String)]) -> Vec<String> {
     use bp_core::rounds::splitting::{Criterion, Size, SplitMode};
     let used = split.divisions_in_use(&c.players);
     if !used.is_empty() {
+        let only = split.config.mode == SplitMode::Manual && split.config.divisions.len() <= 1 && split.config.divisions.first().is_none_or(|d| d.name == "Division 2");
         let mut lines: Vec<String> = used
             .iter()
-            .map(|d| format!("{} : {} → épreuve à part", split.division_name(*d), people(c, split.exported_players(&c.players, *d).len())))
+            .map(|d| {
+                let label = if only { stage_name.clone() } else { split.division_name(*d) };
+                let target = if c.name.trim().is_empty() { label.clone() } else { format!("{} - {}", c.name.trim(), label.trim()) };
+                let name = match links.iter().find(|(title, _)| *title == target) {
+                    Some((_, url)) => format!("<a href=\"{}\">{}</a>", esc(url), esc(&split.division_name(*d))),
+                    None => esc(&split.division_name(*d)),
+                };
+                format!("{name} : {} → épreuve à part", esc(&people(c, split.exported_players(&c.players, *d).len())))
+            })
             .collect();
-        lines.push(format!("Restent : {}", people(c, split.remaining(&c.players).len())));
+        lines.push(esc(&format!("Restent : {}", people(c, split.remaining(&c.players).len()))));
         return lines;
     }
     let config = &split.config;
@@ -490,7 +515,7 @@ fn split_lines(c: &Contest, split: &bp_core::rounds::splitting::Splitting) -> Ve
             lines.push("Les autres restent".into());
         }
     }
-    lines
+    lines.into_iter().map(|l| esc(&l)).collect()
 }
 
 /// Tireurs présents.

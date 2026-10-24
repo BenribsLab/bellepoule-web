@@ -133,8 +133,16 @@ pub async fn next(State(store): State<Shared>, client: Client, Path(id): Path<St
         .ok_or_else(not_found)?
         .map_err(internal)?;
     let result = result?;
+    // Divisions : ouvertes (onglets, comme le logiciel) et publiées si la
+    // compétition l'est.
+    let mut ids = Vec::new();
     for contest in created {
-        store.insert(&client, contest).map_err(internal)?;
+        let new_id = store.insert(&client, contest).map_err(internal)?;
+        store.open_contest(&client, &new_id);
+        ids.push(new_id);
+    }
+    if !ids.is_empty() {
+        store.publish_split(&client, &id, &ids).map_err(internal)?;
     }
     Ok(Json(result))
 }

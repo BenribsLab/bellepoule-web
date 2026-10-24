@@ -63,6 +63,8 @@ pub fn ContestPage(id: String) -> impl IntoView {
                     // Nouvelle phase : l'écran est reconstruit.
                     version.update(|v| *v += 1);
                     reload();
+                    // Point de scission : les divisions s'ouvrent en onglets.
+                    crate::refresh_tabs();
                 }
                 Err(e) => alert(&e.message),
             }

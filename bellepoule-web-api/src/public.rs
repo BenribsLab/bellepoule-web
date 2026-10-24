@@ -344,6 +344,44 @@ impl Store {
         Ok(p)
     }
 
+    /// Point de scission franchi : si la compétition est publiée, ses
+    /// divisions le sont aussi, dans son événement (créé s'il n'existe pas).
+    pub fn publish_split(&mut self, client: &Client, source: &str, divisions: &[String]) -> std::io::Result<()> {
+        let Some((public_id, event, name, category, date, location)) = self.get(client, source).map(|c| {
+            (c.public_id.clone(), c.public_event.clone(), c.name.clone(), c.category.display_image(), format!("{:04}-{:02}-{:02}", c.year, c.month, c.day), c.location.clone())
+        }) else {
+            return Ok(());
+        };
+        let Some(published) = public_id.and_then(|id| self.publications().iter().find(|p| p.id == id && p.club == client.id).cloned()) else { return Ok(()) };
+        let options = PublishOptions { names: Some(published.names.clone()), noindex: Some(published.noindex), event: None };
+        let existing = event.filter(|e| self.public_events().iter().any(|x| x.id == *e && x.club == client.id));
+        let event = match existing {
+            Some(e) => e,
+            None => {
+                let e = self.upsert_event(client, None, &name, &category, &date, &location, Some(published.noindex))?;
+                let eid = e.id.clone();
+                // La compétition rejoint l'événement (sa copie publique suit).
+                if let Some(r) = self.update(client, source, |c| c.public_event = Some(eid)) {
+                    r?;
+                }
+                e.id
+            }
+        };
+        for id in divisions {
+            let eid = event.clone();
+            if let Some(r) = self.update(client, id, |c| c.public_event = Some(eid)) {
+                r?;
+            }
+            let Some((meta, xml)) = self.get_mut(client, id).map(|c| (PublicMeta::of(c), c.to_xml())) else { continue };
+            let p = self.publish(client, &meta, &xml, Some(&options))?;
+            let pid = p.id.clone();
+            if let Some(r) = self.update(client, id, |c| c.public_id = Some(pid)) {
+                r?;
+            }
+        }
+        Ok(())
+    }
+
     /// Après chaque enregistrement d'une compétition publiée : la copie
     /// publique suit.
     pub fn refresh_publication(&mut self, client: &Client, meta: &PublicMeta, xml: &str) {
