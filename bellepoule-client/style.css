@@ -623,11 +623,33 @@ body:has(.ref-app) { background: #f3f6fb; }
 .ref-fencer { margin-top: 6px; }
 .ref-pos { width: 1.6em; font-weight: 700; color: #5f6f8c; }
 .ref-score { font-size: 1.5rem; font-weight: 800; color: #0866cd; min-width: 1.6em; text-align: right; }
-.ref-grid-scroll { overflow-x: auto; margin: 10px 0; }
-.ref-grid { border-collapse: collapse; background: #fff; font-size: 0.9rem; }
-.ref-grid th, .ref-grid td { border: 1px solid #dce5f4; padding: 6px 7px; text-align: center; }
+/* Feuille de poule du téléphone : largeur de l'écran, cases presque carrées. */
+.ref-grid-scroll { overflow-x: auto; margin: 10px -8px; -webkit-overflow-scrolling: touch; }
+.ref-grid { width: 100%; table-layout: fixed; border-collapse: collapse; background: #fff; font-variant-numeric: tabular-nums; line-height: 1; }
+.ref-grid, .ref-grid * { overflow-wrap: normal; }
+.ref-grid th, .ref-grid td { border: 1px solid #c9d6ea; padding: 0 1px; height: 2.3em; text-align: center; white-space: nowrap; overflow: hidden; }
+.ref-grid th { height: 1.7em; color: #5f6f8c; font-weight: 700; background: #f3f6fb; }
 .ref-grid td.grey { background: #bdbdbd; }
-.ref-grid .ref-gname { text-align: left; font-weight: 700; white-space: nowrap; }
+.ref-grid td.win { font-weight: 800; color: #0a5c2f; }
+.ref-grid .ref-gname { text-align: left; font-weight: 700; padding-left: 5px; text-overflow: ellipsis; }
+.ref-grid .ref-gpos { color: #5f6f8c; font-size: 0.85em; }
+.ref-grid .ref-gres { background: #f7f9fc; font-size: 0.9em; }
+.ref-grid col.c-name { width: 25%; }
+.ref-grid col.c-pos { width: 1.3em; }
+.ref-grid col.c-res { width: 1.6em; }
+.ref-grid col.c-ind { width: 2.2em; }
+.ref-grid-l { font-size: 1rem; }
+.ref-grid-l col.c-name { width: 29%; }
+.ref-grid-m { font-size: 0.92rem; }
+.ref-grid-s { font-size: 0.8rem; }
+.ref-grid-s col.c-name { width: 24%; }
+/* Grandes poules : défilement horizontal, noms fixés à gauche. */
+.ref-grid-xs { font-size: 0.78rem; width: auto; min-width: 100%; }
+.ref-grid-xs col.c-name { width: 7.5em; }
+.ref-grid-xs col.c-cell { width: 2.3em; }
+.ref-grid-xs .ref-gname { position: sticky; left: 0; z-index: 1; background: #fff; box-shadow: 1px 0 0 #c9d6ea; }
+.ref-grid-xs th.ref-gname { background: #f3f6fb; }
+@media (min-width: 560px) { .ref-grid-scroll { margin: 10px 0; } .ref-grid-l, .ref-grid-m { font-size: 1.05rem; } }
 .ref-clock { margin: 12px auto 6px; font-size: clamp(3rem, 17vw, 4.4rem); font-weight: 800; text-align: center; font-variant-numeric: tabular-nums; background: #fff; border-radius: 16px; padding: 6px 0; user-select: none; }
 .ref-clock.zero { color: #b42318; }
 .ref-main { background: #00ba32; color: #fff; border: none; border-radius: 12px; font-size: 1.2rem; font-weight: 800; padding: 12px 34px; }

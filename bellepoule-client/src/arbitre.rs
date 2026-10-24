@@ -466,35 +466,66 @@ fn SheetScreen(who: Who, token: String) -> impl IntoView {
     }
 }
 
+/// Nom court pour la grille : « DUPONT J. » (nom en capitales, initiale du
+/// prénom), pour que la poule tienne dans la largeur du téléphone.
+fn short_name(full: &str) -> String {
+    let words: Vec<&str> = full.split_whitespace().collect();
+    let is_last = |w: &&str| w.chars().any(char::is_alphabetic) && !w.chars().any(char::is_lowercase);
+    let last: Vec<&str> = words.iter().copied().take_while(is_last).collect();
+    let (last, rest) = if last.is_empty() { (words.iter().take(1).copied().collect::<Vec<_>>(), &words[words.len().min(1)..]) } else { (last.clone(), &words[last.len()..]) };
+    let initial = rest.first().and_then(|w| w.chars().next()).map(|c| format!(" {c}.")).unwrap_or_default();
+    format!("{}{initial}", last.join(" "))
+}
+
+/// Feuille de poule du téléphone : tient dans la largeur jusqu'à 9 tireurs
+/// (texte plus petit au-delà de 7) ; au-delà, défilement horizontal avec les
+/// noms fixés à gauche.
 #[component]
 fn PoolGrid(sheet: Value) -> impl IntoView {
     let rows = arr(&sheet, "fencers");
     let n = rows.len();
+    let size = match n {
+        0..=6 => "l",
+        7 => "m",
+        8..=9 => "s",
+        _ => "xs",
+    };
     view! {
         <div class="ref-grid-scroll">
-            <table class="ref-grid">
+            <table class=format!("ref-grid ref-grid-{size}")>
+                <colgroup>
+                    <col class="c-name" />
+                    <col class="c-pos" />
+                    {(0..n).map(|_| view! { <col class="c-cell" /> }).collect_view()}
+                    <col class="c-res" />
+                    <col class="c-ind" />
+                    <col class="c-res" />
+                </colgroup>
                 <thead>
                     <tr>
-                        <th></th><th></th>
+                        <th class="ref-gname"></th><th></th>
                         {(1..=n).map(|j| view! { <th>{j}</th> }).collect_view()}
-                        <th>"V"</th><th>"Ind."</th><th>"Pl."</th>
+                        <th>"V"</th><th>"Ind"</th><th>"Pl"</th>
                     </tr>
                 </thead>
                 <tbody>
                     {rows.into_iter().map(|r| {
                         let cells = arr(&r, "cells");
+                        let full = s(&r, "name");
                         view! {
                             <tr>
-                                <td class="ref-gname">{s(&r, "name")}</td>
-                                <td class="ref-muted">{s(&r, "position")}</td>
+                                <td class="ref-gname" title=full.clone()>{short_name(&full)}</td>
+                                <td class="ref-gpos">{s(&r, "position")}</td>
                                 {(0..n).map(|j| {
                                     let v = cells.get(j).cloned().unwrap_or(Value::Null);
                                     let grey = v.is_null();
-                                    view! { <td class:grey=grey>{v.as_str().unwrap_or("").to_string()}</td> }
+                                    let text = v.as_str().unwrap_or("").to_string();
+                                    let win = text.starts_with('V');
+                                    view! { <td class:grey=grey class:win=win>{text}</td> }
                                 }).collect_view()}
-                                <td>{s(&r, "victories")}</td>
-                                <td>{s(&r, "indice")}</td>
-                                <td><strong>{s(&r, "rank")}</strong></td>
+                                <td class="ref-gres">{s(&r, "victories")}</td>
+                                <td class="ref-gres">{s(&r, "indice")}</td>
+                                <td class="ref-gres"><strong>{s(&r, "rank")}</strong></td>
                             </tr>
                         }
                     }).collect_view()}
