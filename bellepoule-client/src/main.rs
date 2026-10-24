@@ -404,16 +404,64 @@ fn Login(logged: RwSignal<bool>) -> impl IntoView {
 thread_local! {
     /// Signalements des arbitres en cours (puce rouge du menu Organisation).
     static OPEN_REPORTS: std::cell::Cell<Option<RwSignal<u64>>> = const { std::cell::Cell::new(None) };
+    /// Signalements déjà vus (`None` : premier relevé, sans son).
+    static SEEN_REPORTS: std::cell::RefCell<Option<Vec<u64>>> = const { std::cell::RefCell::new(None) };
 }
 
-/// Relit le nombre de signalements en cours.
+/// Relit le nombre de signalements en cours ; un son annonce les nouveaux.
 pub fn refresh_reports() {
+    use serde_json::Value;
     let Some(count) = OPEN_REPORTS.with(|c| c.get()) else { return };
     leptos::task::spawn_local(async move {
-        if let Ok(v) = api::get::<serde_json::Value>("/api/smartpoule/security").await {
-            count.set(v.get("open_reports").and_then(serde_json::Value::as_u64).unwrap_or(0));
+        if let Ok(v) = api::get::<Value>("/api/smartpoule/security").await {
+            count.set(v.get("open_reports").and_then(Value::as_u64).unwrap_or(0));
+            let open: Vec<(u64, bool)> = v
+                .get("reports")
+                .and_then(Value::as_array)
+                .into_iter()
+                .flatten()
+                .filter(|r| !r.get("done").and_then(Value::as_bool).unwrap_or(false))
+                .map(|r| (r.get("id").and_then(Value::as_u64).unwrap_or(0), r.get("kind").and_then(Value::as_str) == Some("call")))
+                .collect();
+            let fresh: Vec<bool> = SEEN_REPORTS.with(|seen| {
+                let mut seen = seen.borrow_mut();
+                let fresh = match seen.as_ref() {
+                    Some(list) => open.iter().filter(|(id, _)| !list.contains(id)).map(|(_, call)| *call).collect(),
+                    None => Vec::new(),
+                };
+                seen.get_or_insert_with(Vec::new).extend(open.iter().map(|(id, _)| *id));
+                fresh
+            });
+            // L'appel du Directoire technique passe avant l'absence.
+            if fresh.iter().any(|call| *call) {
+                play_alert(&[(784.0, 0.15), (988.0, 0.15), (1319.0, 0.3)]);
+            } else if !fresh.is_empty() {
+                play_alert(&[(660.0, 0.18), (660.0, 0.18)]);
+            }
         }
     });
+}
+
+/// Notes (Hz, secondes) séparées d'un court silence : deux notes pour une
+/// absence, trois notes montantes pour l'appel du Directoire technique
+/// (mêmes sons que le logiciel de bureau).
+fn play_alert(notes: &[(f32, f64)]) {
+    let Ok(ctx) = web_sys::AudioContext::new() else { return };
+    let mut at = ctx.current_time() + 0.05;
+    for (freq, duration) in notes {
+        let (Ok(osc), Ok(gain)) = (ctx.create_oscillator(), ctx.create_gain()) else { return };
+        osc.frequency().set_value(*freq);
+        let g = gain.gain();
+        let _ = g.set_value_at_time(0.0, at);
+        let _ = g.linear_ramp_to_value_at_time(0.35, at + 0.012);
+        let _ = g.set_value_at_time(0.35, at + duration - 0.012);
+        let _ = g.linear_ramp_to_value_at_time(0.0, at + duration);
+        let _ = osc.connect_with_audio_node(&gain);
+        let _ = gain.connect_with_audio_node(&ctx.destination());
+        let _ = osc.start_with_when(at);
+        let _ = osc.stop_with_when(at + duration);
+        at += duration + 0.07;
+    }
 }
 
 /// Puce rouge : un arbitre a signalé l'absence d'un tireur.
