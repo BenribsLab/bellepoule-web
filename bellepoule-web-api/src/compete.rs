@@ -23,7 +23,7 @@ use crate::public::{public_base, PublicEvent, Publication};
 const CSS: &str = include_str!("compete/style.css");
 const JS: &str = include_str!("compete/app.js");
 /// Version des fichiers statiques (adresse changée à chaque modification).
-const ASSETS: &str = "2";
+const ASSETS: &str = "3";
 
 fn esc(s: &str) -> String {
     s.replace('&', "&amp;").replace('<', "&lt;").replace('>', "&gt;").replace('"', "&quot;").replace('\'', "&#39;")
@@ -319,16 +319,114 @@ fn event_body(base: &str, p: &Publication, event: Option<&PublicEvent>, c: &mut 
     )
 }
 
-/// Formule : phases, faites, en cours, à venir.
+/// « 39 tireuses », « 1 équipe »…
+fn people(c: &Contest, n: usize) -> String {
+    let word = if c.settings.team_event {
+        "équipe"
+    } else if c.gender == 1 {
+        "tireuse"
+    } else {
+        "tireur"
+    };
+    format!("{n} {word}{}", if n > 1 { "s" } else { "" })
+}
+
+/// « 16 qualifiées ».
+fn qualified(c: &Contest, n: usize) -> String {
+    let feminine = c.settings.team_event || c.gender == 1;
+    format!("{n} qualifié{}{}", if feminine { "e" } else { "" }, if n > 1 { "s" } else { "" })
+}
+
+/// Formule : tireurs au départ, puis chaque phase (entrants, poules,
+/// décalage, qualifiés ; tableau, exemptés), comme les sites de résultats.
 fn formula(c: &Contest, current: usize, over: bool) -> String {
-    let mut out = String::from("<ol class=\"formula\">");
+    let start = c
+        .schedule
+        .checkin()
+        .map(|ch| {
+            let all = ch.fencers(&c.players);
+            let present = all.iter().filter(|r| c.players.get(**r).is_some_and(|p| p.attending())).count();
+            if present > 0 { present } else { all.len() }
+        })
+        .unwrap_or(0);
+    let pool_rounds = (0..c.schedule.len()).filter(|i| c.schedule.stage(*i).is_some_and(|s| s.as_any().downcast_ref::<PoolSupervisorStage>().is_some())).count();
+    let mut out = format!("<div class=\"formula\"><p class=\"big\">{}</p>", esc(&people(c, start)));
+    if pool_rounds > 0 {
+        out.push_str(&format!("<p>{pool_rounds} tour{} de poules</p>", if pool_rounds > 1 { "s" } else { "" }));
+    }
     for i in 0..c.schedule.len() {
         let Some(s) = c.schedule.stage(i) else { continue };
         let state = if over || i < current { "done" } else if i == current { "current" } else { "next" };
-        let label = format!("{} {}", tr(s.kind().class_name()), s.name()).trim().to_string();
-        out.push_str(&format!("<li class=\"{state}\">{}</li>", esc(&label)));
+        let entrants = s.base().attendees.len();
+        let mut lines: Vec<String> = Vec::new();
+        let title;
+        if let Some(sup) = s.as_any().downcast_ref::<PoolSupervisorStage>() {
+            let round = sup.round();
+            title = format!("Poules — {}", round.name);
+            let n = if entrants > 0 { entrants } else { round.attendees().len() };
+            if n > 0 {
+                lines.push(people(c, n));
+            }
+            // Poules : nombre et tailles (« 3 poules de 7, 3 poules de 6 »).
+            let mut sizes: Vec<u32> = round.pools().iter().map(|p| p.nb_players() as u32).filter(|n| *n > 0).collect();
+            if sizes.is_empty() {
+                if let Some(cfg) = round.selected() {
+                    sizes = (0..cfg.nb_pool).map(|k| if k < cfg.nb_overloaded { cfg.size + 1 } else { cfg.size }).collect();
+                }
+            }
+            if !sizes.is_empty() {
+                let mut groups: Vec<(u32, usize)> = Vec::new();
+                for size in &sizes {
+                    match groups.iter_mut().find(|(s, _)| s == size) {
+                        Some(g) => g.1 += 1,
+                        None => groups.push((*size, 1)),
+                    }
+                }
+                groups.sort_by(|a, b| b.0.cmp(&a.0));
+                let detail = groups.iter().map(|(size, k)| format!("{k} poule{} de {size}", if *k > 1 { "s" } else { "" })).collect::<Vec<_>>().join(", ");
+                let total = sizes.len();
+                lines.push(if groups.len() > 1 { format!("{total} poules ({detail})") } else { detail });
+            }
+            let criteria: Vec<String> = round.swapping_criteria().iter().map(|code| tr(bp_core::attribute::desc(code).user_name).to_lowercase()).collect();
+            if !criteria.is_empty() {
+                lines.push(format!("Décalage par : {}", criteria.join(", ")));
+            }
+            if let Some(q) = round.nb_qualified().map(|q| q as usize).or((n > 0).then_some(n)) {
+                lines.push(qualified(c, q));
+            }
+        } else if let Some(sup) = s.as_any().downcast_ref::<TableSupervisor>() {
+            title = if entrants > 0 { format!("Élimination directe : {}", people(c, entrants)) } else { "Élimination directe".to_string() };
+            // Premier tableau : taille et exemptés.
+            let size = sup.table_sets().first().and_then(|set| set.tables().iter().map(|t| t.size()).max()).unwrap_or(0) as usize;
+            if size > 1 {
+                let exempted = size.saturating_sub(entrants);
+                lines.push(if entrants > 0 && exempted > 0 {
+                    format!("Tableau de {size}, {exempted} exempté{}{}", if c.gender == 1 && !c.settings.team_event { "e" } else { "" }, if exempted > 1 { "s" } else { "" })
+                } else {
+                    format!("Tableau de {size}")
+                });
+            }
+            if let Some(q) = s.base().nb_qualified {
+                lines.push(qualified(c, q as usize));
+            }
+        } else {
+            let kind = s.kind();
+            // Appel, composition des poules, classement : déjà dits.
+            if matches!(kind, bp_core::stage::StageKind::Checkin | bp_core::stage::StageKind::PoolAllocator | bp_core::stage::StageKind::GeneralClassification) {
+                continue;
+            }
+            title = format!("{} {}", tr(kind.class_name()), s.name()).trim().to_string();
+            if entrants > 0 {
+                lines.push(people(c, entrants));
+            }
+        }
+        out.push_str(&format!(
+            "<hr><div class=\"phase {state}\"><h4>{}</h4>{}</div>",
+            esc(&title),
+            lines.iter().map(|l| format!("<p>{}</p>", esc(l))).collect::<String>()
+        ));
     }
-    out.push_str("</ol>");
+    out.push_str("</div>");
     out
 }
 
@@ -416,8 +514,9 @@ fn pools(c: &Contest, names: &Names) -> String {
     out
 }
 
-/// Tableaux, tour par tour : les matchs avec piste, heure et score.
-fn tables(c: &Contest, names: &Names) -> String {
+/// Matchs des tableaux, tour par tour (piste, heure, score) : affichés
+/// quand un filtre est actif, et lus par « Mon tireur ».
+fn table_lists(c: &Contest, names: &Names) -> String {
     let mut out = String::new();
     for i in 0..c.schedule.len() {
         let Some(sup) = c.schedule.stage(i).and_then(|s| s.as_any().downcast_ref::<TableSupervisor>()) else { continue };
@@ -483,6 +582,77 @@ fn tables(c: &Contest, names: &Names) -> String {
         }
     }
     out
+}
+
+/// Dimensions de l'arbre sur la page publique (téléphone).
+const BRACKET: bp_core::rounds::table::layout::LayoutMetrics =
+    bp_core::rounds::table::layout::LayoutMetrics { cell_width: 200.0, row_height: 30.0, header_height: 34.0, column_spacing: 10.0 };
+
+/// Arbre d'une suite de tableaux, du plus grand tableau à la finale.
+fn bracket(c: &Contest, set: &bp_core::rounds::table::table_set::TableSet, names: &Names) -> String {
+    let dr = set.drawing_with_referees(&c.players, c.referees.store(), &BRACKET);
+    let pos = |b: &bp_core::rounds::table::layout::Bounds| format!("left:{:.0}px;top:{:.0}px;width:{:.0}px;height:{:.0}px", b.x1, b.y1, b.x2 - b.x1, b.y2 - b.y1);
+    let mut out = format!("<div class=\"bracket-scroll\"><div class=\"bracket\" style=\"width:{:.0}px;height:{:.0}px\">", dr.width, dr.height);
+    out.push_str(&format!("<svg class=\"lines\" width=\"{:.0}\" height=\"{:.0}\">", dr.width, dr.height));
+    for k in &dr.connectors {
+        let points = k.points.iter().map(|(x, y)| format!("{x:.1},{y:.1}")).collect::<Vec<_>>().join(" ");
+        out.push_str(&format!("<polyline points=\"{points}\"/>"));
+    }
+    out.push_str("</svg>");
+    for h in &dr.headers {
+        out.push_str(&format!("<div class=\"bh\" style=\"{}\">{}</div>", pos(&h.bounds), esc(&h.image)));
+    }
+    for cell in &dr.cells {
+        if let Some(label) = &cell.match_label {
+            let road = label.roadmap.as_ref().map(|r| r.text.clone()).unwrap_or_default();
+            if !label.name.is_empty() || !road.is_empty() {
+                out.push_str(&format!("<div class=\"bl\" style=\"{}\">{} <span>{}</span></div>", pos(&label.bounds), esc(&label.name), esc(&road)));
+            }
+        }
+        let (name, club) = cell.winner.map(|w| names.get(&c.players, w)).unwrap_or_default();
+        if !name.is_empty() {
+            out.push_str(&format!(
+                "<div class=\"cell\"{} style=\"{}\"><b>{}</b>{}</div>",
+                data(&name, &club),
+                pos(&cell.bounds),
+                esc(&name),
+                if cell.compact || club.is_empty() { String::new() } else { format!("<small>{}</small>", esc(&club)) }
+            ));
+        }
+        if let Some(score) = cell.score.as_ref().filter(|s| s.visible && s.fencer.is_some() && !s.text.is_empty()) {
+            out.push_str(&format!("<div class=\"bs\" style=\"{}\">{}</div>", pos(&score.bounds), esc(&score.text)));
+        }
+    }
+    out.push_str("</div></div>");
+    out
+}
+
+/// Tableaux : l'arbre complet de chaque suite ; avec un filtre, la liste des
+/// matchs qui le concernent.
+fn tables(c: &mut Contest, names: &Names) -> String {
+    // Arbre complet : du plus grand tableau (le logiciel peut n'en montrer qu'une partie).
+    for i in 0..c.schedule.len() {
+        if let Some(sup) = c.schedule.stage_mut(i).and_then(|s| s.as_any_mut().downcast_mut::<TableSupervisor>()) {
+            for k in 0..sup.table_sets().len() {
+                let set = sup.table_set_mut(k);
+                while set.can_display_previous() {
+                    set.display_previous();
+                }
+            }
+        }
+    }
+    let lists = table_lists(c, names);
+    if lists.is_empty() {
+        return String::new();
+    }
+    let mut trees = String::new();
+    for i in 0..c.schedule.len() {
+        let Some(sup) = c.schedule.stage(i).and_then(|s| s.as_any().downcast_ref::<TableSupervisor>()) else { continue };
+        for set in sup.table_sets().iter().filter(|s| s.is_visible()) {
+            trees.push_str(&format!("<h3>{}</h3>{}", esc(&set.name()), bracket(c, set, names)));
+        }
+    }
+    format!("<div class=\"trees\">{trees}</div><div class=\"bouts-list\">{lists}</div>")
 }
 
 /// Classement final (phase « Classement général »).

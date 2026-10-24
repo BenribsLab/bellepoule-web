@@ -73,7 +73,7 @@
       if (h && h.tagName === "H4") h.classList.toggle("hidden", active && !any);
     });
     // Sections sans aucun résultat : cachées pendant le filtrage.
-    const visible = (x) => !x.closest(".hidden") && (!x.closest(".pool") || x.classList.contains("match-row"));
+    const visible = (x) => !x.closest(".hidden") && !x.closest(".trees") && (!x.closest(".pool") || x.classList.contains("match-row"));
     $$("#content .tab").forEach((s) => s.classList.toggle("hidden", active && !$$("[data-f]", s).some(visible)));
   }
 
@@ -193,7 +193,7 @@
     showTab(a.dataset.tab);
   });
   $("#content").addEventListener("click", (ev) => {
-    const el = ev.target.closest("tr[data-f]");
+    const el = ev.target.closest("tr[data-f], .cell[data-f]");
     if (el) follow(el);
   });
   $("#q").addEventListener("input", applyFilters);

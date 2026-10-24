@@ -54,8 +54,8 @@ pub fn Pools(ctx: StageCtx) -> impl IntoView {
                                     })
                                     .collect_view()}
                             </select>
-                            <button class="light" disabled=sel == 0 on:click=move |_| selected.update(|x| *x = x.saturating_sub(1))>"‹"</button>
-                            <button class="light" disabled=sel + 1 >= pools.len() on:click=move |_| selected.update(|x| *x += 1)>"›"</button>
+                            <button class="light" disabled={sel == 0} on:click=move |_| selected.update(|x| *x = x.saturating_sub(1))>"‹"</button>
+                            <button class="light" disabled={sel + 1 >= pools.len()} on:click=move |_| selected.update(|x| *x += 1)>"›"</button>
                             <span class="spacer"></span>
                             {(b(&d, "stuffing") && !locked).then(|| view! {
                                 <button class="light warn" title="Scores aléatoires pour tester la formule (les scores saisis sont remplacés)"

@@ -46,11 +46,15 @@ small { display: block; color: var(--muted); font-size: 0.78em; font-weight: 400
 #mine .next { font-weight: 700; }
 .hint { font-size: 0.85rem; }
 /* Formule */
-.formula { padding-left: 1.4em; margin: 0; }
-.formula li { padding: 3px 0; }
-.formula .done { color: var(--muted); }
-.formula .done::after { content: " ✔"; color: var(--win); }
-.formula .current { font-weight: 800; color: var(--accent); }
+.formula { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 10px 16px; }
+.formula p { margin: 2px 0; }
+.formula .big { font-size: 1.15rem; font-weight: 800; }
+.formula hr { border: 0; border-top: 1px solid var(--border); margin: 10px 0; }
+.formula h4 { margin: 0 0 4px; }
+.phase.done h4::after { content: " ✔"; color: var(--win); }
+.phase.current h4 { color: var(--accent); }
+.phase.current h4::after { content: " · en cours"; font-weight: 600; font-size: 0.85em; }
+.phase.next { color: var(--muted); }
 /* Listes */
 table { border-collapse: collapse; }
 .list { width: 100%; background: var(--surface); border-radius: 12px; overflow: hidden; }
@@ -92,3 +96,19 @@ table { border-collapse: collapse; }
 
 /* Événement (épreuves publiées ensemble) */
 .event-card { border-left: 5px solid var(--accent); }
+
+/* Arbre des tableaux */
+.bracket-scroll { overflow: auto; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; margin: 6px 0 14px; max-height: 80vh; }
+.bracket { position: relative; font-size: 0.82rem; }
+.bracket .lines { position: absolute; left: 0; top: 0; pointer-events: none; }
+.bracket .lines polyline { fill: none; stroke: var(--muted); stroke-width: 1; }
+.bracket .bh { position: absolute; display: flex; align-items: center; justify-content: center; font-weight: 800; color: var(--accent); }
+.bracket .bl { position: absolute; font-size: 0.72rem; color: var(--muted); display: flex; align-items: flex-end; gap: 4px; white-space: nowrap; overflow: hidden; }
+.bracket .bl span { color: var(--accent); }
+.bracket .cell { position: absolute; display: flex; flex-direction: column; justify-content: center; padding: 0 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; line-height: 1.1; }
+.bracket .cell b, .bracket .cell small { overflow: hidden; text-overflow: ellipsis; }
+.bracket .bs { position: absolute; display: flex; align-items: center; justify-content: flex-end; font-weight: 800; color: var(--win); padding-right: 4px; }
+/* Filtre : la liste des matchs du tireur à la place de l'arbre */
+.bouts-list { display: none; }
+.filtering .bouts-list { display: block; }
+.filtering .trees { display: none; }

@@ -85,7 +85,8 @@ pub fn SecurityBanner() -> impl IntoView {
         // Signalements des arbitres (absence d'un tireur).
         {move || {
             let d = data.get()?;
-            let reports = arr(&d, "reports");
+            // Seuls les signalements en cours : un signalement traité disparaît.
+            let reports: Vec<Value> = arr(&d, "reports").into_iter().filter(|r| !r.get("done").and_then(Value::as_bool).unwrap_or(false)).collect();
             (!reports.is_empty()).then(|| view! {
                 <div class="reports card">
                     <h3>{format!("Signalements des arbitres ({} en cours)", u(&d, "open_reports"))}</h3>
