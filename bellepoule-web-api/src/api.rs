@@ -77,6 +77,7 @@ pub fn router(store: Shared) -> Router {
         .route("/api/smartpoule/phone/result", get(smartpoule::phone_result))
         .route("/api/smartpoule/phone/live", post(smartpoule::phone_live))
         .route("/api/smartpoule/phone/pin", post(smartpoule::phone_pin))
+        .route("/api/smartpoule/phone/equipment", post(smartpoule::phone_equipment))
         .route("/api/smartpoule/security", get(smartpoule::security).post(smartpoule::security_action))
         .route("/api/live", get(smartpoule::live))
         // Appel

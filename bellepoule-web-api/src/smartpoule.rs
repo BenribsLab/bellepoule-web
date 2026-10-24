@@ -75,6 +75,8 @@ pub struct Relay {
     next_id: u64,
     sessions: Vec<PhoneSession>,
     guards: HashMap<String, SheetGuard>,
+    /// Matériel vérifié par l'arbitre avant la poule : feuille → tireurs.
+    equipment: HashMap<String, Vec<u32>>,
 }
 
 /// Validité d'un téléphone reconnu par PIN : la journée ou le week-end.
@@ -462,15 +464,45 @@ pub async fn phone_sheet(State(store): State<Shared>, Query(q): Query<PhoneQuery
         Who::Admin => None,
         Who::Referee(r, _) => Some(r),
     };
-    if let Some(sheet) = store.relays.get(&club.id).and_then(|r| r.state.get("sheets")).and_then(|s| s.get(&token)) {
-        return Ok(Json(filter_bouts(sheet.clone(), referee)));
-    }
-    for (_, contest) in store.list(&club) {
-        if let Some(sheet) = contest.smartpoule_sheet(&token, referee) {
-            return Ok(Json(sheet));
+    let relayed = store.relays.get(&club.id).and_then(|r| r.state.get("sheets")).and_then(|s| s.get(&token)).map(|sheet| filter_bouts(sheet.clone(), referee));
+    let mut sheet = relayed
+        .or_else(|| store.list(&club).find_map(|(_, contest)| contest.smartpoule_sheet(&token, referee)))
+        .ok_or_else(|| ApiError(StatusCode::NOT_FOUND, "match introuvable".into()))?;
+    sheet["equipment"] = json!(store.relays.get(&club.id).and_then(|r| r.equipment.get(&token)).cloned().unwrap_or_default());
+    Ok(Json(sheet))
+}
+
+#[derive(Deserialize)]
+pub struct PhoneEquipment {
+    c: String,
+    r: u32,
+    k: String,
+    token: String,
+    fencer: u32,
+    checked: bool,
+}
+
+/// `POST /api/smartpoule/phone/equipment` : matériel d'un tireur vérifié
+/// (ou non) par l'arbitre de la poule.
+pub async fn phone_equipment(State(store): State<Shared>, Json(e): Json<PhoneEquipment>) -> Result<Json<Value>, ApiError> {
+    let mut store = store.lock().await;
+    let q = PhoneQuery { c: e.c.clone(), r: e.r, k: e.k.clone(), token: None, id: None };
+    let (club, who) = store.authenticate(&q)?;
+    if let Who::Referee(r, _) = who {
+        let assigned = store.all_jobs(&club).iter().any(|job| job.get("token").and_then(Value::as_str) == Some(e.token.as_str()) && mine(job, &Who::Referee(r, String::new())));
+        if !assigned {
+            return Err(forbidden());
         }
     }
-    Err(ApiError(StatusCode::NOT_FOUND, "match introuvable".into()))
+    let relay = store.relays.entry(club.id.clone()).or_default();
+    let list = relay.equipment.entry(e.token.clone()).or_default();
+    list.retain(|f| *f != e.fencer);
+    if e.checked {
+        list.push(e.fencer);
+    }
+    let list = list.clone();
+    store.save_relay(&club.id)?;
+    Ok(Json(json!({ "equipment": list })))
 }
 
 /// Feuille d'une poule sur plusieurs pistes : l'arbitre ne voit que les

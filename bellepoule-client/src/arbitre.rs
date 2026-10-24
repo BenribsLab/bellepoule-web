@@ -418,6 +418,7 @@ fn SheetScreen(who: Who, token: String) -> impl IntoView {
         spawn_local(async move { data.set(Some(fetch_sheet(&who, &token).await)) });
     }
     let token = StoredValue::new(token);
+    let who = StoredValue::new(who);
     view! {
         <div class="ref-screen">
             <header class="ref-head">
@@ -433,7 +434,7 @@ fn SheetScreen(who: Who, token: String) -> impl IntoView {
                         <h1 class="ref-title">{s(&sheet, "name")}</h1>
                         <div class="ref-muted ref-small">{s(&sheet, "competition")}</div>
                         {(!s(&sheet, "piste").is_empty()).then(|| view! { <div class="ref-place">{format!("Piste {}", s(&sheet, "piste"))}</div> })}
-                        {pool.then(|| view! { <PoolGrid sheet=sheet.clone() /> })}
+                        {pool.then(|| view! { <PoolGrid sheet=sheet.clone() who=who.get_value() token=token.get_value() /> })}
                         {pool.then(|| view! { <h2>"Matchs"</h2> })}
                         {if bouts.is_empty() {
                             view! { <p class="ref-muted">"Aucun match à saisir pour l'instant : la composition des poules n'est pas encore validée."</p> }.into_any()
@@ -480,10 +481,38 @@ fn short_name(full: &str) -> String {
 /// Feuille de poule du téléphone : tient dans la largeur jusqu'à 9 tireurs
 /// (texte plus petit au-delà de 7) ; au-delà, défilement horizontal avec les
 /// noms fixés à gauche.
+/// Tireurs dont le matériel a été vérifié (références).
+fn checked_list(v: &Value) -> Vec<u64> {
+    arr(v, "equipment").iter().filter_map(Value::as_u64).collect()
+}
+
 #[component]
-fn PoolGrid(sheet: Value) -> impl IntoView {
+fn PoolGrid(sheet: Value, who: Who, token: String) -> impl IntoView {
     let rows = arr(&sheet, "fencers");
     let n = rows.len();
+    // Matériel vérifié avant la poule (case du nom soulignée en vert).
+    let equipment = RwSignal::new(checked_list(&sheet));
+    let open = RwSignal::new(None::<Value>);
+    let (who, token) = (StoredValue::new(who), StoredValue::new(token));
+    let toggle = move |fencer: u64, checked: bool| {
+        let set = move |l: &mut Vec<u64>, on: bool| {
+            l.retain(|f| *f != fencer);
+            if on {
+                l.push(fencer);
+            }
+        };
+        equipment.update(|l| set(l, checked));
+        let body = who.get_value().body(json!({ "token": token.get_value(), "fencer": fencer, "checked": checked }));
+        spawn_local(async move {
+            match api::send::<_, Value>("POST", "/api/smartpoule/phone/equipment", &body).await {
+                Ok(v) => equipment.set(checked_list(&v)),
+                Err(e) => {
+                    equipment.update(|l| set(l, !checked));
+                    crate::alert(&e.message);
+                }
+            }
+        });
+    };
     let size = match n {
         0..=6 => "l",
         7 => "m",
@@ -512,9 +541,15 @@ fn PoolGrid(sheet: Value) -> impl IntoView {
                     {rows.into_iter().map(|r| {
                         let cells = arr(&r, "cells");
                         let full = s(&r, "name");
+                        let reference = r.get("reference").and_then(Value::as_u64);
+                        let row = r.clone();
                         view! {
                             <tr>
-                                <td class="ref-gname" title=full.clone()>{short_name(&full)}</td>
+                                <td
+                                    class="ref-gname"
+                                    class:checked=move || reference.is_some_and(|f| equipment.with(|l| l.contains(&f)))
+                                    on:click=move |_| open.set(Some(row.clone()))
+                                >{short_name(&full)}</td>
                                 <td class="ref-gpos">{s(&r, "position")}</td>
                                 {(0..n).map(|j| {
                                     let v = cells.get(j).cloned().unwrap_or(Value::Null);
@@ -532,6 +567,33 @@ fn PoolGrid(sheet: Value) -> impl IntoView {
                 </tbody>
             </table>
         </div>
+        {move || open.get().map(|r| {
+            let reference = r.get("reference").and_then(Value::as_u64);
+            view! {
+                <div class="ref-modal" on:click=move |_| open.set(None)>
+                    <div class="ref-modal-card" on:click=|ev| ev.stop_propagation()>
+                        <div class="ref-muted ref-small">{format!("Tireur n° {}", s(&r, "position"))}</div>
+                        <div class="ref-modal-name">{s(&r, "name")}</div>
+                        <div class="ref-muted">{s(&r, "club")}</div>
+                        {match reference {
+                            Some(f) => view! {
+                                <label class="ref-switch">
+                                    <input
+                                        type="checkbox"
+                                        prop:checked=move || equipment.with(|l| l.contains(&f))
+                                        on:change=move |ev| toggle(f, event_target_checked(&ev))
+                                    />
+                                    <span class="ref-switch-track"><span class="ref-switch-thumb"></span></span>
+                                    <span>"Matériel vérifié"</span>
+                                </label>
+                            }.into_any(),
+                            None => view! { <p class="ref-muted ref-small">"Vérification du matériel : mettez à jour ManageComp sur l'ordinateur de l'organisation."</p> }.into_any(),
+                        }}
+                        <button class="ref-light" on:click=move |_| open.set(None)>"Fermer"</button>
+                    </div>
+                </div>
+            }
+        })}
     }
 }
 

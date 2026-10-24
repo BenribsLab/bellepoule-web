@@ -301,6 +301,7 @@ impl Contest {
                         // Rencontres par équipes : format des relais.
                         "relay": self.settings.team_event.then(|| { let mut f = round.bout_timing.relay; f.team_size = self.settings.team_size; f.substitutes = self.settings.substitutes; f }),
                         "fencers": sheet.rows.iter().map(|r| json!({
+                            "reference": r.player,
                             "position": r.position,
                             "name": format!("{} {}", r.identity.name, r.identity.first_name).trim().to_string(),
                             "club": r.identity.club,
